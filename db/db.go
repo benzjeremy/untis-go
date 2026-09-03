@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	_ "github.com/mattn/go-sqlite3"
+	
 )
 
 // Database wraps the sql.DB instance and provides concurrency-safe access
@@ -46,7 +46,7 @@ func InitDB(customPath ...string) (*Database, error) {
 
 	// Connect to SQLite with WAL mode & busy timeout
 	connStr := fmt.Sprintf("%s?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON&_synchronous=NORMAL", dbPath)
-	sqldb, err := sql.Open("sqlite3", connStr)
+	sqldb, err := sql.Open(sqliteDriver, connStr)
 	if err != nil {
 		return nil, fmt.Errorf("could not open sqlite database at %s: %w", dbPath, err)
 	}
