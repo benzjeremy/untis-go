@@ -33,7 +33,7 @@ Stelle sicher, dass du Go (ab Version 1.21+) auf deinem System installiert hast.
 
 ```bash
 # Repository klonen
-git clone [https://github.com/itsbenzo_tv/untis-go.git](https://github.com/itsbenzo_tv/untis-go.git)
+git clone [https://github.com/benzjeremy/untis-go.git](https://github.com/benzjeremy/untis-go.git)
 cd untis-go
 
 # Abhängigkeiten laden und bauen
