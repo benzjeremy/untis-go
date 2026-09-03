@@ -1,3 +1,5 @@
+//go:build linux && cgo
+
 package main
 
 /*
@@ -54,8 +56,6 @@ import (
 )
 
 func init() {
-	// Disable DMABUF renderer in WebKitGTK to prevent Wayland stutter/flickering
-	// and force hardware compositing for smooth 60 FPS
 	_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
 	_ = os.Setenv("WEBKIT_FORCE_COMPOSITING_MODE", "1")
 }
