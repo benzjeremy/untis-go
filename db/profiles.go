@@ -219,13 +219,38 @@ func (d *Database) SaveProfile(p *Profile) error {
 	return err
 }
 
-// DeleteProfile removes a profile from SQLite
+// DeleteProfile removes a profile from SQLite and cascades to local homework/absences
 func (d *Database) DeleteProfile(id string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// Check if this was the active profile
+	var isActive int
+	_ = d.db.QueryRow(`SELECT is_active FROM profiles WHERE id = ?`, id).Scan(&isActive)
+
+	// Clean up related data
+	_, _ = d.db.Exec(`DELETE FROM homework WHERE profile_id = ?`, id)
+	_, _ = d.db.Exec(`DELETE FROM absences WHERE profile_id = ?`, id)
+
+	// Delete profile
 	_, err := d.db.Exec(`DELETE FROM profiles WHERE id = ?`, id)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// If this was the active profile, promote another profile if one exists
+	if isActive == 1 {
+		var nextID string
+		err := d.db.QueryRow(`SELECT id FROM profiles ORDER BY created_at ASC LIMIT 1`).Scan(&nextID)
+		if err == nil && nextID != "" {
+			_, _ = d.db.Exec(`UPDATE profiles SET is_active = 1 WHERE id = ?`, nextID)
+			_, _ = d.db.Exec(`INSERT INTO settings(key, value) VALUES ('active_profile', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`, nextID)
+		} else {
+			_, _ = d.db.Exec(`DELETE FROM settings WHERE key = 'active_profile'`)
+		}
+	}
+
+	return nil
 }
 
 // GetDecryptedPassword returns the decrypted password for a profile

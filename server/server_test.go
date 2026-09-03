@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"untis-go/db"
@@ -73,6 +74,94 @@ func TestServerSecurityAndEndpoints(t *testing.T) {
 	// Check if server URL returned by Start() has token query param
 	if serverURL == "" || !containsToken(serverURL, token) {
 		t.Fatalf("serverURL %s does not contain token %s", serverURL, token)
+	}
+
+	// 3. Test /api/dashboard
+	reqDash, _ := http.NewRequest("GET", baseURL+"/api/dashboard", nil)
+	reqDash.Header.Set("X-Session-Token", token)
+	respDash, err := http.DefaultClient.Do(reqDash)
+	if err != nil || respDash.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for /api/dashboard, got %v, err: %v", respDash.StatusCode, err)
+	}
+	respDash.Body.Close()
+
+	// 4. Test /api/homework POST and GET
+	hwBody := strings.NewReader(`{"subject":"Mathematik","description":"Seite 42 Nr. 1-4","dueDate":"2026-09-10"}`)
+	reqHwPost, _ := http.NewRequest("POST", baseURL+"/api/homework", hwBody)
+	reqHwPost.Header.Set("X-Session-Token", token)
+	respHwPost, err := http.DefaultClient.Do(reqHwPost)
+	if err != nil || respHwPost.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for POST /api/homework, got %v, err: %v", respHwPost.StatusCode, err)
+	}
+	var createdHw struct {
+		Success  bool        `json:"success"`
+		Homework db.Homework `json:"homework"`
+	}
+	_ = json.NewDecoder(respHwPost.Body).Decode(&createdHw)
+	respHwPost.Body.Close()
+
+	if createdHw.Homework.Subject != "Mathematik" {
+		t.Fatalf("expected created homework subject 'Mathematik', got %s", createdHw.Homework.Subject)
+	}
+
+	// Test GET /api/homework
+	reqHwGet, _ := http.NewRequest("GET", baseURL+"/api/homework", nil)
+	reqHwGet.Header.Set("X-Session-Token", token)
+	respHwGet, err := http.DefaultClient.Do(reqHwGet)
+	if err != nil || respHwGet.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for GET /api/homework, got %v", respHwGet.StatusCode)
+	}
+	var hwList []db.Homework
+	_ = json.NewDecoder(respHwGet.Body).Decode(&hwList)
+	respHwGet.Body.Close()
+	if len(hwList) == 0 {
+		t.Fatalf("expected at least 1 homework, got 0")
+	}
+
+	// 5. Test /api/absences POST and GET
+	absBody := strings.NewReader(`{"reason":"Krankheit","text":"Grippaler Infekt","startDate":"2026-09-08","endDate":"2026-09-08","isExcused":true}`)
+	reqAbsPost, _ := http.NewRequest("POST", baseURL+"/api/absences", absBody)
+	reqAbsPost.Header.Set("X-Session-Token", token)
+	respAbsPost, err := http.DefaultClient.Do(reqAbsPost)
+	if err != nil || respAbsPost.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for POST /api/absences, got %v", respAbsPost.StatusCode)
+	}
+	respAbsPost.Body.Close()
+
+	reqAbsGet, _ := http.NewRequest("GET", baseURL+"/api/absences", nil)
+	reqAbsGet.Header.Set("X-Session-Token", token)
+	respAbsGet, err := http.DefaultClient.Do(reqAbsGet)
+	if err != nil || respAbsGet.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for GET /api/absences, got %v", respAbsGet.StatusCode)
+	}
+	var absList []db.Absence
+	_ = json.NewDecoder(respAbsGet.Body).Decode(&absList)
+	respAbsGet.Body.Close()
+	if len(absList) == 0 {
+		t.Fatalf("expected at least 1 absence, got 0")
+	}
+
+	// 6. Test /api/profiles/delete
+	// Create a dummy profile to delete
+	dummyProf := &db.Profile{
+		ID:       "dummy_delete_test",
+		Name:     "Delete Me",
+		School:   "test-school",
+		Server:   "https://test.webuntis.com",
+		Username: "tester",
+	}
+	_ = database.SaveProfile(dummyProf)
+
+	delReq, _ := http.NewRequest("POST", baseURL+"/api/profiles/delete?id=dummy_delete_test", nil)
+	delReq.Header.Set("X-Session-Token", token)
+	delResp, err := http.DefaultClient.Do(delReq)
+	if err != nil || delResp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for /api/profiles/delete, got %v", delResp.StatusCode)
+	}
+	delResp.Body.Close()
+
+	if _, err := database.GetProfile("dummy_delete_test"); err == nil {
+		t.Fatalf("expected profile to be deleted from database")
 	}
 }
 

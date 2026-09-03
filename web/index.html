@@ -3,403 +3,634 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Untis Stundenplan - Desktop Remake</title>
+  <title>Untis Stundenplan - Desktop App</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <div class="app-layout">
-    <!-- Top App Bar (Material 3 Desktop Design) -->
-    <header class="top-app-bar">
-      <div class="app-bar-left">
-        <div class="untis-logo" title="WebUntis Desktop Remake">
-          <svg viewBox="0 0 24 24" class="logo-icon" fill="currentColor">
+<body class="desktop-app-body">
+  <div class="desktop-shell">
+    <!-- ==================== LEFT SIDEBAR (Teams / Discord / Spotify Desktop Style) ==================== -->
+    <aside class="desktop-sidebar">
+      <!-- Top Branding -->
+      <div class="sidebar-header">
+        <div class="brand-logo" title="WebUntis Desktop App">
+          <svg viewBox="0 0 24 24" class="brand-icon" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-2h4v2zm0-4H7v-2h4v2zm0-4H7V7h4v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/>
           </svg>
         </div>
-        <div class="app-title-group">
-          <span class="app-title">Untis</span>
-          <span class="app-subtitle" id="schoolSubtitle">Schule wählen...</span>
+        <div class="brand-text">
+          <span class="brand-title">UNTIS</span>
+          <span class="brand-badge">DESKTOP</span>
         </div>
       </div>
 
-      <div class="app-bar-center">
-        <!-- Class Selector with Live Search Dropdown -->
-        <div class="class-dropdown-wrapper">
-          <button class="md3-chip class-chip" id="classSelectorBtn" title="Klasse auswählen">
-            <svg class="chip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
-            <span class="chip-label" id="currentClassLabel">Klasse wählen</span>
-            <svg class="chip-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-          </button>
-          
-          <div class="class-dropdown-menu" id="classDropdownMenu">
-            <div class="dropdown-header-search">
-              <div class="search-input-box">
-                <svg viewBox="0 0 24 24" class="search-box-icon" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="classSearchInput" placeholder="Klasse suchen (z.B. ITT125, BZ...)" autocomplete="off">
-                <button type="button" id="clearClassSearchBtn" class="clear-search-btn" style="display:none;">&times;</button>
-              </div>
-              <div class="class-counter-badge" id="classCounterBadge">0 Klassen</div>
-            </div>
-            <div class="dropdown-list" id="classListContainer">
-              <!-- Populated dynamically -->
-            </div>
+      <!-- Current School Pill -->
+      <div class="sidebar-school-pill" id="sidebarSchoolPill" title="Aktive Schule">
+        <span class="status-indicator-dot online"></span>
+        <span class="school-name-text" id="sidebarSchoolName">Schule laden...</span>
+      </div>
+
+      <!-- Navigation Section -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">HAUPTMENÜ</div>
+
+        <button class="nav-item active" data-view="dashboard" id="navDashboard">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          <span class="nav-label">Übersicht</span>
+        </button>
+
+        <button class="nav-item" data-view="own-timetable" id="navOwnTimetable">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+          <span class="nav-label">Mein Stundenplan</span>
+        </button>
+
+        <button class="nav-item" data-view="other-timetables" id="navOtherTimetables">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+          <span class="nav-label">Weitere Stundenpläne</span>
+        </button>
+
+        <button class="nav-item" data-view="homework" id="navHomework">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+          <span class="nav-label">Hausaufgaben</span>
+          <span class="nav-badge" id="sidebarHwBadge" style="display:none;">0</span>
+        </button>
+
+        <button class="nav-item" data-view="absences" id="navAbsences">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 13H8v-3h2.5V7.5h3V10H16v3h-2.5v2.5h-3V13zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+          <span class="nav-label">Abwesenheiten</span>
+          <span class="nav-badge count-secondary" id="sidebarAbsBadge" style="display:none;">0</span>
+        </button>
+
+        <button class="nav-item" data-view="messages" id="navMessages">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+          <span class="nav-label">Mitteilungen</span>
+          <span class="nav-badge count-unread" id="sidebarMsgBadge" style="display:none;">0</span>
+        </button>
+
+        <div class="nav-section-label" style="margin-top:16px;">VERWALTUNG</div>
+
+        <button class="nav-item" data-view="profiles" id="navProfiles">
+          <div class="nav-active-pill"></div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          <span class="nav-label">Profile & Schulen</span>
+        </button>
+      </nav>
+
+      <!-- Bottom User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile-widget" id="sidebarUserProfileWidget">
+          <div class="user-avatar-initials" id="sidebarUserAvatar">U</div>
+          <div class="user-meta">
+            <span class="user-name" id="sidebarUserName">Benutzer</span>
+            <span class="user-sub" id="sidebarUserSub">WebUntis</span>
           </div>
         </div>
-
-        <!-- Date Navigation Strip -->
-        <div class="nav-date-group">
-          <button class="nav-arrow-btn" id="prevDateBtn" title="Vorheriger Tag / Vorherige Woche (←)">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        <div class="sidebar-controls">
+          <button class="icon-tool-btn" id="sidebarThemeBtn" title="Farbschema umschalten (Dunkel / Hell)">
+            <svg id="sidebarThemeIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
           </button>
-          
-          <div class="date-picker-container">
-            <input type="date" id="nativeDatePicker" class="hidden-date-input">
-            <button class="date-display-btn" id="dateDisplayBtn" title="Datum auswählen">
-              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
-              <span id="dateDisplayLabel">Datum wird geladen...</span>
+          <button class="icon-tool-btn" id="sidebarRefreshBtn" title="Neu laden / Synchronisieren">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== RIGHT MAIN DESKTOP STAGE ==================== -->
+    <main class="desktop-main">
+      <!-- Loading Overlay -->
+      <div class="desktop-loading-overlay" id="desktopLoadingOverlay" style="display:none;">
+        <div class="desktop-spinner"></div>
+        <span id="desktopLoadingText">Wird geladen...</span>
+      </div>
+
+      <!-- Top Titlebar Strip -->
+      <header class="desktop-topbar">
+        <div class="topbar-left">
+          <h1 class="topbar-view-title" id="topbarViewTitle">Übersicht</h1>
+          <span class="topbar-view-desc" id="topbarViewDesc">Willkommen in deiner Untis Desktop-App</span>
+        </div>
+
+        <!-- Timetable Date Controls (Visible on Timetable Views) -->
+        <div class="topbar-right" id="topbarTimetableControls" style="display:none;">
+          <div class="desktop-date-nav">
+            <button class="date-arrow-btn" id="dateNavPrev" title="Vorheriger Tag / Vorherige Woche (←)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <input type="date" id="nativeDateInput" class="hidden-date-field">
+            <button class="date-picker-btn" id="datePickerBtn" title="Datum auswählen">
+              <svg class="btn-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+              <span id="dateNavLabel">Heute</span>
+            </button>
+            <button class="date-arrow-btn" id="dateNavNext" title="Nächster Tag / Nächste Woche (→)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+            <button class="today-jump-btn" id="dateNavToday" title="Zu Heute springen (T)">Heute</button>
+          </div>
+
+          <div class="segmented-view-picker">
+            <button class="seg-btn active" id="segViewDay" title="Tagesansicht (D)">Tag</button>
+            <button class="seg-btn" id="segViewWeek" title="Wochenansicht (W)">Woche</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEW CONTAINER -->
+      <div class="view-viewport" id="viewViewport">
+
+        <!-- ==================== VIEW 1: DASHBOARD (ÜBERSICHT) ==================== -->
+        <section class="desktop-view-pane active" id="viewPaneDashboard">
+          <!-- Hero Banner -->
+          <div class="dashboard-hero-banner">
+            <div class="hero-text-group">
+              <h2 class="hero-greeting" id="dashHeroGreeting">Guten Tag, Jeremy Benz</h2>
+              <p class="hero-subtitle" id="dashHeroDate">Lade Datum...</p>
+            </div>
+            <div class="hero-school-chip" id="dashHeroSchool">BK Technik Siegen</div>
+          </div>
+
+          <!-- Highlight Metric Cards -->
+          <div class="dashboard-metric-grid">
+            <!-- Next Lesson Card -->
+            <div class="metric-card metric-next-lesson" id="dashNextLessonCard">
+              <div class="metric-card-header">
+                <span class="metric-tag">NÄCHSTE STUNDE</span>
+                <span class="metric-time-badge" id="dashNextLessonTime">--:--</span>
+              </div>
+              <div class="metric-body">
+                <div class="metric-subject-wrap">
+                  <h3 class="metric-subject" id="dashNextLessonSubject">Kein Unterricht</h3>
+                  <span class="metric-room" id="dashNextLessonRoom">-</span>
+                </div>
+                <div class="metric-subtext" id="dashNextLessonSubtext">Der Schultag ist beendet oder unterrichtsfrei.</div>
+              </div>
+            </div>
+
+            <!-- Open Homework Card -->
+            <div class="metric-card" id="dashHwCard" onclick="switchView('homework')">
+              <div class="metric-card-header">
+                <span class="metric-tag">HAUSAUFGABEN</span>
+                <span class="metric-count-pill" id="dashHwCount">0 offen</span>
+              </div>
+              <div class="metric-body">
+                <h3 class="metric-headline" id="dashHwHeadline">Keine offenen Aufgaben</h3>
+                <p class="metric-subtext">Klicke hier, um neue Aufgaben einzutragen oder abzuhaken.</p>
+              </div>
+            </div>
+
+            <!-- Messages Card -->
+            <div class="metric-card" id="dashMsgCard" onclick="switchView('messages')">
+              <div class="metric-card-header">
+                <span class="metric-tag">MITTEILUNGEN</span>
+                <span class="metric-count-pill secondary" id="dashMsgCount">0 Nachrichten</span>
+              </div>
+              <div class="metric-body">
+                <h3 class="metric-headline" id="dashMsgHeadline">Posteingang prüfen</h3>
+                <p class="metric-subtext">Aktuelle Durchsagen und Nachrichten der Schulleitung.</p>
+              </div>
+            </div>
+
+            <!-- Absences Summary Card -->
+            <div class="metric-card" id="dashAbsCard" onclick="switchView('absences')">
+              <div class="metric-card-header">
+                <span class="metric-tag">FEHLZEITEN</span>
+                <span class="metric-count-pill success" id="dashAbsCount">0 Fehlstunden</span>
+              </div>
+              <div class="metric-body">
+                <div class="abs-stat-row">
+                  <span class="abs-status-tag excused" id="dashAbsExcused">0 Entschuldigt</span>
+                  <span class="abs-status-tag unexcused" id="dashAbsUnexcused">0 Unentschuldigt</span>
+                </div>
+                <p class="metric-subtext">Krankmeldung oder Abwesenheit einreichen.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2-Column Dashboard Body -->
+          <div class="dashboard-columns">
+            <!-- Left: Today's Schedule -->
+            <div class="dash-column left">
+              <div class="section-card-header">
+                <div class="sec-title-wrap">
+                  <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                  <h3>Heutiger Stundenplan</h3>
+                </div>
+                <button class="btn-text-sm" onclick="switchView('own-timetable')">Vollansicht &rarr;</button>
+              </div>
+              <div class="today-lessons-card-list" id="dashTodayLessonsList">
+                <div class="empty-inline-state">Lade heutige Stunden...</div>
+              </div>
+            </div>
+
+            <!-- Right: Homework & Messages Summary -->
+            <div class="dash-column right">
+              <!-- Homework Preview Box -->
+              <div class="dash-sub-box">
+                <div class="section-card-header">
+                  <div class="sec-title-wrap">
+                    <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <h3>Offene Hausaufgaben</h3>
+                  </div>
+                  <button class="btn-action-primary-sm" onclick="openNewHomeworkModal()">+ Neu</button>
+                </div>
+                <div class="dash-homework-list" id="dashHwList">
+                  <div class="empty-inline-state">Keine offenen Hausaufgaben.</div>
+                </div>
+              </div>
+
+              <!-- Messages Preview Box -->
+              <div class="dash-sub-box" style="margin-top:20px;">
+                <div class="section-card-header">
+                  <div class="sec-title-wrap">
+                    <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                    <h3>Schul-Mitteilungen</h3>
+                  </div>
+                  <button class="btn-text-sm" onclick="switchView('messages')">Alle anzeigen &rarr;</button>
+                </div>
+                <div class="dash-messages-list" id="dashMsgList">
+                  <div class="empty-inline-state">Keine neuen Mitteilungen.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 2: MEIN STUNDENPLAN (JEREMY BENZ) ==================== -->
+        <section class="desktop-view-pane" id="viewPaneOwnTimetable">
+          <div class="timetable-viewport-container">
+            <!-- Live Time Indicator Line (Rote Markierungslinie für aktuelle Uhrzeit) -->
+            <div class="live-timeline-marker" id="liveTimelineMarker" style="display:none;">
+              <div class="live-timeline-badge">
+                <div class="live-pulse-dot"></div>
+                <span id="liveTimelineTimeLabel">JETZT</span>
+              </div>
+              <div class="live-timeline-line"></div>
+            </div>
+
+            <!-- Day View Lessons List -->
+            <div class="timetable-day-container active" id="ownDayViewContainer">
+              <div class="day-lessons-list" id="ownDayLessonsList"></div>
+            </div>
+
+            <!-- Week View Grid -->
+            <div class="timetable-week-container" id="ownWeekViewContainer">
+              <div class="week-grid-header" id="ownWeekGridHeader"></div>
+              <div class="week-grid-body" id="ownWeekGridBody"></div>
+            </div>
+
+            <!-- Empty Timetable State -->
+            <div class="empty-state" id="ownEmptyState" style="display:none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+              <h3>Kein Unterricht</h3>
+              <p>Für diesen Zeitraum liegen für deinen Schülerplan keine Unterrichtsstunden vor.</p>
+              <button class="btn-filled jump-next-btn" id="ownJumpToNextBtn" style="margin-top:14px;">Zur nächsten Unterrichtswoche springen</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 3: WEITERE STUNDENPLÄNE ==================== -->
+        <section class="desktop-view-pane" id="viewPaneOtherTimetables">
+          <div class="other-timetables-layout">
+            <!-- Sidebar Resource Picker -->
+            <div class="resource-selector-panel">
+              <!-- Sub-tabs: Klassen, Lehrer, Räume -->
+              <div class="resource-tabs">
+                <button class="res-tab-btn active" id="tabResClasses" onclick="switchResourceTab('CLASS')">Klassen (195)</button>
+                <button class="res-tab-btn" id="tabResTeachers" onclick="switchResourceTab('TEACHER')">Lehrkräfte</button>
+                <button class="res-tab-btn" id="tabResRooms" onclick="switchResourceTab('ROOM')">Räume (226)</button>
+              </div>
+
+              <!-- Search Bar -->
+              <div class="resource-search-box">
+                <svg viewBox="0 0 24 24" class="res-search-icon" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="resourceSearchInput" placeholder="Suchen..." autocomplete="off">
+              </div>
+
+              <!-- List Container -->
+              <div class="resource-items-list" id="resourceItemsList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Resource Timetable Display Area -->
+            <div class="resource-timetable-panel">
+              <div class="resource-view-header">
+                <div class="res-current-badge">
+                  <span class="res-type-pill" id="otherResTypePill">KLASSE</span>
+                  <h2 class="res-name-heading" id="otherResNameHeading">Bitte auswählen...</h2>
+                </div>
+              </div>
+
+              <div class="resource-timetable-content" id="otherTimetableContent">
+                <div class="resource-timetable-day active" id="otherDayViewContainer">
+                  <div class="day-lessons-list" id="otherDayLessonsList"></div>
+                </div>
+                <div class="resource-timetable-week" id="otherWeekViewContainer">
+                  <div class="week-grid-header" id="otherWeekGridHeader"></div>
+                  <div class="week-grid-body" id="otherWeekGridBody"></div>
+                </div>
+                <div class="empty-state" id="otherEmptyState" style="display:none;">
+                  <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                  <h3>Kein Unterricht im gewählten Zeitraum</h3>
+                  <p>Bitte wähle ein anderes Datum oder eine andere Klasse/Ressource aus.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 4: HAUSAUFGABEN ==================== -->
+        <section class="desktop-view-pane" id="viewPaneHomework">
+          <div class="content-header-bar">
+            <div class="header-left">
+              <h2>Hausaufgaben & Schulaufgaben</h2>
+              <p>Verwalte deine Aufgaben aus WebUntis und erstelle persönliche Aufgaben.</p>
+            </div>
+            <button class="btn-filled" onclick="openNewHomeworkModal()">
+              <svg viewBox="0 0 24 24" class="btn-svg" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <span>+ Neue Hausaufgabe eintragen</span>
             </button>
           </div>
 
-          <button class="nav-arrow-btn" id="nextDateBtn" title="Nächster Tag / Nächste Woche (→)">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
-          </button>
-
-          <button class="today-chip" id="todayBtn" title="Zu Heute springen (Taste: T)">Heute</button>
-        </div>
-
-        <!-- Segmented View Toggle (Tag / Woche) -->
-        <div class="segmented-control">
-          <button class="segment-btn active" id="viewDayBtn" title="Tagesansicht (Taste: D)">Tag</button>
-          <button class="segment-btn" id="viewWeekBtn" title="Wochenansicht (Taste: W)">Woche</button>
-        </div>
-      </div>
-
-      <div class="app-bar-right">
-        <!-- Profile Quick Switcher with Avatar -->
-        <div class="profile-dropdown-wrapper">
-          <button class="md3-chip profile-chip" id="profileBadgeBtn" title="Profil wechseln / verwalten">
-            <div class="avatar-badge" id="userAvatarBadge">U</div>
-            <span class="user-display-text" id="userDisplayName">Profil</span>
-            <svg class="chip-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-          </button>
-
-          <div class="profile-dropdown-menu" id="profileDropdownMenu">
-            <div class="dropdown-header-title">WebUntis Profile</div>
-            <div class="profile-quick-list" id="profileQuickList">
-              <!-- Dynamically populated -->
-            </div>
-            <div class="dropdown-footer-actions">
-              <button type="button" class="action-menu-item" id="addNewProfileQuickBtn">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                <span>Neue Schule hinzufügen</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Refresh Button -->
-        <button class="icon-btn" id="refreshBtn" title="Stundenplan aktualisieren">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        </button>
-
-        <!-- Dark/Light Theme Toggle -->
-        <button class="icon-btn" id="themeToggleBtn" title="Farbschema wechseln (Dunkel / Hell)">
-          <svg id="themeIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
-        </button>
-
-        <!-- Settings Button -->
-        <button class="icon-btn" id="settingsBtn" title="Einstellungen & Schulauswahl">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="content-viewport" id="mainContentViewport">
-      <!-- Loading Indicator -->
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="md3-circular-progress"></div>
-        <span id="loadingMessage">Stundenplan wird blitzschnell geladen...</span>
-      </div>
-
-      <!-- Onboarding Screen (Shown if no profile or when adding new school) -->
-      <div class="onboarding-screen" id="onboardingScreen" style="display:none;">
-        <div class="onboarding-card">
-          <div class="onboarding-hero">
-            <div class="onboarding-logo-wrap">
-              <svg viewBox="0 0 24 24" class="onboarding-logo-icon" fill="currentColor">
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
-              </svg>
-            </div>
-            <h1 class="onboarding-title">Finde deine Schule</h1>
-            <p class="onboarding-subtitle">Durchsuche alle WebUntis-Schulen weltweit in Echtzeit und verbinde deinen Stundenplan.</p>
+          <!-- Filter Pills -->
+          <div class="filter-pills-bar">
+            <button class="pill-btn active" id="hwFilterAll" onclick="filterHomework('all')">Alle Aufgaben</button>
+            <button class="pill-btn" id="hwFilterOpen" onclick="filterHomework('open')">Offen</button>
+            <button class="pill-btn" id="hwFilterCompleted" onclick="filterHomework('completed')">Erledigt</button>
           </div>
 
-          <div class="onboarding-search-container">
-            <div class="search-input-box onboarding-search-bar">
-              <svg viewBox="0 0 24 24" class="search-box-icon" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <input type="text" id="onboardingSearchInput" placeholder="Name der Schule oder Stadt eingeben (z.B. Siegen, Technik, Berlin...)" autocomplete="off">
-              <div class="search-spinner-sm" id="onboardingSearchSpinner" style="display:none;"></div>
-            </div>
+          <!-- Homework List -->
+          <div class="homework-cards-container" id="homeworkCardsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
 
-            <!-- School Live Search Results -->
-            <div class="onboarding-school-results" id="onboardingSchoolResults"></div>
+        <!-- ==================== VIEW 5: ABWESENHEITEN ==================== -->
+        <section class="desktop-view-pane" id="viewPaneAbsences">
+          <div class="content-header-bar">
+            <div class="header-left">
+              <h2>Abwesenheiten & Fehlzeiten</h2>
+              <p>Übersicht aller gemeldeten Fehlzeiten und Krankmeldungen.</p>
+            </div>
+            <button class="btn-filled" onclick="openNewAbsenceModal()">
+              <svg viewBox="0 0 24 24" class="btn-svg" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <span>+ Abwesenheit / Krankmeldung eintragen</span>
+            </button>
           </div>
 
-          <!-- Credentials Form for Selected School -->
-          <div class="onboarding-credentials-form" id="onboardingCredentialsForm" style="display:none;">
-            <div class="selected-school-banner">
-              <div class="selected-school-header">
-                <span class="selected-school-name" id="onboardingSelectedSchoolName">Schulname</span>
-                <span class="selected-school-details" id="onboardingSelectedSchoolDetails">server · kürzel</span>
-              </div>
-              <button type="button" class="btn-text" id="onboardingChangeSchoolBtn">Schule wechseln</button>
+          <!-- Absence Stats Banner -->
+          <div class="absence-stats-banner">
+            <div class="stat-box">
+              <span class="stat-number" id="absTotalCount">0</span>
+              <span class="stat-label">Gesamte Einträge</span>
+            </div>
+            <div class="stat-box success">
+              <span class="stat-number" id="absExcusedCount">0</span>
+              <span class="stat-label">Entschuldigt</span>
+            </div>
+            <div class="stat-box warning">
+              <span class="stat-number" id="absUnexcusedCount">0</span>
+              <span class="stat-label">Unentschuldigt</span>
+            </div>
+          </div>
+
+          <!-- Absences Cards List -->
+          <div class="absences-cards-container" id="absencesCardsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 6: MITTEILUNGEN ==================== -->
+        <section class="desktop-view-pane" id="viewPaneMessages">
+          <div class="content-header-bar">
+            <div class="header-left">
+              <h2>Mitteilungen & Ankündigungen</h2>
+              <p>Posteingang aller Schulnachrichten und Bekanntmachungen.</p>
+            </div>
+            <button class="btn-outlined" onclick="loadMessages()">
+              <svg viewBox="0 0 24 24" class="btn-svg" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              <span>Aktualisieren</span>
+            </button>
+          </div>
+
+          <div class="messages-container" id="messagesContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- ==================== VIEW 7: PROFILE & SCHULEN ==================== -->
+        <section class="desktop-view-pane" id="viewPaneProfiles">
+          <div class="content-header-bar">
+            <div class="header-left">
+              <h2>Profile & Schulen verwalten</h2>
+              <p>Hier kannst du zwischen deinen Schul-Profilen wechseln, neue Schulen hinzufügen oder alte Profile löschen.</p>
+            </div>
+          </div>
+
+          <!-- Profiles Grid -->
+          <div class="profiles-section-wrap">
+            <h3 class="section-sub-heading">Gespeicherte Profile (SQLite verschlüsselt)</h3>
+            <div class="profiles-cards-grid" id="profilesManagementList">
+              <!-- Rendered by JS with RED TRASH CAN ICONS! -->
+            </div>
+          </div>
+
+          <!-- Add New School Section -->
+          <div class="add-school-section">
+            <h3 class="section-sub-heading">+ Neue Schule hinzufügen (WebUntis Schulsuche)</h3>
+            <div class="add-school-search-bar">
+              <svg viewBox="0 0 24 24" class="search-ic" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input type="text" id="addSchoolSearchInput" placeholder="Name der Schule oder Stadt eingeben (z.B. Siegen, Technik...)" autocomplete="off">
+              <button type="button" class="btn-filled" id="btnSearchSchool">Suchen</button>
             </div>
 
-            <form id="onboardingLoginFormBox" class="onboarding-form-fields">
-              <div class="input-field">
-                <label for="onboardingUsernameInput">Benutzername</label>
-                <input type="text" id="onboardingUsernameInput" placeholder="z.B. jerebenz20090617 (oder leer/anonym)" autocomplete="username">
-              </div>
+            <!-- School Search Results -->
+            <div class="school-search-results-list" id="addSchoolResultsList"></div>
 
-              <div class="input-field">
-                <label for="onboardingPasswordInput">Passwort</label>
-                <div class="password-input-wrap">
-                  <input type="password" id="onboardingPasswordInput" placeholder="WebUntis Passwort" autocomplete="current-password">
-                  <button type="button" class="icon-btn-inline" id="toggleOnboardingPwdBtn" title="Passwort einblenden">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                  </button>
+            <!-- Credentials Box for adding -->
+            <form id="addSchoolForm" class="add-school-credentials-box" style="display:none;">
+              <div class="selected-school-preview" id="selectedSchoolPreview"></div>
+
+              <div class="form-grid-row">
+                <div class="form-group">
+                  <label for="newUsername">Benutzername</label>
+                  <input type="text" id="newUsername" placeholder="WebUntis Benutzername" autocomplete="username">
+                </div>
+                <div class="form-group">
+                  <label for="newPassword">Passwort</label>
+                  <input type="password" id="newPassword" placeholder="WebUntis Passwort" autocomplete="current-password">
                 </div>
               </div>
+              <div class="form-group">
+                <label for="newProfileName">Profilname (optional)</label>
+                <input type="text" id="newProfileName" placeholder="z.B. Meine Berufsschule">
+              </div>
 
-              <div class="status-message error" id="onboardingErrorMsg" style="display:none;"></div>
-
-              <button type="submit" class="btn-filled onboarding-submit-btn" id="onboardingConnectBtn">
-                <span>Verbindung herstellen & Stundenplan anzeigen</span>
-              </button>
+              <div class="form-actions-row">
+                <button type="button" class="btn-outlined" onclick="cancelAddSchool()">Abbrechen</button>
+                <button type="submit" class="btn-filled">Verbinden & Speichern</button>
+              </div>
             </form>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Day View Container -->
-      <div class="view-container day-view active" id="dayViewContainer">
-        <div class="timeline-wrapper">
-          <!-- Live Time Indicator Line (Rote Markierungslinie für aktuelle Uhrzeit) -->
-          <div class="live-timeline-marker" id="liveTimelineMarker" style="display:none;">
-            <div class="live-timeline-badge">
-              <div class="live-pulse-dot"></div>
-              <span id="liveTimelineTimeLabel">JETZT</span>
-            </div>
-            <div class="live-timeline-line"></div>
-          </div>
-
-          <div class="day-lessons-list" id="dayLessonsList">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Week View Container -->
-      <div class="view-container week-view" id="weekViewContainer">
-        <div class="week-grid-wrapper">
-          <div class="week-grid-header" id="weekGridHeader">
-            <!-- Day column headers rendered by JS -->
-          </div>
-          <div class="week-grid-body" id="weekGridBody">
-            <!-- Columns rendered by JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <div class="empty-state" id="emptyState" style="display:none;">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
-        <h3 id="emptyStateTitle">Kein Unterricht</h3>
-        <p id="emptyStateDesc">Für diesen Tag liegen im WebUntis-System keine Unterrichtsstunden vor.</p>
-        <button class="btn-filled jump-next-btn" id="jumpToNextWeekBtn" style="display:none; margin-top:14px;">
-          Zur nächsten Unterrichtswoche springen (07.09.2026)
-        </button>
       </div>
     </main>
-
-    <!-- Bottom Lesson Detail Sheet -->
-    <div class="bottom-sheet-backdrop" id="sheetBackdrop"></div>
-    <div class="bottom-sheet" id="lessonDetailSheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div class="sheet-title-badge" id="sheetSubjectBadge">LF</div>
-        <div class="sheet-title-text">
-          <h2 id="sheetSubjectTitle">Fach</h2>
-          <span id="sheetTimeTitle">Uhrzeit · Stunde</span>
-        </div>
-        <button class="icon-btn sheet-close-btn" id="sheetCloseBtn" title="Schließen (Esc)">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-        </button>
-      </div>
-
-      <div class="sheet-content">
-        <!-- Status Badges in Detail Sheet -->
-        <div class="sheet-status-row" id="sheetStatusRow"></div>
-
-        <div class="detail-grid">
-          <div class="detail-item">
-            <svg class="detail-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <div class="detail-info">
-              <span class="detail-label">Lehrkraft</span>
-              <span class="detail-value" id="sheetTeacherVal">-</span>
-            </div>
-          </div>
-
-          <div class="detail-item">
-            <svg class="detail-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            <div class="detail-info">
-              <span class="detail-label">Raum</span>
-              <span class="detail-value" id="sheetRoomVal">-</span>
-            </div>
-          </div>
-
-          <div class="detail-item">
-            <svg class="detail-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
-            <div class="detail-info">
-              <span class="detail-label">Klasse</span>
-              <span class="detail-value" id="sheetClassVal">-</span>
-            </div>
-          </div>
-
-          <div class="detail-item">
-            <svg class="detail-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-            <div class="detail-info">
-              <span class="detail-label">Datum & Zeit</span>
-              <span class="detail-value" id="sheetDateTimeVal">-</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Unterrichtsinhalte / Lehrstoff -->
-        <div class="sheet-notes-section" id="sheetTeachingContentSection" style="display:none;">
-          <span class="section-title">Unterrichtsinhalte / Lehrstoff</span>
-          <div class="sheet-notes-box" id="sheetTeachingContentBox"></div>
-        </div>
-
-        <!-- Hausaufgaben -->
-        <div class="sheet-notes-section" id="sheetHomeworkSection" style="display:none;">
-          <span class="section-title">Hausaufgaben</span>
-          <div class="sheet-notes-box" id="sheetHomeworkBox"></div>
-        </div>
-
-        <!-- Bemerkungen / Vertretungsnotiz -->
-        <div class="sheet-notes-section" id="sheetNotesSection" style="display:none;">
-          <span class="section-title">Bemerkungen / Vertretungstext</span>
-          <div class="sheet-notes-box" id="sheetNotesBox"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="modal-backdrop" id="settingsModalBackdrop">
-      <div class="modal-dialog">
-        <div class="modal-header">
-          <h2>Einstellungen & Profile</h2>
-          <button class="icon-btn" id="closeSettingsBtn" title="Schließen (Esc)">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <!-- Profiles List in Settings -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <div class="settings-group-title">Gespeicherte Profile (AES-256 verschlüsselt)</div>
-              <button type="button" class="btn-text" id="addNewProfileModalBtn">+ Neue Schule</button>
-            </div>
-            <div class="profile-cards-list" id="profileCardsList">
-              <!-- Dynamically rendered -->
-            </div>
-          </div>
-
-          <!-- School Search Section -->
-          <div class="settings-group">
-            <div class="settings-group-title">Schule suchen (schoolquery2)</div>
-            <div class="search-school-bar">
-              <input type="text" id="schoolSearchInput" placeholder="Stadt oder Schulname (z.B. Siegen, Technik...)" autocomplete="off">
-              <button type="button" class="btn-filled" id="searchSchoolBtn">Suchen</button>
-            </div>
-            <div class="school-results-list" id="schoolResultsList"></div>
-          </div>
-
-          <!-- Active Credentials Section -->
-          <form id="settingsForm">
-            <div class="settings-group">
-              <div class="settings-group-title">Aktuelle Zugangsdaten</div>
-              
-              <div class="input-field">
-                <label for="cfgServer">WebUntis Server-URL</label>
-                <input type="text" id="cfgServer" placeholder="https://bk-technik-siegen.webuntis.com" autocomplete="off" required>
-              </div>
-
-              <div class="input-field">
-                <label for="cfgSchool">Schulname / Schul-Kürzel</label>
-                <input type="text" id="cfgSchool" placeholder="bk-technik-siegen" autocomplete="off" required>
-              </div>
-
-              <div class="input-field">
-                <label for="cfgUsername">Benutzername</label>
-                <input type="text" id="cfgUsername" placeholder="z.B. jerebenz20090617" autocomplete="off">
-              </div>
-
-              <div class="input-field">
-                <label for="cfgPassword">Passwort</label>
-                <div class="password-input-wrap">
-                  <input type="password" id="cfgPassword" placeholder="WebUntis Passwort" autocomplete="new-password">
-                  <button type="button" class="icon-btn-inline" id="togglePasswordBtn" title="Passwort anzeigen">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div class="input-field">
-                <label for="cfgProfileName">Profil-Bezeichnung</label>
-                <input type="text" id="cfgProfileName" placeholder="z.B. BK Technik Siegen User" autocomplete="off">
-              </div>
-            </div>
-
-            <!-- Appearance Section -->
-            <div class="settings-group">
-              <div class="settings-group-title">Darstellung & Optionen</div>
-
-              <div class="input-field">
-                <label for="cfgTheme">Farbschema</label>
-                <select id="cfgTheme">
-                  <option value="dark">Dunkler Modus (Dark Mode - Untis Orange)</option>
-                  <option value="light">Heller Modus (Light Mode)</option>
-                  <option value="system">Systemeinstellung folgen</option>
-                </select>
-              </div>
-
-              <div class="input-field">
-                <label for="cfgDefaultView">Standard-Ansicht</label>
-                <select id="cfgDefaultView">
-                  <option value="day">Tagesansicht</option>
-                  <option value="week">Wochenansicht</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="status-message" id="settingsStatusMsg" style="display:none;"></div>
-
-            <div class="modal-footer">
-              <button type="button" class="btn-outlined" id="clearCacheBtn">Cache leeren</button>
-              <button type="submit" class="btn-filled" id="saveSettingsBtn">Verbindung testen & Speichern</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
   </div>
+
+  <!-- ==================== DIALOGS & MODALS ==================== -->
+
+  <!-- Modal: + Neue Hausaufgabe eintragen -->
+  <div class="desktop-modal-backdrop" id="homeworkModalBackdrop" style="display:none;">
+    <div class="desktop-modal-dialog">
+      <div class="modal-title-bar">
+        <h3>+ Neue Hausaufgabe eintragen</h3>
+        <button class="modal-close-icon" onclick="closeNewHomeworkModal()">&times;</button>
+      </div>
+      <form id="formNewHomework" class="modal-form">
+        <div class="form-group">
+          <label for="hwSubjectInput">Schulfach (z.B. LF09, Mathematik, Deutsch)</label>
+          <input type="text" id="hwSubjectInput" placeholder="z.B. LF09" required>
+        </div>
+        <div class="form-group">
+          <label for="hwDescInput">Aufgabe / Beschreibung</label>
+          <textarea id="hwDescInput" rows="3" placeholder="Was ist bis wann zu erledigen?" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="hwDueDateInput">Fälligkeitsdatum</label>
+          <input type="date" id="hwDueDateInput" required>
+        </div>
+        <div class="modal-button-row">
+          <button type="button" class="btn-outlined" onclick="closeNewHomeworkModal()">Abbrechen</button>
+          <button type="submit" class="btn-filled">Aufgabe speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: + Abwesenheit / Krankmeldung eintragen -->
+  <div class="desktop-modal-backdrop" id="absenceModalBackdrop" style="display:none;">
+    <div class="desktop-modal-dialog">
+      <div class="modal-title-bar">
+        <h3>+ Abwesenheit / Krankmeldung eintragen</h3>
+        <button class="modal-close-icon" onclick="closeNewAbsenceModal()">&times;</button>
+      </div>
+      <form id="formNewAbsence" class="modal-form">
+        <div class="form-group">
+          <label for="absReasonInput">Grund der Abwesenheit</label>
+          <select id="absReasonInput">
+            <option value="Krankheit">Krankheit / Ärztliches Attest</option>
+            <option value="Arzttermin">Arzttermin</option>
+            <option value="Beurlaubung">Beurlaubung / Befreiung</option>
+            <option value="Schulische Veranstaltung">Schulische Veranstaltung</option>
+            <option value="Sonstiges">Sonstige Abwesenheit</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="absTextInput">Begründung / Bemerkung</label>
+          <textarea id="absTextInput" rows="2" placeholder="z.B. Grippe, Facharztbesuch..."></textarea>
+        </div>
+        <div class="form-grid-row">
+          <div class="form-group">
+            <label for="absStartDateInput">Von Datum</label>
+            <input type="date" id="absStartDateInput" required>
+          </div>
+          <div class="form-group">
+            <label for="absEndDateInput">Bis Datum</label>
+            <input type="date" id="absEndDateInput" required>
+          </div>
+        </div>
+        <div class="form-checkbox-row">
+          <input type="checkbox" id="absExcusedCheckbox" checked>
+          <label for="absExcusedCheckbox">Als 'Entschuldigt' markieren</label>
+        </div>
+        <div class="modal-button-row">
+          <button type="button" class="btn-outlined" onclick="closeNewAbsenceModal()">Abbrechen</button>
+          <button type="submit" class="btn-filled">Abwesenheit speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nachrichtendetails (Mitteilungen) -->
+  <div class="desktop-modal-backdrop" id="messageDetailBackdrop" style="display:none;">
+    <div class="desktop-modal-dialog message-detail-dialog">
+      <div class="modal-title-bar">
+        <div class="msg-detail-header-meta">
+          <span class="msg-detail-sender" id="msgDetailSender">Absender</span>
+          <span class="msg-detail-date" id="msgDetailDate">Datum</span>
+        </div>
+        <button class="modal-close-icon" onclick="closeMessageDetailModal()">&times;</button>
+      </div>
+      <div class="msg-detail-body">
+        <h2 class="msg-detail-subject" id="msgDetailSubject">Betreff</h2>
+        <div class="msg-detail-content" id="msgDetailContent">Inhalt...</div>
+      </div>
+      <div class="modal-button-row">
+        <button type="button" class="btn-filled" onclick="closeMessageDetailModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Unterrichtsstunde Details -->
+  <div class="desktop-modal-backdrop" id="lessonDetailBackdrop" style="display:none;">
+    <div class="desktop-modal-dialog lesson-detail-dialog">
+      <div class="modal-title-bar">
+        <div class="lesson-badge-header">
+          <span class="lesson-subj-chip" id="lessonModalSubjChip">LF</span>
+          <div>
+            <h3 id="lessonModalSubject">Fachname</h3>
+            <span class="lesson-modal-time" id="lessonModalTime">07:30 - 09:00</span>
+          </div>
+        </div>
+        <button class="modal-close-icon" onclick="closeLessonDetailModal()">&times;</button>
+      </div>
+      <div class="lesson-detail-grid">
+        <div class="detail-tile">
+          <span class="tile-label">Lehrkraft</span>
+          <span class="tile-value" id="lessonModalTeacher">-</span>
+        </div>
+        <div class="detail-tile">
+          <span class="tile-label">Raum</span>
+          <span class="tile-value" id="lessonModalRoom">-</span>
+        </div>
+        <div class="detail-tile">
+          <span class="tile-label">Klasse</span>
+          <span class="tile-value" id="lessonModalClass">-</span>
+        </div>
+        <div class="detail-tile">
+          <span class="tile-label">Status</span>
+          <span class="tile-value" id="lessonModalStatus">Regulär</span>
+        </div>
+      </div>
+
+      <!-- Teaching content & homework if present -->
+      <div class="lesson-extra-box" id="lessonModalTeachingContentWrap" style="display:none;">
+        <span class="extra-heading">Unterrichtsinhalt</span>
+        <div id="lessonModalTeachingContent" class="extra-content"></div>
+      </div>
+      <div class="lesson-extra-box" id="lessonModalHomeworkWrap" style="display:none;">
+        <span class="extra-heading">Hausaufgabe</span>
+        <div id="lessonModalHomework" class="extra-content"></div>
+      </div>
+      <div class="lesson-extra-box" id="lessonModalNotesWrap" style="display:none;">
+        <span class="extra-heading">Bemerkungen</span>
+        <div id="lessonModalNotes" class="extra-content"></div>
+      </div>
+
+      <div class="modal-button-row">
+        <button type="button" class="btn-filled" onclick="closeLessonDetailModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="desktop-toast-container" id="desktopToastContainer"></div>
 
   <script src="/static/app.js"></script>
 </body>

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,11 +80,21 @@ func (s *Server) Start(port int) (string, error) {
 	// Wrap API routes with session token verification
 	apiMux := http.NewServeMux()
 	apiMux.HandleFunc("/api/status", s.handleStatus)
+	apiMux.HandleFunc("/api/dashboard", s.handleDashboard)
 	apiMux.HandleFunc("/api/profiles", s.handleProfiles)
 	apiMux.HandleFunc("/api/profiles/switch", s.handleProfileSwitch)
+	apiMux.HandleFunc("/api/profiles/delete", s.handleProfileDelete)
 	apiMux.HandleFunc("/api/schools/search", s.handleSchoolSearch)
 	apiMux.HandleFunc("/api/classes", s.handleClasses)
 	apiMux.HandleFunc("/api/timetable", s.handleTimetable)
+	apiMux.HandleFunc("/api/timetable/own", s.handleOwnTimetable)
+	apiMux.HandleFunc("/api/timetable/resource", s.handleResourceTimetable)
+	apiMux.HandleFunc("/api/teachers", s.handleTeachers)
+	apiMux.HandleFunc("/api/rooms", s.handleRooms)
+	apiMux.HandleFunc("/api/messages", s.handleMessages)
+	apiMux.HandleFunc("/api/messages/", s.handleMessageDetail)
+	apiMux.HandleFunc("/api/homework", s.handleHomework)
+	apiMux.HandleFunc("/api/absences", s.handleAbsences)
 	apiMux.HandleFunc("/api/settings", s.handleSettings)
 	apiMux.HandleFunc("/api/refresh", s.handleRefresh)
 
@@ -420,6 +431,50 @@ func (s *Server) handleProfileSwitch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Handler: /api/profiles/delete
+func (s *Server) handleProfileDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	profID := r.URL.Query().Get("id")
+	if profID == "" {
+		var req struct {
+			ID string `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		profID = req.ID
+	}
+
+	if profID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Profil-ID fehlt"})
+		return
+	}
+
+	if err := s.database.DeleteProfile(profID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+
+	// Recheck active profile
+	activeProf, _ := s.database.GetActiveProfile()
+	s.mu.Lock()
+	if activeProf != nil {
+		pwd, _ := s.database.GetDecryptedPassword(activeProf)
+		s.activeClient = api.NewClient(activeProf.Server, activeProf.School, activeProf.Username, pwd, "password")
+		go s.activeClient.Authenticate()
+	} else {
+		s.activeClient = nil
+	}
+	s.mu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Profil erfolgreich gelöscht",
+	})
+}
+
 // Handler: /api/schools/search
 func (s *Server) handleSchoolSearch(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -613,6 +668,668 @@ func (s *Server) fetchAndCacheTimetable(client *api.Client, classID int, startDa
 		}
 	}
 	return lessons, nil
+}
+
+// Handler: /api/dashboard
+func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	activeProf, err := s.database.GetActiveProfile()
+	if err != nil || activeProf == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"needsOnboarding": true,
+		})
+		return
+	}
+
+	var displayName string
+	if client != nil && client.UserInfo.DisplayName != "" {
+		displayName = client.UserInfo.DisplayName
+	} else {
+		displayName = activeProf.Name
+	}
+
+	now := time.Now()
+	hour := now.Hour()
+	greeting := "Guten Tag"
+	if hour < 11 {
+		greeting = "Guten Morgen"
+	} else if hour >= 17 {
+		greeting = "Guten Abend"
+	}
+	greetingFull := fmt.Sprintf("%s, %s", greeting, displayName)
+
+	germanWeekday := api.GermanDayName(now.Weekday())
+	dateFormatted := fmt.Sprintf("%s, %d. %s %d", germanWeekday, now.Day(), germanMonthName(now.Month()), now.Year())
+
+	var todayLessons []api.EnrichedLesson
+	var nextLesson *api.EnrichedLesson
+
+	if client != nil {
+		// Use own student timetable
+		if lessons, err := client.GetOwnTimetable(now, now); err == nil && len(lessons) > 0 {
+			todayLessons = lessons
+		} else {
+			// Try selected class
+			classID := s.database.GetIntSetting("selected_class_id", 0)
+			if classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+					todayLessons = clLessons
+				}
+			}
+		}
+
+		nowTimeStr := now.Format("15:04")
+		for _, l := range todayLessons {
+			if !l.IsCancelled && l.EndTimeStr >= nowTimeStr {
+				nextLesson = &l
+				break
+			}
+		}
+	}
+
+	var openHomework []db.Homework
+	var openHwCount int
+	if localHw, err := s.database.GetHomeworks(activeProf.ID); err == nil {
+		for _, h := range localHw {
+			if !h.Completed {
+				openHwCount++
+				if len(openHomework) < 5 {
+					openHomework = append(openHomework, h)
+				}
+			}
+		}
+	}
+
+	if client != nil {
+		if wuHw, err := client.GetHomeworks(now.AddDate(0, 0, -7), now.AddDate(0, 0, 14)); err == nil {
+			for _, h := range wuHw {
+				if !h.Completed {
+					openHwCount++
+					if len(openHomework) < 5 {
+						openHomework = append(openHomework, db.Homework{
+							ID:          fmt.Sprintf("wu_%d", h.ID),
+							ProfileID:   activeProf.ID,
+							Subject:     h.Subject,
+							Description: h.Text,
+							DueDate:     h.DueDateStr,
+							Completed:   h.Completed,
+							Source:      "webuntis",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	var recentMessages []api.Message
+	var messagesCount int
+	if client != nil {
+		if msgs, err := client.GetMessages(); err == nil {
+			messagesCount = len(msgs)
+			if len(msgs) > 5 {
+				recentMessages = msgs[:5]
+			} else {
+				recentMessages = msgs
+			}
+		}
+	}
+
+	var totalAbs, excAbs, unexcAbs int
+	if localAbs, err := s.database.GetAbsences(activeProf.ID); err == nil {
+		totalAbs += len(localAbs)
+		for _, a := range localAbs {
+			if a.IsExcused {
+				excAbs++
+			} else {
+				unexcAbs++
+			}
+		}
+	}
+	if client != nil {
+		if wuAbs, err := client.GetAbsences(now.AddDate(0, -6, 0), now.AddDate(0, 6, 0)); err == nil {
+			totalAbs += len(wuAbs)
+			for _, a := range wuAbs {
+				if a.IsExcused {
+					excAbs++
+				} else {
+					unexcAbs++
+				}
+			}
+		}
+	}
+
+	if todayLessons == nil {
+		todayLessons = []api.EnrichedLesson{}
+	}
+	if openHomework == nil {
+		openHomework = []db.Homework{}
+	}
+	if recentMessages == nil {
+		recentMessages = []api.Message{}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"needsOnboarding":   false,
+		"greeting":          greetingFull,
+		"displayName":       displayName,
+		"school":            activeProf.School,
+		"dateFormatted":     dateFormatted,
+		"todayLessons":      todayLessons,
+		"nextLesson":        nextLesson,
+		"openHomeworkCount": openHwCount,
+		"openHomework":      openHomework,
+		"messagesCount":     messagesCount,
+		"recentMessages":    recentMessages,
+		"absencesSummary": map[string]int{
+			"total":     totalAbs,
+			"excused":   excAbs,
+			"unexcused": unexcAbs,
+		},
+	})
+}
+
+// Handler: /api/timetable/own
+func (s *Server) handleOwnTimetable(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusOK, []api.EnrichedLesson{})
+		return
+	}
+
+	q := r.URL.Query()
+	dateStr := q.Get("date")
+	targetDate := time.Now()
+	if dateStr != "" {
+		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+			targetDate = t
+		}
+	}
+
+	view := q.Get("view")
+	if view == "" {
+		view = s.database.GetSetting("default_view", "day")
+	}
+
+	var startDate, endDate time.Time
+	if view == "week" {
+		weekday := targetDate.Weekday()
+		diffToMonday := int(time.Monday - weekday)
+		if weekday == time.Sunday {
+			diffToMonday = -6
+		}
+		monday := targetDate.AddDate(0, 0, diffToMonday)
+		startDate = time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, targetDate.Location())
+		friday := monday.AddDate(0, 0, 4)
+		endDate = time.Date(friday.Year(), friday.Month(), friday.Day(), 23, 59, 59, 0, targetDate.Location())
+	} else {
+		startDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
+		endDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 0, targetDate.Location())
+	}
+
+	lessons, err := client.GetOwnTimetable(startDate, endDate)
+	if err != nil || lessons == nil {
+		if err != nil {
+			log.Printf("[OwnTimetable] Fehler: %v", err)
+		}
+		writeJSON(w, http.StatusOK, []api.EnrichedLesson{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, lessons)
+}
+
+// Handler: /api/timetable/resource
+func (s *Server) handleResourceTimetable(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusOK, []api.EnrichedLesson{})
+		return
+	}
+
+	q := r.URL.Query()
+	resType := strings.ToUpper(strings.TrimSpace(q.Get("type")))
+	if resType == "" {
+		resType = "CLASS"
+	}
+
+	idStr := q.Get("id")
+	resID, err := strconv.Atoi(idStr)
+	if err != nil || resID <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "Ungültige Ressourcen-ID"})
+		return
+	}
+
+	dateStr := q.Get("date")
+	targetDate := time.Now()
+	if dateStr != "" {
+		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+			targetDate = t
+		}
+	}
+
+	view := q.Get("view")
+	if view == "" {
+		view = s.database.GetSetting("default_view", "day")
+	}
+
+	var startDate, endDate time.Time
+	if view == "week" {
+		weekday := targetDate.Weekday()
+		diffToMonday := int(time.Monday - weekday)
+		if weekday == time.Sunday {
+			diffToMonday = -6
+		}
+		monday := targetDate.AddDate(0, 0, diffToMonday)
+		startDate = time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, targetDate.Location())
+		friday := monday.AddDate(0, 0, 4)
+		endDate = time.Date(friday.Year(), friday.Month(), friday.Day(), 23, 59, 59, 0, targetDate.Location())
+	} else {
+		startDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, targetDate.Location())
+		endDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 0, targetDate.Location())
+	}
+
+	lessons, err := client.GetTimetableForResource(resType, resID, startDate, endDate, "STANDARD")
+	if err != nil || lessons == nil {
+		if err != nil {
+			log.Printf("[ResourceTimetable] Fehler für %s %d: %v", resType, resID, err)
+		}
+		writeJSON(w, http.StatusOK, []api.EnrichedLesson{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, lessons)
+}
+
+// Handler: /api/teachers
+func (s *Server) handleTeachers(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusOK, []api.Teacher{})
+		return
+	}
+
+	teachers, err := client.GetTeachers()
+	if err != nil {
+		writeJSON(w, http.StatusOK, []api.Teacher{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, teachers)
+}
+
+// Handler: /api/rooms
+func (s *Server) handleRooms(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusOK, []api.Room{})
+		return
+	}
+
+	rooms, err := client.GetRooms()
+	if err != nil {
+		writeJSON(w, http.StatusOK, []api.Room{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, rooms)
+}
+
+// Handler: /api/messages
+func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusOK, []api.Message{})
+		return
+	}
+
+	if idStr := r.URL.Query().Get("id"); idStr != "" {
+		if id, err := strconv.Atoi(idStr); err == nil {
+			msg, err := client.GetMessageById(id)
+			if err != nil {
+				writeJSON(w, http.StatusNotFound, map[string]interface{}{"error": err.Error()})
+				return
+			}
+			writeJSON(w, http.StatusOK, msg)
+			return
+		}
+	}
+
+	messages, err := client.GetMessages()
+	if err != nil {
+		writeJSON(w, http.StatusOK, []api.Message{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, messages)
+}
+
+// Handler: /api/messages/{id}
+func (s *Server) handleMessageDetail(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		writeJSON(w, http.StatusNotFound, map[string]interface{}{"error": "Kein aktives Profil"})
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/messages/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "Ungültige Nachrichten-ID"})
+		return
+	}
+
+	msg, err := client.GetMessageById(id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]interface{}{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, msg)
+}
+
+// Handler: /api/homework
+func (s *Server) handleHomework(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	activeProf, _ := s.database.GetActiveProfile()
+	profID := ""
+	if activeProf != nil {
+		profID = activeProf.ID
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		var combined []db.Homework
+
+		// 1. Local SQLite homework
+		if profID != "" {
+			if localHw, err := s.database.GetHomeworks(profID); err == nil {
+				combined = append(combined, localHw...)
+			}
+		}
+
+		// 2. WebUntis homework
+		if client != nil {
+			now := time.Now()
+			start := now.AddDate(0, -1, 0)
+			end := now.AddDate(0, 2, 0)
+			if wuHw, err := client.GetHomeworks(start, end); err == nil {
+				for _, h := range wuHw {
+					combined = append(combined, db.Homework{
+						ID:          fmt.Sprintf("wu_%d", h.ID),
+						ProfileID:   profID,
+						Subject:     h.Subject,
+						Description: h.Text,
+						DueDate:     h.DueDateStr,
+						Completed:   h.Completed,
+						Source:      "webuntis",
+					})
+				}
+			}
+		}
+
+		sort.Slice(combined, func(i, j int) bool {
+			if combined[i].Completed != combined[j].Completed {
+				return !combined[i].Completed
+			}
+			return combined[i].DueDate < combined[j].DueDate
+		})
+
+		writeJSON(w, http.StatusOK, combined)
+
+	case http.MethodPost:
+		var req struct {
+			Subject     string `json:"subject"`
+			Description string `json:"description"`
+			DueDate     string `json:"dueDate"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Ungültiger Anfragekörper"})
+			return
+		}
+
+		if req.Description == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Beschreibung ist erforderlich"})
+			return
+		}
+
+		if req.DueDate == "" {
+			req.DueDate = time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+		}
+
+		h := &db.Homework{
+			ProfileID:   profID,
+			Subject:     req.Subject,
+			Description: req.Description,
+			DueDate:     req.DueDate,
+			Completed:   false,
+		}
+
+		if err := s.database.CreateHomework(h); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true, "homework": h})
+
+	case http.MethodPut:
+		var req struct {
+			ID        string `json:"id"`
+			Completed bool   `json:"completed"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "ID fehlt"})
+			return
+		}
+
+		if strings.HasPrefix(req.ID, "wu_") {
+			writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+			return
+		}
+
+		if err := s.database.UpdateHomeworkCompleted(req.ID, req.Completed); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			var req struct {
+				ID string `json:"id"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			id = req.ID
+		}
+
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "ID fehlt"})
+			return
+		}
+
+		if err := s.database.DeleteHomework(id); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// Handler: /api/absences
+func (s *Server) handleAbsences(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	activeProf, _ := s.database.GetActiveProfile()
+	profID := ""
+	if activeProf != nil {
+		profID = activeProf.ID
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		var combined []db.Absence
+
+		// 1. Local SQLite absences
+		if profID != "" {
+			if localAbs, err := s.database.GetAbsences(profID); err == nil {
+				combined = append(combined, localAbs...)
+			}
+		}
+
+		// 2. WebUntis absences
+		if client != nil {
+			now := time.Now()
+			start := now.AddDate(0, -6, 0)
+			end := now.AddDate(0, 6, 0)
+			if wuAbs, err := client.GetAbsences(start, end); err == nil {
+				for _, a := range wuAbs {
+					combined = append(combined, db.Absence{
+						ID:        fmt.Sprintf("wu_%d", a.ID),
+						ProfileID: profID,
+						Reason:    a.Reason,
+						Text:      a.Text,
+						StartDate: a.StartDateStr,
+						EndDate:   a.EndDateStr,
+						IsExcused: a.IsExcused,
+						Source:    "webuntis",
+					})
+				}
+			}
+		}
+
+		sort.Slice(combined, func(i, j int) bool {
+			return combined[i].StartDate > combined[j].StartDate
+		})
+
+		writeJSON(w, http.StatusOK, combined)
+
+	case http.MethodPost:
+		var req struct {
+			Reason    string `json:"reason"`
+			Text      string `json:"text"`
+			StartDate string `json:"startDate"`
+			EndDate   string `json:"endDate"`
+			IsExcused bool   `json:"isExcused"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Ungültiger Anfragekörper"})
+			return
+		}
+
+		if req.Reason == "" {
+			req.Reason = "Krankmeldung"
+		}
+
+		if req.StartDate == "" {
+			req.StartDate = time.Now().Format("2006-01-02")
+		}
+		if req.EndDate == "" {
+			req.EndDate = req.StartDate
+		}
+
+		a := &db.Absence{
+			ProfileID: profID,
+			Reason:    req.Reason,
+			Text:      req.Text,
+			StartDate: req.StartDate,
+			EndDate:   req.EndDate,
+			IsExcused: req.IsExcused,
+		}
+
+		if err := s.database.CreateAbsence(a); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true, "absence": a})
+
+	case http.MethodDelete:
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			var req struct {
+				ID string `json:"id"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			id = req.ID
+		}
+
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "ID fehlt"})
+			return
+		}
+
+		if err := s.database.DeleteAbsence(id); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func germanMonthName(m time.Month) string {
+	switch m {
+	case time.January:
+		return "Januar"
+	case time.February:
+		return "Februar"
+	case time.March:
+		return "März"
+	case time.April:
+		return "April"
+	case time.May:
+		return "Mai"
+	case time.June:
+		return "Juni"
+	case time.July:
+		return "Juli"
+	case time.August:
+		return "August"
+	case time.September:
+		return "September"
+	case time.October:
+		return "Oktober"
+	case time.November:
+		return "November"
+	case time.December:
+		return "Dezember"
+	default:
+		return ""
+	}
 }
 
 // Handler: /api/settings

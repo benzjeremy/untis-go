@@ -1,154 +1,82 @@
-// Untis Go - Modern PC Desktop Remake v1.0.0
-// Material 3 + Desktop Design Tokens, Untis Orange, Zero-Lag SQLite Cache
+/* ==========================================================================
+   UNTIS DESKTOP APP - CLIENT APPLICATION LOGIC
+   ========================================================================== */
 
 (function () {
   'use strict';
 
-  // 1. Session Token & Authenticated Fetch
-  const urlParams = new URLSearchParams(window.location.search);
-  const sessionToken = urlParams.get('token') || '';
+  // State
+  const state = {
+    token: '',
+    currentView: 'dashboard',
+    status: null,
+    currentDate: new Date(),
+    timetableMode: 'day', // 'day' or 'week'
+    
+    // Other timetables tab & selected item
+    otherTab: 'CLASS', // 'CLASS', 'TEACHER', 'ROOM'
+    otherSelectedId: null,
+    otherSelectedName: '',
+    
+    classes: [],
+    teachers: [],
+    rooms: [],
+    homework: [],
+    absences: [],
+    messages: [],
+    profiles: [],
+    
+    hwFilter: 'all', // 'all', 'open', 'completed'
+  };
 
-  async function authFetch(url, options = {}) {
-    options.headers = options.headers || {};
-    if (sessionToken) {
-      options.headers['X-Session-Token'] = sessionToken;
+  // Extract Session Token from URL or storage
+  function initToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let token = urlParams.get('token');
+    if (token) {
+      sessionStorage.setItem('untis_session_token', token);
+    } else {
+      token = sessionStorage.getItem('untis_session_token') || '';
     }
-    const separator = url.includes('?') ? '&' : '?';
-    const finalUrl = sessionToken ? `${url}${separator}token=${encodeURIComponent(sessionToken)}` : url;
-    return fetch(finalUrl, options);
+    state.token = token;
   }
 
-  // 2. Application State
-  const state = {
-    needsOnboarding: false,
-    classes: [],
-    filteredClasses: [],
-    selectedClassId: 0,
-    selectedClassName: '',
-    currentDate: new Date(),
-    currentView: 'day', // 'day' | 'week'
-    theme: 'dark',
-    schoolName: '',
-    serverUrl: '',
-    userDisplayName: 'Online',
-    profiles: [],
-    activeProfileId: '',
-    lessons: [],
-    loading: false,
-    classSearchTerm: '',
-    onboardingSelectedSchool: null
-  };
+  // API Request Helper
+  async function apiFetch(endpoint, options = {}) {
+    const headers = options.headers || {};
+    if (state.token) {
+      headers['X-Session-Token'] = state.token;
+    }
+    
+    let url = endpoint;
+    if (state.token && !url.includes('token=')) {
+      const sep = url.includes('?') ? '&' : '?';
+      url = `${url}${sep}token=${encodeURIComponent(state.token)}`;
+    }
 
-  // 3. DOM Elements
-  const el = {
-    // Top App Bar
-    schoolSubtitle: document.getElementById('schoolSubtitle'),
-    userDisplayName: document.getElementById('userDisplayName'),
-    userAvatarBadge: document.getElementById('userAvatarBadge'),
-    profileBadgeBtn: document.getElementById('profileBadgeBtn'),
-    profileDropdownWrapper: document.querySelector('.profile-dropdown-wrapper'),
-    profileDropdownMenu: document.getElementById('profileDropdownMenu'),
-    profileQuickList: document.getElementById('profileQuickList'),
-    addNewProfileQuickBtn: document.getElementById('addNewProfileQuickBtn'),
-    classSelectorBtn: document.getElementById('classSelectorBtn'),
-    classDropdownWrapper: document.querySelector('.class-dropdown-wrapper'),
-    classDropdownMenu: document.getElementById('classDropdownMenu'),
-    classSearchInput: document.getElementById('classSearchInput'),
-    clearClassSearchBtn: document.getElementById('clearClassSearchBtn'),
-    classCounterBadge: document.getElementById('classCounterBadge'),
-    classListContainer: document.getElementById('classListContainer'),
-    currentClassLabel: document.getElementById('currentClassLabel'),
-    refreshBtn: document.getElementById('refreshBtn'),
-    themeToggleBtn: document.getElementById('themeToggleBtn'),
-    themeIcon: document.getElementById('themeIcon'),
-    settingsBtn: document.getElementById('settingsBtn'),
+    try {
+      const resp = await fetch(url, {
+        ...options,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
 
-    // Date & Navigation Control
-    prevDateBtn: document.getElementById('prevDateBtn'),
-    nextDateBtn: document.getElementById('nextDateBtn'),
-    dateDisplayBtn: document.getElementById('dateDisplayBtn'),
-    dateDisplayLabel: document.getElementById('dateDisplayLabel'),
-    nativeDatePicker: document.getElementById('nativeDatePicker'),
-    todayBtn: document.getElementById('todayBtn'),
-    viewDayBtn: document.getElementById('viewDayBtn'),
-    viewWeekBtn: document.getElementById('viewWeekBtn'),
+      if (resp.status === 401) {
+        showToast('Sitzung abgelaufen oder ungültiges Token', 'error');
+        return null;
+      }
 
-    // Viewports
-    mainContentViewport: document.getElementById('mainContentViewport'),
-    loadingOverlay: document.getElementById('loadingOverlay'),
-    loadingMessage: document.getElementById('loadingMessage'),
-    onboardingScreen: document.getElementById('onboardingScreen'),
-    onboardingSearchInput: document.getElementById('onboardingSearchInput'),
-    onboardingSearchSpinner: document.getElementById('onboardingSearchSpinner'),
-    onboardingSchoolResults: document.getElementById('onboardingSchoolResults'),
-    onboardingCredentialsForm: document.getElementById('onboardingCredentialsForm'),
-    onboardingSelectedSchoolName: document.getElementById('onboardingSelectedSchoolName'),
-    onboardingSelectedSchoolDetails: document.getElementById('onboardingSelectedSchoolDetails'),
-    onboardingChangeSchoolBtn: document.getElementById('onboardingChangeSchoolBtn'),
-    onboardingLoginFormBox: document.getElementById('onboardingLoginFormBox'),
-    onboardingUsernameInput: document.getElementById('onboardingUsernameInput'),
-    onboardingPasswordInput: document.getElementById('onboardingPasswordInput'),
-    toggleOnboardingPwdBtn: document.getElementById('toggleOnboardingPwdBtn'),
-    onboardingErrorMsg: document.getElementById('onboardingErrorMsg'),
-    onboardingConnectBtn: document.getElementById('onboardingConnectBtn'),
+      return await resp.json();
+    } catch (err) {
+      console.error(`API Error on ${endpoint}:`, err);
+      return null;
+    }
+  }
 
-    dayViewContainer: document.getElementById('dayViewContainer'),
-    weekViewContainer: document.getElementById('weekViewContainer'),
-    dayLessonsList: document.getElementById('dayLessonsList'),
-    liveTimelineMarker: document.getElementById('liveTimelineMarker'),
-    liveTimelineTimeLabel: document.getElementById('liveTimelineTimeLabel'),
-    weekGridHeader: document.getElementById('weekGridHeader'),
-    weekGridBody: document.getElementById('weekGridBody'),
-    emptyState: document.getElementById('emptyState'),
-    emptyStateTitle: document.getElementById('emptyStateTitle'),
-    emptyStateDesc: document.getElementById('emptyStateDesc'),
-    jumpToNextWeekBtn: document.getElementById('jumpToNextWeekBtn'),
-
-    // Lesson Detail Sheet
-    sheetBackdrop: document.getElementById('sheetBackdrop'),
-    lessonDetailSheet: document.getElementById('lessonDetailSheet'),
-    sheetSubjectBadge: document.getElementById('sheetSubjectBadge'),
-    sheetSubjectTitle: document.getElementById('sheetSubjectTitle'),
-    sheetTimeTitle: document.getElementById('sheetTimeTitle'),
-    sheetCloseBtn: document.getElementById('sheetCloseBtn'),
-    sheetStatusRow: document.getElementById('sheetStatusRow'),
-    sheetTeacherVal: document.getElementById('sheetTeacherVal'),
-    sheetRoomVal: document.getElementById('sheetRoomVal'),
-    sheetClassVal: document.getElementById('sheetClassVal'),
-    sheetDateTimeVal: document.getElementById('sheetDateTimeVal'),
-    sheetTeachingContentSection: document.getElementById('sheetTeachingContentSection'),
-    sheetTeachingContentBox: document.getElementById('sheetTeachingContentBox'),
-    sheetHomeworkSection: document.getElementById('sheetHomeworkSection'),
-    sheetHomeworkBox: document.getElementById('sheetHomeworkBox'),
-    sheetNotesSection: document.getElementById('sheetNotesSection'),
-    sheetNotesBox: document.getElementById('sheetNotesBox'),
-
-    // Settings Modal
-    settingsModalBackdrop: document.getElementById('settingsModalBackdrop'),
-    closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-    profileCardsList: document.getElementById('profileCardsList'),
-    addNewProfileModalBtn: document.getElementById('addNewProfileModalBtn'),
-    schoolSearchInput: document.getElementById('schoolSearchInput'),
-    searchSchoolBtn: document.getElementById('searchSchoolBtn'),
-    schoolResultsList: document.getElementById('schoolResultsList'),
-    settingsForm: document.getElementById('settingsForm'),
-    cfgServer: document.getElementById('cfgServer'),
-    cfgSchool: document.getElementById('cfgSchool'),
-    cfgUsername: document.getElementById('cfgUsername'),
-    cfgPassword: document.getElementById('cfgPassword'),
-    togglePasswordBtn: document.getElementById('togglePasswordBtn'),
-    cfgProfileName: document.getElementById('cfgProfileName'),
-    cfgTheme: document.getElementById('cfgTheme'),
-    cfgDefaultView: document.getElementById('cfgDefaultView'),
-    settingsStatusMsg: document.getElementById('settingsStatusMsg'),
-    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-    clearCacheBtn: document.getElementById('clearCacheBtn'),
-
-    // Toast
-    toastContainer: document.getElementById('toastContainer')
-  };
-
-  // Helper Functions
+  // Formatting Helpers
   function formatDateISO(d) {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -156,1188 +84,1324 @@
     return `${year}-${month}-${day}`;
   }
 
-  function isSameDate(d1, d2) {
-    return d1.getFullYear() === d2.getFullYear() &&
-           d1.getMonth() === d2.getMonth() &&
-           d1.getDate() === d2.getDate();
-  }
-
-  function getGermanWeekday(d) {
+  function formatGermanDate(d) {
     const days = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-    return days[d.getDay()];
+    const months = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'];
+    return `${days[d.getDay()]}, ${d.getDate()}. ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 
-  function getGermanMonth(d) {
-    const months = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-    return months[d.getMonth()];
+  function showLoading(show, text = 'Wird geladen...') {
+    const overlay = document.getElementById('desktopLoadingOverlay');
+    const textEl = document.getElementById('desktopLoadingText');
+    if (overlay) {
+      overlay.style.display = show ? 'flex' : 'none';
+      if (textEl) textEl.textContent = text;
+    }
   }
 
-  function showToast(msg) {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    el.toastContainer.appendChild(t);
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('desktopToastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `desktop-toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
     setTimeout(() => {
-      t.style.opacity = '0';
-      t.style.transform = 'translateY(10px)';
-      t.style.transition = 'all 0.25s ease';
-      setTimeout(() => t.remove(), 250);
-    }, 2800);
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 3200);
   }
 
-  function getMondayOfWeek(d) {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(date.setDate(diff));
-  }
+  // ==================== VIEW SWITCHING ====================
+  function switchView(viewName) {
+    state.currentView = viewName;
 
-  function getFridayOfWeek(d) {
-    const mon = getMondayOfWeek(d);
-    const fri = new Date(mon);
-    fri.setDate(mon.getDate() + 4);
-    return fri;
-  }
-
-  function applyTheme(theme) {
-    state.theme = theme;
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    } else {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
-  }
-
-  function getAvatarInitials(name, school) {
-    if (name && name.trim()) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
+    // Update Nav buttons
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach((item) => {
+      if (item.getAttribute('data-view') === viewName) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
       }
-      return name.trim().substring(0, 2).toUpperCase();
-    }
-    if (school && school.trim()) {
-      return school.trim().substring(0, 2).toUpperCase();
-    }
-    return 'UN';
-  }
-
-  // Application Initialization
-  async function init() {
-    setupEventListeners();
-    await loadStatus();
-
-    if (!state.needsOnboarding) {
-      await loadProfiles();
-      await loadClasses();
-      updateDateDisplay();
-      await loadTimetable();
-    }
-
-    // Start Live Time Line updates (every 30 seconds)
-    setInterval(updateLiveTimeline, 30000);
-  }
-
-  // Load Status from SQLite Server
-  async function loadStatus() {
-    try {
-      const res = await authFetch('/api/status');
-      if (res.ok) {
-        const data = await res.json();
-        state.needsOnboarding = data.needsOnboarding === true;
-        state.theme = data.theme || 'dark';
-        state.currentView = data.defaultView || 'day';
-        applyTheme(state.theme);
-
-        if (state.needsOnboarding) {
-          showOnboardingScreen(true);
-          return;
-        }
-
-        showOnboardingScreen(false);
-        state.activeProfileId = data.activeProfileId || '';
-        state.selectedClassId = data.selectedClassId || 0;
-        state.selectedClassName = data.selectedClassName || '';
-        state.schoolName = data.school || '';
-        state.serverUrl = data.server || '';
-
-        state.userDisplayName = data.displayName || data.profileName || data.username || 'Online';
-        el.userDisplayName.textContent = state.userDisplayName;
-        el.userAvatarBadge.textContent = getAvatarInitials(state.userDisplayName, state.schoolName);
-        el.schoolSubtitle.textContent = state.schoolName || 'WebUntis';
-
-        updateViewToggle();
-
-        // Prefill settings inputs
-        el.cfgServer.value = state.serverUrl;
-        el.cfgSchool.value = state.schoolName;
-        el.cfgUsername.value = data.username || '';
-        el.cfgProfileName.value = data.profileName || '';
-        el.cfgTheme.value = state.theme;
-        el.cfgDefaultView.value = state.currentView;
-      }
-    } catch (e) {
-      console.warn('[Status] Fehler beim Laden:', e);
-    }
-  }
-
-  // Onboarding Screen Management
-  function showOnboardingScreen(show) {
-    el.onboardingScreen.style.display = show ? 'flex' : 'none';
-    if (show) {
-      el.onboardingSearchInput.value = '';
-      el.onboardingSchoolResults.innerHTML = '';
-      el.onboardingCredentialsForm.style.display = 'none';
-      setTimeout(() => el.onboardingSearchInput.focus(), 150);
-    }
-  }
-
-  let searchTimeout = null;
-  function handleOnboardingSearch(query) {
-    clearTimeout(searchTimeout);
-    const q = query.trim();
-    if (!q) {
-      el.onboardingSchoolResults.innerHTML = '';
-      el.onboardingSearchSpinner.style.display = 'none';
-      return;
-    }
-
-    el.onboardingSearchSpinner.style.display = 'block';
-    searchTimeout = setTimeout(async () => {
-      try {
-        const res = await authFetch(`/api/schools/search?q=${encodeURIComponent(q)}`);
-        if (res.ok) {
-          const data = await res.json();
-          renderOnboardingSchoolResults(data.schools || []);
-        }
-      } catch (e) {
-        console.error('School search error:', e);
-      } finally {
-        el.onboardingSearchSpinner.style.display = 'none';
-      }
-    }, 280);
-  }
-
-  function renderOnboardingSchoolResults(schools) {
-    el.onboardingSchoolResults.innerHTML = '';
-    if (!schools || schools.length === 0) {
-      const emptyDiv = document.createElement('div');
-      emptyDiv.style.padding = '12px 14px';
-      emptyDiv.style.color = 'var(--text-muted)';
-      emptyDiv.style.fontSize = '0.88rem';
-      emptyDiv.textContent = 'Keine Schulen für diesen Suchbegriff gefunden.';
-      el.onboardingSchoolResults.appendChild(emptyDiv);
-      return;
-    }
-
-    schools.forEach(school => {
-      const card = document.createElement('div');
-      card.className = 'onboarding-school-card';
-      card.innerHTML = `
-        <div class="school-card-title">${escapeHtml(school.displayName)}</div>
-        <div class="school-card-address">${escapeHtml(school.address || school.serverUrl || '')}</div>
-        <div class="school-card-tags">
-          <span class="school-tag">${escapeHtml(school.loginName)}</span>
-          <span class="school-tag">${escapeHtml(school.server || 'webuntis.com')}</span>
-        </div>
-      `;
-
-      card.addEventListener('click', () => {
-        selectOnboardingSchool(school);
-      });
-      el.onboardingSchoolResults.appendChild(card);
     });
-  }
 
-  function selectOnboardingSchool(school) {
-    state.onboardingSelectedSchool = school;
-    el.onboardingSelectedSchoolName.textContent = school.displayName;
-    el.onboardingSelectedSchoolDetails.textContent = `${school.serverUrl || school.server} · Kürzel: ${school.loginName}`;
-    
-    el.onboardingSchoolResults.innerHTML = '';
-    el.onboardingCredentialsForm.style.display = 'flex';
-    el.onboardingErrorMsg.style.display = 'none';
-    el.onboardingUsernameInput.focus();
-  }
+    // Update Panes
+    document.querySelectorAll('.desktop-view-pane').forEach((pane) => {
+      pane.classList.remove('active');
+    });
 
-  async function handleOnboardingSubmit(e) {
-    e.preventDefault();
-    if (!state.onboardingSelectedSchool) return;
-
-    el.onboardingConnectBtn.disabled = true;
-    el.onboardingConnectBtn.querySelector('span').textContent = 'Verbindung wird hergestellt...';
-    el.onboardingErrorMsg.style.display = 'none';
-
-    const school = state.onboardingSelectedSchool;
-    let serverURL = school.serverUrl || school.server;
-    if (!serverURL.startsWith('http://') && !serverURL.startsWith('https://')) {
-      serverURL = 'https://' + serverURL;
-    }
-
-    const payload = {
-      name: school.displayName,
-      school: school.loginName,
-      server: serverURL,
-      username: el.onboardingUsernameInput.value.trim(),
-      password: el.onboardingPasswordInput.value,
-      setActive: true
+    const targetMap = {
+      'dashboard': 'viewPaneDashboard',
+      'own-timetable': 'viewPaneOwnTimetable',
+      'other-timetables': 'viewPaneOtherTimetables',
+      'homework': 'viewPaneHomework',
+      'absences': 'viewPaneAbsences',
+      'messages': 'viewPaneMessages',
+      'profiles': 'viewPaneProfiles',
     };
 
-    try {
-      const res = await authFetch('/api/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+    const targetPaneId = targetMap[viewName];
+    if (targetPaneId) {
+      const pane = document.getElementById(targetPaneId);
+      if (pane) pane.classList.add('active');
+    }
 
-      if (res.ok && data.success) {
-        showToast('Schule erfolgreich verbunden!');
-        showOnboardingScreen(false);
-        await loadStatus();
-        await loadProfiles();
-        await loadClasses();
-        updateDateDisplay();
-        await loadTimetable();
-      } else {
-        el.onboardingErrorMsg.textContent = data.message || 'Verbindung zu WebUntis fehlgeschlagen.';
-        el.onboardingErrorMsg.style.display = 'block';
-      }
-    } catch (err) {
-      el.onboardingErrorMsg.textContent = 'Netzwerkfehler: ' + err.message;
-      el.onboardingErrorMsg.style.display = 'block';
-    } finally {
-      el.onboardingConnectBtn.disabled = false;
-      el.onboardingConnectBtn.querySelector('span').textContent = 'Verbindung herstellen & Stundenplan anzeigen';
+    // Topbar header updates
+    const titleEl = document.getElementById('topbarViewTitle');
+    const descEl = document.getElementById('topbarViewDesc');
+    const ttControls = document.getElementById('topbarTimetableControls');
+
+    const metaMap = {
+      'dashboard': { title: 'Übersicht', desc: 'Willkommen in deiner persönlichen Untis-Zentrale' },
+      'own-timetable': { title: 'Mein Stundenplan', desc: 'Persönlicher Schüler-Stundenplan' },
+      'other-timetables': { title: 'Weitere Stundenpläne', desc: 'Klassen, Lehrkräfte und Fachräume' },
+      'homework': { title: 'Hausaufgaben', desc: 'WebUntis Aufgaben & eigene Notizen' },
+      'absences': { title: 'Abwesenheiten', desc: 'Fehlzeiten & Krankmeldungen' },
+      'messages': { title: 'Mitteilungen', desc: 'Schulposteingang & Durchsagen' },
+      'profiles': { title: 'Profile & Schulen', desc: 'Schulzugänge verwalten und hinzufügen' },
+    };
+
+    if (metaMap[viewName]) {
+      if (titleEl) titleEl.textContent = metaMap[viewName].title;
+      if (descEl) descEl.textContent = metaMap[viewName].desc;
+    }
+
+    // Toggle topbar date controls
+    if (ttControls) {
+      ttControls.style.display = (viewName === 'own-timetable' || viewName === 'other-timetables') ? 'flex' : 'none';
+    }
+
+    // Load data for view
+    switch (viewName) {
+      case 'dashboard':
+        loadDashboard();
+        break;
+      case 'own-timetable':
+        loadOwnTimetable();
+        break;
+      case 'other-timetables':
+        loadOtherTimetablesTab();
+        break;
+      case 'homework':
+        loadHomework();
+        break;
+      case 'absences':
+        loadAbsences();
+        break;
+      case 'messages':
+        loadMessages();
+        break;
+      case 'profiles':
+        loadProfiles();
+        break;
     }
   }
 
-  // Load Profiles from SQLite
+  // ==================== INITIALIZATION ====================
+  async function initApp() {
+    initToken();
+    setupEventListeners();
+    setupTheme();
+
+    // Check system status
+    const status = await apiFetch('/api/status');
+    if (!status) return;
+    state.status = status;
+
+    // Update user info in sidebar
+    const schoolNameEl = document.getElementById('sidebarSchoolName');
+    const userNameEl = document.getElementById('sidebarUserName');
+    const userAvatarEl = document.getElementById('sidebarUserAvatar');
+    const heroSchoolEl = document.getElementById('dashHeroSchool');
+
+    if (schoolNameEl) schoolNameEl.textContent = status.school || 'WebUntis';
+    if (heroSchoolEl) heroSchoolEl.textContent = status.school || 'WebUntis';
+
+    const displayName = status.displayName || status.profileName || 'Benutzer';
+    if (userNameEl) userNameEl.textContent = displayName;
+    if (userAvatarEl) {
+      const parts = displayName.split(' ');
+      const initials = parts.map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      userAvatarEl.textContent = initials || 'U';
+    }
+
+    if (status.needsOnboarding) {
+      switchView('profiles');
+      return;
+    }
+
+    // Load initial dashboard
+    updateDateDisplay();
+    switchView('dashboard');
+  }
+
+  // ==================== DASHBOARD MODULE ====================
+  async function loadDashboard() {
+    const data = await apiFetch('/api/dashboard');
+    if (!data) return;
+
+    // Greeting & Hero
+    const greetingEl = document.getElementById('dashHeroGreeting');
+    const dateEl = document.getElementById('dashHeroDate');
+    if (greetingEl) greetingEl.textContent = data.greeting || 'Guten Tag';
+    if (dateEl) dateEl.textContent = data.dateFormatted || formatGermanDate(new Date());
+
+    // Badges on Sidebar
+    const hwBadge = document.getElementById('sidebarHwBadge');
+    const msgBadge = document.getElementById('sidebarMsgBadge');
+    const absBadge = document.getElementById('sidebarAbsBadge');
+
+    if (hwBadge) {
+      if (data.openHomeworkCount > 0) {
+        hwBadge.textContent = data.openHomeworkCount;
+        hwBadge.style.display = 'inline-block';
+      } else {
+        hwBadge.style.display = 'none';
+      }
+    }
+
+    if (msgBadge) {
+      if (data.messagesCount > 0) {
+        msgBadge.textContent = data.messagesCount;
+        msgBadge.style.display = 'inline-block';
+      } else {
+        msgBadge.style.display = 'none';
+      }
+    }
+
+    if (absBadge && data.absencesSummary) {
+      if (data.absencesSummary.total > 0) {
+        absBadge.textContent = data.absencesSummary.total;
+        absBadge.style.display = 'inline-block';
+      } else {
+        absBadge.style.display = 'none';
+      }
+    }
+
+    // Metric: Next Lesson
+    const nextSubj = document.getElementById('dashNextLessonSubject');
+    const nextRoom = document.getElementById('dashNextLessonRoom');
+    const nextTime = document.getElementById('dashNextLessonTime');
+    const nextSubtext = document.getElementById('dashNextLessonSubtext');
+
+    if (data.nextLesson) {
+      const l = data.nextLesson;
+      if (nextSubj) nextSubj.textContent = l.subjectLong || l.subject;
+      if (nextRoom) nextRoom.textContent = `Raum: ${l.room || 'k.A.'}`;
+      if (nextTime) nextTime.textContent = l.startTimeStr;
+      if (nextSubtext) nextSubtext.textContent = `${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
+    } else {
+      if (nextSubj) nextSubj.textContent = 'Kein Unterricht';
+      if (nextRoom) nextRoom.textContent = '';
+      if (nextTime) nextTime.textContent = '--:--';
+      if (nextSubtext) nextSubtext.textContent = 'Der heutige Schultag ist beendet oder unterrichtsfrei.';
+    }
+
+    // Metric: Homework
+    const hwCountEl = document.getElementById('dashHwCount');
+    const hwHeadlineEl = document.getElementById('dashHwHeadline');
+    if (hwCountEl) hwCountEl.textContent = `${data.openHomeworkCount} offen`;
+    if (hwHeadlineEl) {
+      hwHeadlineEl.textContent = data.openHomeworkCount > 0 ? `${data.openHomeworkCount} Aufgaben zu erledigen` : 'Alles erledigt!';
+    }
+
+    // Metric: Messages
+    const msgCountEl = document.getElementById('dashMsgCount');
+    const msgHeadlineEl = document.getElementById('dashMsgHeadline');
+    if (msgCountEl) msgCountEl.textContent = `${data.messagesCount} Mitteilungen`;
+    if (msgHeadlineEl) {
+      msgHeadlineEl.textContent = data.messagesCount > 0 ? `${data.messagesCount} neue Durchsagen` : 'Keine neuen Nachrichten';
+    }
+
+    // Metric: Absences
+    const absCountEl = document.getElementById('dashAbsCount');
+    const absExcEl = document.getElementById('dashAbsExcused');
+    const absUnexcEl = document.getElementById('dashAbsUnexcused');
+    if (data.absencesSummary) {
+      if (absCountEl) absCountEl.textContent = `${data.absencesSummary.total} Einträge`;
+      if (absExcEl) absExcEl.textContent = `${data.absencesSummary.excused} Entschuldigt`;
+      if (absUnexcEl) absUnexcEl.textContent = `${data.absencesSummary.unexcused} Unentschuldigt`;
+    }
+
+    // Today's Lessons List
+    renderDashboardLessons(data.todayLessons || []);
+
+    // Homework Preview List
+    renderDashboardHomework(data.openHomework || []);
+
+    // Messages Preview List
+    renderDashboardMessages(data.recentMessages || []);
+  }
+
+  function renderDashboardLessons(lessons) {
+    const list = document.getElementById('dashTodayLessonsList');
+    if (!list) return;
+
+    if (!lessons || lessons.length === 0) {
+      list.innerHTML = '<div class="empty-inline-state">Heute steht kein planmäßiger Unterricht an.</div>';
+      return;
+    }
+
+    list.innerHTML = lessons.map(l => {
+      const color = l.color || '#ff7a00';
+      const statusBadge = l.isCancelled ? '<span class="status-pill cancelled">Ausfall</span>' : (l.isSubstitution ? '<span class="status-pill substitution">Vertretung</span>' : '');
+      return `
+        <div class="dash-lesson-item" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+          <div class="lesson-time-col">
+            <span class="l-time-range">${l.timeRange}</span>
+            <span class="l-period">${l.period}</span>
+          </div>
+          <div class="lesson-color-bar" style="background-color:${color};"></div>
+          <div class="lesson-main-col">
+            <div class="l-subject-row">
+              <span class="l-subject">${l.subject}</span>
+              ${l.room ? `<span class="l-room-tag">${l.room}</span>` : ''}
+              ${statusBadge}
+            </div>
+            <span class="l-teacher">${l.teacherLong || l.teacher || ''}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderDashboardHomework(homeworks) {
+    const list = document.getElementById('dashHwList');
+    if (!list) return;
+
+    if (!homeworks || homeworks.length === 0) {
+      list.innerHTML = '<div class="empty-inline-state">Keine offenen Hausaufgaben eingetragen.</div>';
+      return;
+    }
+
+    list.innerHTML = homeworks.map(h => `
+      <div class="homework-card" style="padding:10px 14px; margin-bottom:6px;">
+        <div class="custom-checkbox ${h.completed ? 'checked' : ''}" onclick="toggleHomeworkComplete('${h.id}', ${!h.completed})">
+          ${h.completed ? '✓' : ''}
+        </div>
+        <div class="hw-info">
+          <div class="hw-header-line">
+            <span class="hw-subject-badge">${h.subject}</span>
+            <span class="hw-due-pill">${h.dueDate ? `Fällig: ${h.dueDate}` : ''}</span>
+          </div>
+          <div class="hw-desc">${escapeHTML(h.description)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderDashboardMessages(messages) {
+    const list = document.getElementById('dashMsgList');
+    if (!list) return;
+
+    if (!messages || messages.length === 0) {
+      list.innerHTML = '<div class="empty-inline-state">Keine neuen Mitteilungen.</div>';
+      return;
+    }
+
+    list.innerHTML = messages.map(m => `
+      <div class="message-card" style="padding:12px 14px; margin-bottom:6px;" onclick="openMessageDetailModal(${m.id})">
+        <div class="msg-header-row">
+          <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
+          <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
+        </div>
+        <div class="msg-subject-line" style="font-size:13px;">${escapeHTML(m.subject)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ==================== MEIN STUNDENPLAN MODULE ====================
+  async function loadOwnTimetable() {
+    showLoading(true, 'Lade deinen persönlichen Stundenplan...');
+    const dateStr = formatDateISO(state.currentDate);
+    const view = state.timetableMode;
+
+    const lessons = await apiFetch(`/api/timetable/own?date=${dateStr}&view=${view}`);
+    showLoading(false);
+
+    const dayContainer = document.getElementById('ownDayViewContainer');
+    const weekContainer = document.getElementById('ownWeekViewContainer');
+    const emptyState = document.getElementById('ownEmptyState');
+
+    if (!lessons || lessons.length === 0) {
+      if (dayContainer) dayContainer.style.display = 'none';
+      if (weekContainer) weekContainer.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'block';
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    if (view === 'day') {
+      if (dayContainer) dayContainer.style.display = 'block';
+      if (weekContainer) weekContainer.style.display = 'none';
+      renderDayTimetable(lessons, 'ownDayLessonsList');
+    } else {
+      if (dayContainer) dayContainer.style.display = 'none';
+      if (weekContainer) weekContainer.style.display = 'block';
+      renderWeekTimetable(lessons, 'ownWeekGridHeader', 'ownWeekGridBody');
+    }
+
+    updateLiveTimeMarker();
+  }
+
+  function renderDayTimetable(lessons, targetElementId) {
+    const container = document.getElementById(targetElementId);
+    if (!container) return;
+
+    container.innerHTML = lessons.map(l => {
+      const color = l.color || '#ff7a00';
+      const statusBadge = l.isCancelled ? '<span class="status-pill cancelled">Ausfall</span>' : (l.isSubstitution ? '<span class="status-pill substitution">Vertretung</span>' : '');
+
+      return `
+        <div class="lesson-card" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+          <div class="lesson-left-group">
+            <div class="lesson-card-badge" style="background-color:${color}; color:${l.textColor || '#ffffff'};">
+              ${l.subject.slice(0, 4)}
+            </div>
+            <div class="lesson-info-group">
+              <span class="lesson-card-title">${l.subjectLong || l.subject}</span>
+              <span class="lesson-card-meta">
+                ${l.teacher ? `Lehrkraft: <strong>${l.teacherLong || l.teacher}</strong>` : ''} 
+                ${l.room ? `· Raum: <strong>${l.room}</strong>` : ''}
+              </span>
+              ${statusBadge}
+            </div>
+          </div>
+          <div class="lesson-right-group">
+            <span class="lesson-card-time">${l.timeRange}</span>
+            <span class="lesson-card-period">${l.period}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderWeekTimetable(lessons, headerId, bodyId) {
+    const headerEl = document.getElementById(headerId);
+    const bodyEl = document.getElementById(bodyId);
+    if (!headerEl || !bodyEl) return;
+
+    // Compute Monday of active week
+    const target = new Date(state.currentDate);
+    const dayOfWeek = target.getDay();
+    const diff = target.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    const monday = new Date(target.setDate(diff));
+
+    const weekDays = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDays.push(d);
+    }
+
+    const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
+    const todayStr = formatDateISO(new Date());
+
+    // Header cells
+    headerEl.innerHTML = weekDays.map((d, idx) => {
+      const iso = formatDateISO(d);
+      const isToday = iso === todayStr;
+      return `
+        <div class="week-day-header-cell ${isToday ? 'today' : ''}">
+          <div class="w-day-name">${dayNames[idx]}</div>
+          <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
+        </div>
+      `;
+    }).join('');
+
+    // Group lessons by date
+    const lessonGroups = {};
+    weekDays.forEach(d => lessonGroups[formatDateISO(d)] = []);
+    lessons.forEach(l => {
+      if (lessonGroups[l.Date]) {
+        lessonGroups[l.Date].push(l);
+      }
+    });
+
+    // Body columns
+    bodyEl.innerHTML = weekDays.map(d => {
+      const iso = formatDateISO(d);
+      const dayLessons = lessonGroups[iso] || [];
+
+      const boxesHtml = dayLessons.map(l => {
+        const color = l.color || '#ff7a00';
+        return `
+          <div class="week-lesson-box" style="border-left: 4px solid ${color};" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+            <span class="w-time">${l.startTimeStr} - ${l.endTimeStr}</span>
+            <div class="w-subj">${l.subject}</div>
+            <div class="w-details">${l.room || ''} · ${l.teacher || ''}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="week-day-col">
+          ${boxesHtml || '<div class="empty-inline-state" style="padding:12px 0;">Frei</div>'}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ==================== WEITERE STUNDENPLÄNE MODULE ====================
+  async function loadOtherTimetablesTab() {
+    const listEl = document.getElementById('resourceItemsList');
+    if (!listEl) return;
+
+    if (state.otherTab === 'CLASS') {
+      if (state.classes.length === 0) {
+        showLoading(true, 'Lade Klassen...');
+        const classes = await apiFetch('/api/classes');
+        state.classes = classes || [];
+        showLoading(false);
+      }
+      renderResourceItems(state.classes, 'CLASS');
+    } else if (state.otherTab === 'TEACHER') {
+      if (state.teachers.length === 0) {
+        showLoading(true, 'Lade Lehrkräfte...');
+        const teachers = await apiFetch('/api/teachers');
+        state.teachers = teachers || [];
+        showLoading(false);
+      }
+      renderResourceItems(state.teachers, 'TEACHER');
+    } else if (state.otherTab === 'ROOM') {
+      if (state.rooms.length === 0) {
+        showLoading(true, 'Lade Fachräume...');
+        const rooms = await apiFetch('/api/rooms');
+        state.rooms = rooms || [];
+        showLoading(false);
+      }
+      renderResourceItems(state.rooms, 'ROOM');
+    }
+
+    if (state.otherSelectedId) {
+      loadResourceTimetable();
+    }
+  }
+
+  function switchResourceTab(tabName) {
+    state.otherTab = tabName;
+    document.querySelectorAll('.res-tab-btn').forEach(b => b.classList.remove('active'));
+    if (tabName === 'CLASS') document.getElementById('tabResClasses')?.classList.add('active');
+    if (tabName === 'TEACHER') document.getElementById('tabResTeachers')?.classList.add('active');
+    if (tabName === 'ROOM') document.getElementById('tabResRooms')?.classList.add('active');
+
+    const pill = document.getElementById('otherResTypePill');
+    if (pill) pill.textContent = tabName === 'CLASS' ? 'KLASSE' : (tabName === 'TEACHER' ? 'LEHRKRAFT' : 'FACHRAUM');
+
+    loadOtherTimetablesTab();
+  }
+
+  function renderResourceItems(items, type) {
+    const listEl = document.getElementById('resourceItemsList');
+    if (!listEl) return;
+
+    const search = document.getElementById('resourceSearchInput')?.value.toLowerCase() || '';
+
+    const filtered = items.filter(it => {
+      const name = (it.name || it.longName || '').toLowerCase();
+      const longName = (it.longName || '').toLowerCase();
+      const foreName = (it.foreName || '').toLowerCase();
+      return name.includes(search) || longName.includes(search) || foreName.includes(search);
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-inline-state">Keine Einträge gefunden.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(it => {
+      const isSelected = state.otherSelectedId === it.id && state.otherTab === type;
+      let label = it.name;
+      if (type === 'TEACHER' && it.longName) {
+        label = `${it.longName}, ${it.foreName || ''} (${it.name})`;
+      } else if (type === 'ROOM' && it.longName) {
+        label = `${it.name} - ${it.longName}`;
+      }
+
+      return `
+        <div class="res-item-row ${isSelected ? 'active' : ''}" onclick="selectResourceItem(${it.id}, '${escapeHTML(label)}', '${type}')">
+          <span>${escapeHTML(label)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function selectResourceItem(id, name, type) {
+    state.otherSelectedId = id;
+    state.otherSelectedName = name;
+    state.otherTab = type;
+
+    const heading = document.getElementById('otherResNameHeading');
+    if (heading) heading.textContent = name;
+
+    renderResourceItems(
+      type === 'CLASS' ? state.classes : (type === 'TEACHER' ? state.teachers : state.rooms),
+      type
+    );
+
+    loadResourceTimetable();
+  }
+
+  async function loadResourceTimetable() {
+    if (!state.otherSelectedId) return;
+
+    showLoading(true, `Lade Stundenplan für ${state.otherSelectedName}...`);
+    const dateStr = formatDateISO(state.currentDate);
+    const view = state.timetableMode;
+
+    const lessons = await apiFetch(`/api/timetable/resource?type=${state.otherTab}&id=${state.otherSelectedId}&date=${dateStr}&view=${view}`);
+    showLoading(false);
+
+    const dayContainer = document.getElementById('otherDayViewContainer');
+    const weekContainer = document.getElementById('otherWeekViewContainer');
+    const emptyState = document.getElementById('otherEmptyState');
+
+    if (!lessons || lessons.length === 0) {
+      if (dayContainer) dayContainer.style.display = 'none';
+      if (weekContainer) weekContainer.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'block';
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    if (view === 'day') {
+      if (dayContainer) dayContainer.style.display = 'block';
+      if (weekContainer) weekContainer.style.display = 'none';
+      renderDayTimetable(lessons, 'otherDayLessonsList');
+    } else {
+      if (dayContainer) dayContainer.style.display = 'none';
+      if (weekContainer) weekContainer.style.display = 'block';
+      renderWeekTimetable(lessons, 'otherWeekGridHeader', 'otherWeekGridBody');
+    }
+  }
+
+  // ==================== HAUSAUFGABEN MODULE ====================
+  async function loadHomework() {
+    showLoading(true, 'Lade Hausaufgaben...');
+    const data = await apiFetch('/api/homework');
+    showLoading(false);
+
+    state.homework = data || [];
+    renderHomeworkCards();
+  }
+
+  function filterHomework(filterMode) {
+    state.hwFilter = filterMode;
+    document.querySelectorAll('.filter-pills-bar .pill-btn').forEach(b => b.classList.remove('active'));
+    if (filterMode === 'all') document.getElementById('hwFilterAll')?.classList.add('active');
+    if (filterMode === 'open') document.getElementById('hwFilterOpen')?.classList.add('active');
+    if (filterMode === 'completed') document.getElementById('hwFilterCompleted')?.classList.add('active');
+
+    renderHomeworkCards();
+  }
+
+  function renderHomeworkCards() {
+    const container = document.getElementById('homeworkCardsContainer');
+    if (!container) return;
+
+    let items = state.homework;
+    if (state.hwFilter === 'open') items = items.filter(h => !h.completed);
+    if (state.hwFilter === 'completed') items = items.filter(h => h.completed);
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><h3>Keine Aufgaben gefunden</h3><p>Trage über den Button oben eine neue Hausaufgabe ein.</p></div>';
+      return;
+    }
+
+    container.innerHTML = items.map(h => {
+      const isLocal = h.source !== 'webuntis';
+      return `
+        <div class="homework-card ${h.completed ? 'completed' : ''}">
+          <div class="custom-checkbox ${h.completed ? 'checked' : ''}" onclick="toggleHomeworkComplete('${h.id}', ${!h.completed})">
+            ${h.completed ? '✓' : ''}
+          </div>
+          <div class="hw-info">
+            <div class="hw-header-line">
+              <span class="hw-subject-badge">${escapeHTML(h.subject)}</span>
+              <span class="hw-source-badge">${isLocal ? 'Persönlich' : 'WebUntis'}</span>
+              <span class="hw-due-pill">${h.dueDate ? `Fällig: ${h.dueDate}` : ''}</span>
+            </div>
+            <div class="hw-desc">${escapeHTML(h.description)}</div>
+          </div>
+          ${isLocal ? `
+            <button class="btn-delete-item" title="Aufgabe löschen" onclick="deleteHomeworkItem('${h.id}')">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function toggleHomeworkComplete(id, completed) {
+    const res = await apiFetch('/api/homework', {
+      method: 'PUT',
+      body: JSON.stringify({ id, completed }),
+    });
+
+    if (res && res.success) {
+      const item = state.homework.find(h => h.id === id);
+      if (item) item.completed = completed;
+      renderHomeworkCards();
+      showToast(completed ? 'Aufgabe als erledigt markiert' : 'Aufgabe wieder geöffnet');
+    }
+  }
+
+  async function deleteHomeworkItem(id) {
+    if (!confirm('Möchtest du diese Hausaufgabe wirklich löschen?')) return;
+
+    const res = await apiFetch(`/api/homework?id=${id}`, { method: 'DELETE' });
+    if (res && res.success) {
+      state.homework = state.homework.filter(h => h.id !== id);
+      renderHomeworkCards();
+      showToast('Hausaufgabe gelöscht');
+    }
+  }
+
+  function openNewHomeworkModal() {
+    const modal = document.getElementById('homeworkModalBackdrop');
+    if (modal) {
+      document.getElementById('hwSubjectInput').value = '';
+      document.getElementById('hwDescInput').value = '';
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('hwDueDateInput').value = formatDateISO(tomorrow);
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeNewHomeworkModal() {
+    const modal = document.getElementById('homeworkModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function handleCreateHomework(e) {
+    e.preventDefault();
+    const subject = document.getElementById('hwSubjectInput').value.trim();
+    const description = document.getElementById('hwDescInput').value.trim();
+    const dueDate = document.getElementById('hwDueDateInput').value;
+
+    if (!description) return;
+
+    const res = await apiFetch('/api/homework', {
+      method: 'POST',
+      body: JSON.stringify({ subject, description, dueDate }),
+    });
+
+    if (res && res.success) {
+      closeNewHomeworkModal();
+      showToast('Neue Hausaufgabe erfolgreich gespeichert!');
+      loadHomework();
+    }
+  }
+
+  // ==================== ABWESENHEITEN MODULE ====================
+  async function loadAbsences() {
+    showLoading(true, 'Lade Fehlzeiten...');
+    const data = await apiFetch('/api/absences');
+    showLoading(false);
+
+    state.absences = data || [];
+    renderAbsenceCards();
+  }
+
+  function renderAbsenceCards() {
+    const container = document.getElementById('absencesCardsContainer');
+    const totalEl = document.getElementById('absTotalCount');
+    const excEl = document.getElementById('absExcusedCount');
+    const unexcEl = document.getElementById('absUnexcusedCount');
+
+    let total = state.absences.length;
+    let excused = 0;
+    let unexcused = 0;
+
+    state.absences.forEach(a => {
+      if (a.isExcused) excused++;
+      else unexcused++;
+    });
+
+    if (totalEl) totalEl.textContent = total;
+    if (excEl) excEl.textContent = excused;
+    if (unexcEl) unexcEl.textContent = unexcused;
+
+    if (!container) return;
+
+    if (state.absences.length === 0) {
+      container.innerHTML = '<div class="empty-state"><h3>Keine Fehlzeiten verzeichnet</h3><p>Reiche über den Button oben eine Krankmeldung oder Abwesenheit ein.</p></div>';
+      return;
+    }
+
+    container.innerHTML = state.absences.map(a => {
+      const isLocal = a.source !== 'webuntis';
+      const statusPill = a.isExcused
+        ? '<span class="abs-status-tag excused">Entschuldigt</span>'
+        : '<span class="abs-status-tag unexcused">Unentschuldigt</span>';
+
+      return `
+        <div class="absence-card">
+          <div class="abs-left">
+            <div class="abs-icon-box">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+            </div>
+            <div>
+              <div class="abs-reason-title">${escapeHTML(a.reason || 'Abwesenheit')}</div>
+              <div class="abs-date-text">Zeitraum: <strong>${a.startDate || ''} bis ${a.endDate || ''}</strong></div>
+              ${a.text ? `<div class="abs-note-text">${escapeHTML(a.text)}</div>` : ''}
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            ${statusPill}
+            ${isLocal ? `
+              <button class="btn-delete-item" title="Eintrag löschen" onclick="deleteAbsenceItem('${a.id}')">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function deleteAbsenceItem(id) {
+    if (!confirm('Möchtest du diese Abwesenheitsmeldung wirklich löschen?')) return;
+
+    const res = await apiFetch(`/api/absences?id=${id}`, { method: 'DELETE' });
+    if (res && res.success) {
+      state.absences = state.absences.filter(a => a.id !== id);
+      renderAbsenceCards();
+      showToast('Abwesenheitseintrag gelöscht');
+    }
+  }
+
+  function openNewAbsenceModal() {
+    const modal = document.getElementById('absenceModalBackdrop');
+    if (modal) {
+      document.getElementById('absTextInput').value = '';
+      const today = formatDateISO(new Date());
+      document.getElementById('absStartDateInput').value = today;
+      document.getElementById('absEndDateInput').value = today;
+      document.getElementById('absExcusedCheckbox').checked = true;
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeNewAbsenceModal() {
+    const modal = document.getElementById('absenceModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function handleCreateAbsence(e) {
+    e.preventDefault();
+    const reason = document.getElementById('absReasonInput').value;
+    const text = document.getElementById('absTextInput').value.trim();
+    const startDate = document.getElementById('absStartDateInput').value;
+    const endDate = document.getElementById('absEndDateInput').value;
+    const isExcused = document.getElementById('absExcusedCheckbox').checked;
+
+    const res = await apiFetch('/api/absences', {
+      method: 'POST',
+      body: JSON.stringify({ reason, text, startDate, endDate, isExcused }),
+    });
+
+    if (res && res.success) {
+      closeNewAbsenceModal();
+      showToast('Abwesenheitsmeldung erfolgreich hinterlegt!');
+      loadAbsences();
+    }
+  }
+
+  // ==================== MITTEILUNGEN MODULE ====================
+  async function loadMessages() {
+    showLoading(true, 'Lade Mitteilungen...');
+    const data = await apiFetch('/api/messages');
+    showLoading(false);
+
+    state.messages = data || [];
+    renderMessages();
+  }
+
+  function renderMessages() {
+    const container = document.getElementById('messagesContainer');
+    if (!container) return;
+
+    if (state.messages.length === 0) {
+      container.innerHTML = '<div class="empty-state"><h3>Keine Mitteilungen vorhanden</h3><p>Derzeit liegen keine Durchsagen oder Nachrichten vor.</p></div>';
+      return;
+    }
+
+    container.innerHTML = state.messages.map(m => `
+      <div class="message-card" onclick="openMessageDetailModal(${m.id})">
+        <div class="msg-header-row">
+          <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
+          <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
+        </div>
+        <div class="msg-subject-line">${escapeHTML(m.subject)}</div>
+        <div class="msg-preview-text">${escapeHTML(m.contentPreview || '')}</div>
+      </div>
+    `).join('');
+  }
+
+  async function openMessageDetailModal(id) {
+    const modal = document.getElementById('messageDetailBackdrop');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    document.getElementById('msgDetailSubject').textContent = 'Lade Nachricht...';
+    document.getElementById('msgDetailContent').textContent = '';
+
+    const msg = await apiFetch(`/api/messages/${id}`);
+    if (msg) {
+      document.getElementById('msgDetailSender').textContent = msg.senderName || (msg.sender && msg.sender.displayName) || 'Schule';
+      document.getElementById('msgDetailDate').textContent = formatDateTime(msg.sentDateTime);
+      document.getElementById('msgDetailSubject').textContent = msg.subject;
+      document.getElementById('msgDetailContent').textContent = msg.content || msg.contentPreview || 'Kein Textinhalt verfügbar.';
+    }
+  }
+
+  function closeMessageDetailModal() {
+    const modal = document.getElementById('messageDetailBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  // ==================== PROFILE & SCHULEN (MIT LÖSCHFUNKTION!) ====================
   async function loadProfiles() {
-    try {
-      const res = await authFetch('/api/profiles');
-      if (res.ok) {
-        const data = await res.json();
-        state.profiles = data.profiles || [];
-        state.activeProfileId = data.activeProfileId || '';
-        renderProfileQuickList();
-        renderSettingsProfileCards();
-      }
-    } catch (e) {
-      console.warn('[Profiles] Fehler beim Laden:', e);
+    showLoading(true, 'Lade Profile...');
+    const data = await apiFetch('/api/profiles');
+    showLoading(false);
+
+    if (data && data.profiles) {
+      state.profiles = data.profiles;
+      renderProfilesManagement(data.profiles, data.activeProfileId);
     }
   }
 
-  function renderProfileQuickList() {
-    el.profileQuickList.innerHTML = '';
-    state.profiles.forEach(p => {
-      const item = document.createElement('div');
-      const isActive = p.id === state.activeProfileId;
-      item.className = `profile-quick-item ${isActive ? 'active' : ''}`;
-      item.innerHTML = `
-        <div class="avatar-badge" style="width:28px;height:28px;font-size:0.75rem;">
-          ${escapeHtml(getAvatarInitials(p.name, p.school))}
-        </div>
-        <div class="profile-quick-meta">
-          <span class="profile-quick-name">${escapeHtml(p.name)}</span>
-          <span class="profile-quick-sub">${escapeHtml(p.username || 'anonym')} · ${escapeHtml(p.school)}</span>
-        </div>
-        ${isActive ? `
-          <svg class="profile-check-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-          </svg>` : ''}
-      `;
+  function renderProfilesManagement(profiles, activeId) {
+    const grid = document.getElementById('profilesManagementList');
+    if (!grid) return;
 
-      item.addEventListener('click', () => switchProfile(p.id));
-      el.profileQuickList.appendChild(item);
-    });
-  }
+    if (!profiles || profiles.length === 0) {
+      grid.innerHTML = '<div class="empty-inline-state">Keine Profile gespeichert. Füge unten deine Schule hinzu.</div>';
+      return;
+    }
 
-  function renderSettingsProfileCards() {
-    el.profileCardsList.innerHTML = '';
-    state.profiles.forEach(p => {
-      const card = document.createElement('div');
-      const isActive = p.id === state.activeProfileId;
-      card.className = `profile-card ${isActive ? 'active' : ''}`;
-      card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar-badge" style="width:30px;height:30px;font-size:0.8rem;">
-            ${escapeHtml(getAvatarInitials(p.name, p.school))}
+    grid.innerHTML = profiles.map(p => {
+      const isActive = p.id === activeId || p.isActive;
+      return `
+        <div class="profile-card ${isActive ? 'active' : ''}">
+          <div class="prof-top-row">
+            <div>
+              <div class="prof-name-text">${escapeHTML(p.name)}</div>
+              <div class="prof-school-text">${escapeHTML(p.school)}</div>
+              <div class="prof-user-text">Benutzer: ${escapeHTML(p.username || 'anonym')}</div>
+            </div>
+            ${isActive ? '<span class="active-profile-badge">AKTIV</span>' : ''}
           </div>
-          <div class="profile-card-info">
-            <span class="profile-card-name">${escapeHtml(p.name)}</span>
-            <span class="profile-card-sub">Benutzer: ${escapeHtml(p.username || 'anonym')} · Schule: ${escapeHtml(p.school)}</span>
+
+          <div class="prof-actions-row">
+            <div>
+              ${!isActive ? `
+                <button class="btn-switch-profile" onclick="switchActiveProfile('${p.id}')">Als aktiv wählen</button>
+              ` : '<span style="font-size:12px; color:var(--text-muted);">Aktive Verbindung</span>'}
+            </div>
+
+            <!-- DER ROTE PAPIERKORB-BUTTON ZUM LÖSCHEN DER SCHULE / DES PROFILS! -->
+            <button class="btn-delete-profile" title="Schule / Profil löschen" onclick="deleteProfile('${p.id}', '${escapeHTML(p.name)}')">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+            </button>
           </div>
         </div>
-        ${isActive ? '<span class="profile-active-tag">Aktiv</span>' : '<span style="font-size:0.75rem;opacity:0.7;">Wechseln</span>'}
       `;
-
-      card.addEventListener('click', () => switchProfile(p.id));
-      el.profileCardsList.appendChild(card);
-    });
+    }).join('');
   }
 
-  async function switchProfile(profileId) {
-    if (profileId === state.activeProfileId) return;
-    setLoading(true, 'Profil wird gewechselt...');
-    try {
-      const res = await authFetch('/api/profiles/switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(data.message || 'Profil gewechselt');
-        state.activeProfileId = profileId;
-        el.profileDropdownWrapper.classList.remove('open');
-        closeSettings();
-        await loadStatus();
-        await loadProfiles();
-        await loadClasses();
-        await loadTimetable();
-      } else {
-        showToast('Fehler beim Profilwechsel: ' + data.message);
-      }
-    } catch (e) {
-      showToast('Netzwerkfehler beim Profilwechsel');
-    } finally {
-      setLoading(false);
+  async function switchActiveProfile(profileId) {
+    showLoading(true, 'Wechsle Profil...');
+    const res = await apiFetch('/api/profiles/switch', {
+      method: 'POST',
+      body: JSON.stringify({ profileId }),
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      showToast(res.message || 'Profil gewechselt!');
+      // Reload app
+      window.location.reload();
+    } else {
+      showToast(res?.message || 'Fehler beim Wechseln des Profils', 'error');
     }
   }
 
-  // Load Classes (Cache-First from SQLite)
-  async function loadClasses() {
-    try {
-      const res = await authFetch('/api/classes');
-      if (res.ok) {
-        const classes = await res.json();
-        state.classes = Array.isArray(classes) ? classes : [];
-        filterClasses();
+  // PROFIL LÖSCHEN (ROTER PAPIERKORB)
+  async function deleteProfile(profileId, profileName) {
+    const confirmDelete = confirm(`Möchtest du das Profil '${profileName}' wirklich löschen?\n\nAlle lokalen Hausaufgaben und Abwesenheiten für dieses Profil werden entfernt.`);
+    if (!confirmDelete) return;
 
-        // Auto-select class if none currently selected
-        if ((!state.selectedClassId || state.selectedClassId === 0) && state.classes.length > 0) {
-          selectClass(state.classes[0].id, state.classes[0].name, false);
-        } else {
-          updateCurrentClassLabel();
+    showLoading(true, 'Lösche Profil...');
+    const res = await apiFetch(`/api/profiles/delete?id=${encodeURIComponent(profileId)}`, {
+      method: 'POST',
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      showToast(`Profil '${profileName}' wurde gelöscht!`);
+      // Reload profile list
+      loadProfiles();
+      // Check if we need to reload app state
+      const status = await apiFetch('/api/status');
+      if (status) {
+        state.status = status;
+        if (status.needsOnboarding) {
+          window.location.reload();
         }
       }
-    } catch (e) {
-      console.error('[Classes] Fehler:', e);
+    } else {
+      showToast(res?.message || 'Fehler beim Löschen des Profils', 'error');
     }
   }
 
-  function filterClasses() {
-    const term = state.classSearchTerm.trim().toLowerCase();
-    if (!term) {
-      state.filteredClasses = [...state.classes];
-    } else {
-      state.filteredClasses = state.classes.filter(k => {
-        const nameMatch = k.name && k.name.toLowerCase().includes(term);
-        const longMatch = k.longName && k.longName.toLowerCase().includes(term);
-        return nameMatch || longMatch;
-      });
-    }
-    renderClassDropdown();
-  }
+  // School Search & Add
+  let selectedSearchSchool = null;
 
-  function renderClassDropdown() {
-    el.classListContainer.innerHTML = '';
-    const total = state.classes.length;
-    const filtered = state.filteredClasses.length;
+  async function handleSchoolSearch() {
+    const query = document.getElementById('addSchoolSearchInput')?.value.trim();
+    if (!query) return;
 
-    if (total === filtered) {
-      el.classCounterBadge.textContent = `${total} Klassen`;
-    } else {
-      el.classCounterBadge.textContent = `${filtered} von ${total} Klassen`;
-    }
+    const list = document.getElementById('addSchoolResultsList');
+    if (list) list.innerHTML = '<div class="empty-inline-state">Suche Schulen...</div>';
 
-    if (state.filteredClasses.length === 0) {
-      const emptyDiv = document.createElement('div');
-      emptyDiv.style.padding = '14px 16px';
-      emptyDiv.style.fontSize = '0.85rem';
-      emptyDiv.style.color = 'var(--text-secondary)';
-      emptyDiv.textContent = 'Keine passende Klasse gefunden.';
-      el.classListContainer.appendChild(emptyDiv);
+    const data = await apiFetch(`/api/schools/search?q=${encodeURIComponent(query)}`);
+    if (!list) return;
+
+    if (!data || !data.schools || data.schools.length === 0) {
+      list.innerHTML = '<div class="empty-inline-state">Keine Schulen gefunden. Bitte Suchbegriff anpassen.</div>';
       return;
     }
 
-    state.filteredClasses.forEach(k => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      const isActive = k.id === state.selectedClassId;
-      btn.className = `class-item-btn ${isActive ? 'active' : ''}`;
-      btn.innerHTML = `
-        <span style="font-weight: 600;">${escapeHtml(k.name)}</span>
-        <span style="font-size:0.75rem;opacity:0.7;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-          ${escapeHtml(k.longName || '')}
-        </span>
-      `;
-
-      btn.addEventListener('click', () => {
-        selectClass(k.id, k.name, true);
-      });
-      el.classListContainer.appendChild(btn);
-    });
+    list.innerHTML = data.schools.map(s => `
+      <div class="school-result-item" onclick="selectSearchSchool(${escapeHTML(JSON.stringify(s))})">
+        <div>
+          <div class="sr-name">${escapeHTML(s.displayName)}</div>
+          <div class="sr-details">${escapeHTML(s.address || s.serverUrl || s.server)}</div>
+        </div>
+        <button class="btn-text-sm">Auswählen &rarr;</button>
+      </div>
+    `).join('');
   }
 
-  function updateCurrentClassLabel() {
-    if (state.selectedClassName) {
-      el.currentClassLabel.textContent = `Klasse ${state.selectedClassName}`;
-    } else {
-      el.currentClassLabel.textContent = 'Klasse wählen';
+  function selectSearchSchool(school) {
+    selectedSearchSchool = school;
+    const form = document.getElementById('addSchoolForm');
+    const preview = document.getElementById('selectedSchoolPreview');
+
+    if (preview) {
+      preview.textContent = `Ausgewählte Schule: ${school.displayName} (${school.loginName || school.server})`;
+    }
+    if (form) {
+      form.style.display = 'flex';
+      form.scrollIntoView({ behavior: 'smooth' });
     }
   }
 
-  async function selectClass(id, name, reload = true) {
-    state.selectedClassId = id;
-    state.selectedClassName = name;
-    updateCurrentClassLabel();
-    el.classDropdownWrapper.classList.remove('open');
-    renderClassDropdown();
+  function cancelAddSchool() {
+    selectedSearchSchool = null;
+    const form = document.getElementById('addSchoolForm');
+    if (form) form.style.display = 'none';
+  }
 
-    // Persist selected class to SQLite
-    authFetch('/api/settings', {
+  async function handleSaveNewSchool(e) {
+    e.preventDefault();
+    if (!selectedSearchSchool) return;
+
+    const username = document.getElementById('newUsername').value.trim();
+    const password = document.getElementById('newPassword').value;
+    const profileName = document.getElementById('newProfileName').value.trim();
+
+    showLoading(true, 'Verbinde mit WebUntis...');
+    const res = await apiFetch('/api/profiles', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selected_class_id: id, selected_class_name: name })
+      body: JSON.stringify({
+        school: selectedSearchSchool.loginName || selectedSearchSchool.displayName,
+        server: selectedSearchSchool.serverUrl || selectedSearchSchool.server,
+        name: profileName || selectedSearchSchool.displayName,
+        username,
+        password,
+        setActive: true,
+      }),
     });
+    showLoading(false);
 
-    if (reload) {
-      await loadTimetable();
-    }
-  }
-
-  // Timetable Retrieval & Rendering (Zero-Lag Cache-First)
-  async function loadTimetable(forceRefresh = false) {
-    if (!state.selectedClassId) return;
-    setLoading(true, 'Stundenplan wird geladen...');
-    try {
-      const dateStr = formatDateISO(state.currentDate);
-      const url = `/api/timetable?classId=${state.selectedClassId}&date=${dateStr}&view=${state.currentView}${forceRefresh ? '&force=true' : ''}`;
-      const res = await authFetch(url);
-      if (!res.ok) {
-        throw new Error('Fehler beim Laden des Stundenplans');
-      }
-      state.lessons = await res.json();
-      renderCurrentView();
-      updateLiveTimeline();
-    } catch (e) {
-      console.error('[Timetable] Fehler:', e);
-      showToast('Konnte Stundenplan nicht abrufen');
-      renderEmptyState();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function setLoading(val, msg = 'Laden...') {
-    state.loading = val;
-    el.loadingMessage.textContent = msg;
-    el.loadingOverlay.classList.toggle('visible', val);
-  }
-
-  function renderCurrentView() {
-    if (state.currentView === 'day') {
-      el.dayViewContainer.classList.add('active');
-      el.weekViewContainer.classList.remove('active');
-      renderDayView();
+    if (res && res.success) {
+      showToast('Erfolgreich angemeldet und Schule hinzugefügt!');
+      window.location.reload();
     } else {
-      el.dayViewContainer.classList.remove('active');
-      el.weekViewContainer.classList.add('active');
-      renderWeekView();
+      showToast(res?.message || 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.', 'error');
     }
   }
 
-  function renderEmptyState() {
-    el.dayLessonsList.innerHTML = '';
-    el.weekGridHeader.innerHTML = '';
-    el.weekGridBody.innerHTML = '';
-    el.emptyState.style.display = 'flex';
-    el.liveTimelineMarker.style.display = 'none';
+  // ==================== LESSON DETAIL MODAL ====================
+  function openLessonDetailModal(lesson) {
+    const modal = document.getElementById('lessonDetailBackdrop');
+    if (!modal) return;
 
-    const curISO = formatDateISO(state.currentDate);
-    if (curISO < '2026-09-07') {
-      el.emptyStateTitle.textContent = 'Noch keine Schulstunden';
-      el.emptyStateDesc.textContent = 'Der reguläre Unterricht am Berufskolleg beginnt ab Montag, 07. September 2026.';
-      el.jumpToNextWeekBtn.style.display = 'inline-block';
-      el.jumpToNextWeekBtn.textContent = 'Zu den ersten Schulstunden (Mo, 07.09.2026)';
-      el.jumpToNextWeekBtn.onclick = () => {
-        state.currentDate = new Date('2026-09-07T10:00:00');
-        updateDateDisplay();
-        loadTimetable();
-      };
-    } else {
-      el.emptyStateTitle.textContent = 'Kein Unterricht';
-      el.emptyStateDesc.textContent = 'Für diesen Zeitraum sind keine Unterrichtsstunden eingetragen.';
-      el.jumpToNextWeekBtn.style.display = 'none';
-    }
-  }
-
-  function renderDayView() {
-    el.emptyState.style.display = 'none';
-    el.dayLessonsList.innerHTML = '';
-
-    if (!state.lessons || state.lessons.length === 0) {
-      renderEmptyState();
-      return;
+    const chip = document.getElementById('lessonModalSubjChip');
+    if (chip) {
+      chip.textContent = (lesson.subject || 'LF').slice(0, 4);
+      chip.style.backgroundColor = lesson.color || '#ff7a00';
+      chip.style.color = lesson.textColor || '#ffffff';
     }
 
-    let lastEndTime = 0;
-    state.lessons.forEach(lesson => {
-      const startParts = lesson.startTimeStr.split(':');
-      const currentStartMinutes = parseInt(startParts[0], 10) * 60 + parseInt(startParts[1], 10);
+    document.getElementById('lessonModalSubject').textContent = lesson.subjectLong || lesson.subject;
+    document.getElementById('lessonModalTime').textContent = `${lesson.timeRange} (${lesson.period})`;
+    document.getElementById('lessonModalTeacher').textContent = lesson.teacherLong || lesson.teacher || '-';
+    document.getElementById('lessonModalRoom').textContent = lesson.roomLong || lesson.room || '-';
+    document.getElementById('lessonModalClass').textContent = lesson.class || '-';
 
-      if (lastEndTime > 0 && currentStartMinutes - lastEndTime >= 10) {
-        const breakMinutes = currentStartMinutes - lastEndTime;
-        const breakEl = document.createElement('div');
-        breakEl.className = 'break-item';
-        const breakTitle = breakMinutes >= 35 ? 'Mittagspause' : 'Pause';
-        breakEl.innerHTML = `<span class="break-line"></span><span>${breakTitle} (${breakMinutes} min)</span><span class="break-line"></span>`;
-        el.dayLessonsList.appendChild(breakEl);
-      }
+    let statusText = 'Regulär';
+    if (lesson.isCancelled) statusText = 'ENTFALLEN';
+    else if (lesson.isSubstitution) statusText = `Vertretung (${lesson.substText || 'Änderung'})`;
+    else if (lesson.isRoomChange) statusText = 'Raumänderung';
+    document.getElementById('lessonModalStatus').textContent = statusText;
 
-      const endParts = lesson.endTimeStr.split(':');
-      lastEndTime = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
-
-      const card = createDayLessonCard(lesson);
-      el.dayLessonsList.appendChild(card);
-    });
-  }
-
-  function createDayLessonCard(l) {
-    const card = document.createElement('div');
-    card.className = `lesson-card ${l.isCancelled ? 'cancelled' : ''} ${l.isSubstitution ? 'substitution' : ''} ${l.isRoomChange ? 'room-change' : ''}`;
-    card.setAttribute('data-start', l.startTimeStr);
-    card.setAttribute('data-end', l.endTimeStr);
-
-    let badgesHtml = '';
-    if (l.isCancelled) {
-      badgesHtml += `<span class="badge-tag badge-cancel">Entfall</span>`;
-    } else if (l.isSubstitution) {
-      badgesHtml += `<span class="badge-tag badge-subst">Vertretung</span>`;
-    }
-    if (l.isRoomChange && !l.isCancelled) {
-      badgesHtml += `<span class="badge-tag badge-room">Raumänderung</span>`;
-    }
-
-    let teacherDisplay = escapeHtml(l.teacher || 'N/A');
-    if (l.originalTeacher && l.originalTeacher !== l.teacher) {
-      teacherDisplay = `<span class="pill-original">${escapeHtml(l.originalTeacher)}</span><span class="pill-highlight">${escapeHtml(l.teacher)}</span>`;
-    }
-
-    let roomDisplay = escapeHtml(l.room || 'N/A');
-    if (l.originalRoom && l.originalRoom !== l.room) {
-      roomDisplay = `<span class="pill-original">${escapeHtml(l.originalRoom)}</span><span class="pill-highlight">${escapeHtml(l.room)}</span>`;
-    }
-
-    let noticeHtml = '';
-    if (l.substText) {
-      const noticeClass = l.isCancelled ? 'notice-cancel' : (l.isSubstitution ? 'notice-subst' : 'notice-room');
-      noticeHtml = `
-        <div class="card-notice-banner ${noticeClass}">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          <span>${escapeHtml(l.substText)}</span>
-        </div>`;
-    }
-
-    card.innerHTML = `
-      <div class="lesson-accent-bar" style="background-color: ${l.isCancelled ? '#ba1a1a' : l.color};"></div>
-      <div class="lesson-card-body">
-        <div class="card-top-row">
-          <span class="period-badge">${escapeHtml(l.period)}</span>
-          <span class="time-range-text">${escapeHtml(l.timeRange)}</span>
-        </div>
-        <div class="card-main-row">
-          <div class="subject-group">
-            <span class="subject-code" style="color: ${l.isCancelled ? '#ba1a1a' : 'inherit'};">${escapeHtml(l.subject)}</span>
-            <span class="subject-long">${escapeHtml(l.subjectLong)}</span>
-          </div>
-          <div class="badges-group">${badgesHtml}</div>
-        </div>
-        <div class="card-bottom-row">
-          <div class="info-pill" title="Lehrkraft">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <span>${teacherDisplay}</span>
-          </div>
-          <div class="info-pill" title="Raum">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            <span>${roomDisplay}</span>
-          </div>
-          <div class="info-pill" title="Klasse">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
-            <span>${escapeHtml(l.class || state.selectedClassName)}</span>
-          </div>
-        </div>
-        ${noticeHtml}
-      </div>
-    `;
-
-    card.addEventListener('click', () => openDetailSheet(l));
-    return card;
-  }
-
-  // Week View
-  function renderWeekView() {
-    el.emptyState.style.display = 'none';
-    el.liveTimelineMarker.style.display = 'none';
-    el.weekGridHeader.innerHTML = '';
-    el.weekGridBody.innerHTML = '';
-
-    if (!state.lessons || state.lessons.length === 0) {
-      renderEmptyState();
-      return;
-    }
-
-    const monday = getMondayOfWeek(state.currentDate);
-    const dayCols = [];
-    const today = new Date();
-
-    for (let i = 0; i < 5; i++) {
-      const dayDate = new Date(monday);
-      dayDate.setDate(monday.getDate() + i);
-      const isToday = isSameDate(dayDate, today);
-
-      const headerCell = document.createElement('div');
-      headerCell.className = `week-col-header ${isToday ? 'today' : ''}`;
-      headerCell.innerHTML = `
-        <span class="day-name">${getGermanWeekday(dayDate)}</span>
-        <span class="day-date">${dayDate.getDate()}. ${getGermanMonth(dayDate).substring(0, 3)}</span>
-        ${isToday ? '<span class="today-tag">Heute</span>' : ''}
-      `;
-      el.weekGridHeader.appendChild(headerCell);
-
-      const colBody = document.createElement('div');
-      colBody.className = `week-col-body ${isToday ? 'today-col' : ''}`;
-      dayCols.push({ dateStr: formatDateISO(dayDate), el: colBody, isToday: isToday });
-      el.weekGridBody.appendChild(colBody);
-    }
-
-    // Distribute lessons into day columns
-    dayCols.forEach(col => {
-      const daysLessons = state.lessons.filter(l => l.date === col.dateStr);
-      if (daysLessons.length === 0) {
-        const noLes = document.createElement('div');
-        noLes.className = 'week-no-lessons';
-        noLes.textContent = 'Kein Unterricht';
-        col.el.appendChild(noLes);
+    const tcWrap = document.getElementById('lessonModalTeachingContentWrap');
+    if (tcWrap) {
+      if (lesson.teachingContent) {
+        tcWrap.style.display = 'block';
+        document.getElementById('lessonModalTeachingContent').textContent = lesson.teachingContent;
       } else {
-        daysLessons.forEach(l => {
-          const card = createWeekLessonCard(l);
-          col.el.appendChild(card);
-        });
-      }
-    });
-  }
-
-  function createWeekLessonCard(l) {
-    const card = document.createElement('div');
-    card.className = `week-lesson-card ${l.isCancelled ? 'cancelled' : ''} ${l.isSubstitution ? 'substitution' : ''}`;
-    card.style.borderLeftColor = l.isCancelled ? '#ba1a1a' : l.color;
-
-    card.innerHTML = `
-      <div class="week-card-top">
-        <span class="week-subject">${escapeHtml(l.subject)}</span>
-        <span class="week-time">${escapeHtml(l.startTimeStr)}</span>
-      </div>
-      <div class="week-card-bottom">
-        <span class="week-teacher">${escapeHtml(l.teacher || '')}</span>
-        <span class="week-room">${escapeHtml(l.room || '')}</span>
-      </div>
-    `;
-
-    card.addEventListener('click', () => openDetailSheet(l));
-    return card;
-  }
-
-  // Live Time Line (Rote Markierungslinie für aktuelle Uhrzeit)
-  function updateLiveTimeline() {
-    if (state.currentView !== 'day') {
-      el.liveTimelineMarker.style.display = 'none';
-      return;
-    }
-
-    const now = new Date();
-    const isToday = isSameDate(state.currentDate, now);
-
-    if (!isToday || state.lessons.length === 0) {
-      el.liveTimelineMarker.style.display = 'none';
-      return;
-    }
-
-    const nowHours = String(now.getHours()).padStart(2, '0');
-    const nowMinutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
-
-    el.liveTimelineTimeLabel.textContent = `JETZT ${nowHours}:${nowMinutes}`;
-
-    // Find insertion position among day lesson cards
-    const cards = Array.from(el.dayLessonsList.querySelectorAll('.lesson-card'));
-    if (cards.length === 0) {
-      el.liveTimelineMarker.style.display = 'none';
-      return;
-    }
-
-    let inserted = false;
-    for (let i = 0; i < cards.length; i++) {
-      const startStr = cards[i].getAttribute('data-start');
-      if (!startStr) continue;
-      const parts = startStr.split(':');
-      const startMins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-
-      if (currentTotalMinutes < startMins) {
-        cards[i].parentNode.insertBefore(el.liveTimelineMarker, cards[i]);
-        el.liveTimelineMarker.style.display = 'flex';
-        inserted = true;
-        break;
+        tcWrap.style.display = 'none';
       }
     }
 
-    if (!inserted) {
-      // Append after last card
-      el.dayLessonsList.appendChild(el.liveTimelineMarker);
-      el.liveTimelineMarker.style.display = 'flex';
+    const hwWrap = document.getElementById('lessonModalHomeworkWrap');
+    if (hwWrap) {
+      if (lesson.homeworks && lesson.homeworks.length > 0) {
+        hwWrap.style.display = 'block';
+        document.getElementById('lessonModalHomework').textContent = lesson.homeworks.join('\n');
+      } else {
+        hwWrap.style.display = 'none';
+      }
+    }
+
+    const notesWrap = document.getElementById('lessonModalNotesWrap');
+    if (notesWrap) {
+      if (lesson.notes || lesson.substText) {
+        notesWrap.style.display = 'block';
+        document.getElementById('lessonModalNotes').textContent = lesson.notes || lesson.substText;
+      } else {
+        notesWrap.style.display = 'none';
+      }
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeLessonDetailModal() {
+    const modal = document.getElementById('lessonDetailBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  // ==================== DATE & LIVE MARKER ====================
+  function updateDateDisplay() {
+    const label = document.getElementById('dateNavLabel');
+    if (label) {
+      if (state.timetableMode === 'day') {
+        label.textContent = formatGermanDate(state.currentDate);
+      } else {
+        // Week range
+        const d = new Date(state.currentDate);
+        const dayOfWeek = d.getDay();
+        const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const mon = new Date(d.setDate(diff));
+        const fri = new Date(mon);
+        fri.setDate(mon.getDate() + 4);
+        label.textContent = `${mon.getDate()}.${mon.getMonth() + 1}. - ${fri.getDate()}.${fri.getMonth() + 1}.${fri.getFullYear()}`;
+      }
     }
   }
 
-  // Lesson Detail Sheet
-  function openDetailSheet(l) {
-    el.sheetSubjectBadge.textContent = l.subject ? l.subject.substring(0, 3) : 'U';
-    el.sheetSubjectBadge.style.backgroundColor = l.isCancelled ? '#feeceb' : l.color;
-    el.sheetSubjectBadge.style.color = l.isCancelled ? '#ba1a1a' : l.textColor;
-
-    el.sheetSubjectTitle.textContent = l.subjectLong || l.subject;
-    el.sheetTimeTitle.textContent = `${l.timeRange} · ${l.period}`;
-
-    // Status Badges
-    el.sheetStatusRow.innerHTML = '';
-    if (l.isCancelled) {
-      el.sheetStatusRow.innerHTML += `<span class="badge-tag badge-cancel">Entfall</span>`;
-    } else if (l.isSubstitution) {
-      el.sheetStatusRow.innerHTML += `<span class="badge-tag badge-subst">Vertretung</span>`;
-    } else {
-      el.sheetStatusRow.innerHTML += `<span class="badge-tag" style="background:var(--surface-container);color:var(--text-secondary);">Regulär</span>`;
-    }
-    if (l.isRoomChange && !l.isCancelled) {
-      el.sheetStatusRow.innerHTML += `<span class="badge-tag badge-room">Raumänderung</span>`;
-    }
-
-    // Teacher
-    let tText = l.teacherLong ? `${l.teacherLong} (${l.teacher})` : (l.teacher || '-');
-    if (l.originalTeacher && l.originalTeacher !== l.teacher) {
-      tText = `Vertretung für ${l.originalTeacher}: ${tText}`;
-    }
-    el.sheetTeacherVal.textContent = tText;
-
-    // Room
-    let rText = l.roomLong ? `${l.roomLong} (${l.room})` : (l.room || '-');
-    if (l.originalRoom && l.originalRoom !== l.room) {
-      rText = `Statt Raum ${l.originalRoom}: ${rText}`;
-    }
-    el.sheetRoomVal.textContent = rText;
-
-    // Class
-    el.sheetClassVal.textContent = l.class || state.selectedClassName || '-';
-
-    // Date
-    el.sheetDateTimeVal.textContent = `${l.dayOfWeek}, ${l.date} (${l.timeRange})`;
-
-    // Teaching Content
-    if (l.teachingContent) {
-      el.sheetTeachingContentBox.textContent = l.teachingContent;
-      el.sheetTeachingContentSection.style.display = 'block';
-    } else {
-      el.sheetTeachingContentSection.style.display = 'none';
-    }
-
-    // Homework
-    if (l.homeworks && l.homeworks.length > 0) {
-      el.sheetHomeworkBox.innerHTML = l.homeworks.map(h => `<p>• ${escapeHtml(h)}</p>`).join('');
-      el.sheetHomeworkSection.style.display = 'block';
-    } else {
-      el.sheetHomeworkSection.style.display = 'none';
-    }
-
-    // Notes / Substitution Text
-    if (l.notes || l.substText) {
-      const combined = [l.substText, l.notes].filter(Boolean).join('\n\n');
-      el.sheetNotesBox.textContent = combined;
-      el.sheetNotesSection.style.display = 'block';
-    } else {
-      el.sheetNotesSection.style.display = 'none';
-    }
-
-    el.sheetBackdrop.classList.add('open');
-    el.lessonDetailSheet.classList.add('open');
-  }
-
-  function closeDetailSheet() {
-    el.sheetBackdrop.classList.remove('open');
-    el.lessonDetailSheet.classList.remove('open');
-  }
-
-  // Date Navigation
-  function stepDate(direction) {
+  function navigateDate(direction) {
     const d = new Date(state.currentDate);
-    if (state.currentView === 'day') {
-      d.setDate(d.getDate() + direction);
-      if (d.getDay() === 6) {
-        d.setDate(d.getDate() + (direction > 0 ? 2 : -1));
-      } else if (d.getDay() === 0) {
-        d.setDate(d.getDate() + (direction > 0 ? 1 : -2));
-      }
-    } else {
-      d.setDate(d.getDate() + (direction * 7));
-    }
+    const amount = state.timetableMode === 'week' ? 7 : 1;
+    d.setDate(d.getDate() + (direction * amount));
     state.currentDate = d;
     updateDateDisplay();
-    loadTimetable();
+
+    if (state.currentView === 'own-timetable') {
+      loadOwnTimetable();
+    } else if (state.currentView === 'other-timetables') {
+      loadResourceTimetable();
+    }
   }
 
-  function updateDateDisplay() {
-    const d = state.currentDate;
+  function jumpToToday() {
+    state.currentDate = new Date();
+    updateDateDisplay();
+
+    if (state.currentView === 'own-timetable') {
+      loadOwnTimetable();
+    } else if (state.currentView === 'other-timetables') {
+      loadResourceTimetable();
+    }
+  }
+
+  function setTimetableMode(mode) {
+    state.timetableMode = mode;
+    document.getElementById('segViewDay')?.classList.toggle('active', mode === 'day');
+    document.getElementById('segViewWeek')?.classList.toggle('active', mode === 'week');
+    updateDateDisplay();
+
+    if (state.currentView === 'own-timetable') {
+      loadOwnTimetable();
+    } else if (state.currentView === 'other-timetables') {
+      loadResourceTimetable();
+    }
+  }
+
+  function updateLiveTimeMarker() {
+    const marker = document.getElementById('liveTimelineMarker');
+    if (!marker) return;
+
+    const isToday = formatDateISO(state.currentDate) === formatDateISO(new Date());
+    if (!isToday || state.timetableMode !== 'day') {
+      marker.style.display = 'none';
+      return;
+    }
+
     const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
 
-    if (state.currentView === 'day') {
-      const weekday = getGermanWeekday(d);
-      const day = d.getDate();
-      const month = getGermanMonth(d);
-      const year = d.getFullYear();
+    // Start 07:30 to 16:30
+    const startMin = 7 * 60 + 30; // 450
+    const endMin = 16 * 60 + 30;  // 990
+    const currentMin = hours * 60 + minutes;
 
-      if (isSameDate(d, now)) {
-        el.dateDisplayLabel.textContent = `Heute · ${day}. ${month}`;
-      } else {
-        el.dateDisplayLabel.textContent = `${weekday}, ${day}. ${month} ${year}`;
-      }
+    if (currentMin >= startMin && currentMin <= endMin) {
+      marker.style.display = 'flex';
+      const label = document.getElementById('liveTimelineTimeLabel');
+      if (label) label.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     } else {
-      const mon = getMondayOfWeek(d);
-      const fri = getFridayOfWeek(d);
-      el.dateDisplayLabel.textContent = `${mon.getDate()}. ${getGermanMonth(mon).substring(0, 3)} - ${fri.getDate()}. ${getGermanMonth(fri).substring(0, 3)} ${fri.getFullYear()}`;
-    }
-
-    el.nativeDatePicker.value = formatDateISO(d);
-  }
-
-  function updateViewToggle() {
-    if (state.currentView === 'day') {
-      el.viewDayBtn.classList.add('active');
-      el.viewWeekBtn.classList.remove('active');
-    } else {
-      el.viewDayBtn.classList.remove('active');
-      el.viewWeekBtn.classList.add('active');
+      marker.style.display = 'none';
     }
   }
 
-  // Settings Modal Handlers
-  function openSettings() {
-    el.settingsStatusMsg.style.display = 'none';
-    el.schoolResultsList.innerHTML = '';
-    renderSettingsProfileCards();
-    el.settingsModalBackdrop.classList.add('open');
-    el.profileDropdownWrapper.classList.remove('open');
+  // ==================== THEME & EVENT LISTENERS ====================
+  function setupTheme() {
+    const savedTheme = localStorage.getItem('untis_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
   }
 
-  function closeSettings() {
-    el.settingsModalBackdrop.classList.remove('open');
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('untis_theme', next);
+    showToast(`Farbschema geändert zu: ${next === 'dark' ? 'Dunkel' : 'Hell'}`);
   }
 
-  async function handleSaveSettings(e) {
-    e.preventDefault();
-    el.saveSettingsBtn.disabled = true;
-    el.saveSettingsBtn.textContent = 'Prüfe Verbindung...';
-    el.settingsStatusMsg.style.display = 'none';
-
-    const payload = {
-      name: el.cfgProfileName.value.trim() || el.cfgSchool.value.trim(),
-      school: el.cfgSchool.value.trim(),
-      server: el.cfgServer.value.trim(),
-      username: el.cfgUsername.value.trim(),
-      password: el.cfgPassword.value,
-      setActive: true
-    };
-
-    try {
-      const res = await authFetch('/api/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        el.settingsStatusMsg.textContent = data.message || 'Einstellungen gespeichert!';
-        el.settingsStatusMsg.className = 'status-message success';
-        el.settingsStatusMsg.style.display = 'block';
-
-        // Save theme and default view
-        authFetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            theme: el.cfgTheme.value,
-            default_view: el.cfgDefaultView.value
-          })
-        });
-
-        applyTheme(el.cfgTheme.value);
-
-        setTimeout(async () => {
-          closeSettings();
-          await loadStatus();
-          await loadProfiles();
-          await loadClasses();
-          await loadTimetable();
-          showToast('Erfolgreich gespeichert!');
-        }, 600);
-      } else {
-        el.settingsStatusMsg.textContent = data.message || 'Fehler beim Verbinden mit WebUntis';
-        el.settingsStatusMsg.className = 'status-message error';
-        el.settingsStatusMsg.style.display = 'block';
-      }
-    } catch (err) {
-      el.settingsStatusMsg.textContent = 'Netzwerkfehler: ' + err.message;
-      el.settingsStatusMsg.className = 'status-message error';
-      el.settingsStatusMsg.style.display = 'block';
-    } finally {
-      el.saveSettingsBtn.disabled = false;
-      el.saveSettingsBtn.textContent = 'Verbindung testen & Speichern';
-    }
-  }
-
-  async function handleClearCache() {
-    if (!confirm('Möchten Sie den lokalen Stundenplan-Cache in SQLite leeren?')) return;
-    try {
-      const res = await authFetch('/api/refresh', { method: 'POST' });
-      if (res.ok) {
-        showToast('Cache geleert');
-        await loadClasses();
-        await loadTimetable(true);
-      }
-    } catch (e) {
-      showToast('Fehler beim Leeren des Caches');
-    }
-  }
-
-  // Setup All Event Listeners
   function setupEventListeners() {
-    // Class Dropdown Toggle
-    el.classSelectorBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      el.profileDropdownWrapper.classList.remove('open');
-      const isOpen = el.classDropdownWrapper.classList.toggle('open');
-      if (isOpen) {
-        setTimeout(() => el.classSearchInput.focus(), 100);
-      }
+    // Nav Buttons
+    document.getElementById('navDashboard')?.addEventListener('click', () => switchView('dashboard'));
+    document.getElementById('navOwnTimetable')?.addEventListener('click', () => switchView('own-timetable'));
+    document.getElementById('navOtherTimetables')?.addEventListener('click', () => switchView('other-timetables'));
+    document.getElementById('navHomework')?.addEventListener('click', () => switchView('homework'));
+    document.getElementById('navAbsences')?.addEventListener('click', () => switchView('absences'));
+    document.getElementById('navMessages')?.addEventListener('click', () => switchView('messages'));
+    document.getElementById('navProfiles')?.addEventListener('click', () => switchView('profiles'));
+
+    // Sidebar footer
+    document.getElementById('sidebarThemeBtn')?.addEventListener('click', toggleTheme);
+    document.getElementById('sidebarRefreshBtn')?.addEventListener('click', async () => {
+      showLoading(true, 'Synchronisiere mit WebUntis...');
+      await apiFetch('/api/refresh', { method: 'POST' });
+      showLoading(false);
+      showToast('Cache geleert und Daten synchronisiert!');
+      switchView(state.currentView);
     });
 
-    // Profile Dropdown Toggle
-    el.profileBadgeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      el.classDropdownWrapper.classList.remove('open');
-      el.profileDropdownWrapper.classList.toggle('open');
-    });
+    // Date navigation
+    document.getElementById('dateNavPrev')?.addEventListener('click', () => navigateDate(-1));
+    document.getElementById('dateNavNext')?.addEventListener('click', () => navigateDate(1));
+    document.getElementById('dateNavToday')?.addEventListener('click', jumpToToday);
+    document.getElementById('ownJumpToNextBtn')?.addEventListener('click', () => navigateDate(1));
 
-    document.addEventListener('click', (e) => {
-      if (!el.classDropdownWrapper.contains(e.target)) {
-        el.classDropdownWrapper.classList.remove('open');
-      }
-      if (!el.profileDropdownWrapper.contains(e.target)) {
-        el.profileDropdownWrapper.classList.remove('open');
-      }
-    });
-
-    // Add New School from Quick Switcher
-    el.addNewProfileQuickBtn.addEventListener('click', () => {
-      el.profileDropdownWrapper.classList.remove('open');
-      showOnboardingScreen(true);
-    });
-
-    // Add New School from Settings Modal
-    el.addNewProfileModalBtn.addEventListener('click', () => {
-      closeSettings();
-      showOnboardingScreen(true);
-    });
-
-    // Class Search Input
-    el.classSearchInput.addEventListener('input', (e) => {
-      state.classSearchTerm = e.target.value;
-      el.clearClassSearchBtn.style.display = state.classSearchTerm ? 'block' : 'none';
-      filterClasses();
-    });
-
-    el.clearClassSearchBtn.addEventListener('click', () => {
-      el.classSearchInput.value = '';
-      state.classSearchTerm = '';
-      el.clearClassSearchBtn.style.display = 'none';
-      filterClasses();
-      el.classSearchInput.focus();
-    });
-
-    // Onboarding Live Search
-    el.onboardingSearchInput.addEventListener('input', (e) => {
-      handleOnboardingSearch(e.target.value);
-    });
-
-    el.onboardingChangeSchoolBtn.addEventListener('click', () => {
-      el.onboardingCredentialsForm.style.display = 'none';
-      el.onboardingSearchInput.focus();
-    });
-
-    el.onboardingLoginFormBox.addEventListener('submit', handleOnboardingSubmit);
-
-    el.toggleOnboardingPwdBtn.addEventListener('click', () => {
-      const isPwd = el.onboardingPasswordInput.type === 'password';
-      el.onboardingPasswordInput.type = isPwd ? 'text' : 'password';
-    });
-
-    // Date Navigation
-    el.prevDateBtn.addEventListener('click', () => stepDate(-1));
-    el.nextDateBtn.addEventListener('click', () => stepDate(1));
-
-    el.todayBtn.addEventListener('click', () => {
-      state.currentDate = new Date();
-      updateDateDisplay();
-      loadTimetable();
-    });
-
-    el.dateDisplayBtn.addEventListener('click', () => {
-      el.nativeDatePicker.showPicker ? el.nativeDatePicker.showPicker() : el.nativeDatePicker.focus();
-    });
-
-    el.nativeDatePicker.addEventListener('change', (e) => {
-      if (e.target.value) {
-        state.currentDate = new Date(e.target.value + 'T12:00:00');
-        updateDateDisplay();
-        loadTimetable();
-      }
-    });
-
-    // View Toggle
-    el.viewDayBtn.addEventListener('click', () => {
-      state.currentView = 'day';
-      updateViewToggle();
-      updateDateDisplay();
-      renderCurrentView();
-      updateLiveTimeline();
-    });
-
-    el.viewWeekBtn.addEventListener('click', () => {
-      state.currentView = 'week';
-      updateViewToggle();
-      updateDateDisplay();
-      loadTimetable();
-    });
-
-    // Refresh Button (spins smoothly)
-    el.refreshBtn.addEventListener('click', async () => {
-      el.refreshBtn.style.transform = 'rotate(360deg)';
-      el.refreshBtn.style.transition = 'transform 0.5s ease';
-      await loadTimetable(true);
-      setTimeout(() => {
-        el.refreshBtn.style.transform = '';
-        el.refreshBtn.style.transition = '';
-      }, 500);
-      showToast('Stundenplan aktualisiert');
-    });
-
-    // Theme Toggle
-    el.themeToggleBtn.addEventListener('click', () => {
-      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
-      applyTheme(nextTheme);
-      authFetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: nextTheme })
+    // Date picker button
+    const dateBtn = document.getElementById('datePickerBtn');
+    const nativeDate = document.getElementById('nativeDateInput');
+    if (dateBtn && nativeDate) {
+      dateBtn.addEventListener('click', () => {
+        nativeDate.showPicker ? nativeDate.showPicker() : nativeDate.focus();
       });
-      showToast(nextTheme === 'dark' ? 'Dark Mode aktiviert' : 'Light Mode aktiviert');
+      nativeDate.addEventListener('change', (e) => {
+        if (e.target.value) {
+          state.currentDate = new Date(e.target.value);
+          updateDateDisplay();
+          if (state.currentView === 'own-timetable') loadOwnTimetable();
+          else if (state.currentView === 'other-timetables') loadResourceTimetable();
+        }
+      });
+    }
+
+    // Segmented toggle
+    document.getElementById('segViewDay')?.addEventListener('click', () => setTimetableMode('day'));
+    document.getElementById('segViewWeek')?.addEventListener('click', () => setTimetableMode('week'));
+
+    // Search input in Other Timetables
+    document.getElementById('resourceSearchInput')?.addEventListener('input', () => {
+      renderResourceItems(
+        state.otherTab === 'CLASS' ? state.classes : (state.otherTab === 'TEACHER' ? state.teachers : state.rooms),
+        state.otherTab
+      );
     });
 
-    // Settings Modal
-    el.settingsBtn.addEventListener('click', openSettings);
-    el.closeSettingsBtn.addEventListener('click', closeSettings);
-    el.settingsModalBackdrop.addEventListener('click', (e) => {
-      if (e.target === el.settingsModalBackdrop) closeSettings();
+    // Homework modal
+    document.getElementById('formNewHomework')?.addEventListener('submit', handleCreateHomework);
+
+    // Absence modal
+    document.getElementById('formNewAbsence')?.addEventListener('submit', handleCreateAbsence);
+
+    // School search
+    document.getElementById('btnSearchSchool')?.addEventListener('click', handleSchoolSearch);
+    document.getElementById('addSchoolSearchInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSchoolSearch();
     });
-    el.settingsForm.addEventListener('submit', handleSaveSettings);
-    el.clearCacheBtn.addEventListener('click', handleClearCache);
+    document.getElementById('addSchoolForm')?.addEventListener('submit', handleSaveNewSchool);
 
-    // School Search in Settings
-    el.searchSchoolBtn.addEventListener('click', async () => {
-      const q = el.schoolSearchInput.value.trim();
-      if (!q) return;
-      el.searchSchoolBtn.disabled = true;
-      try {
-        const res = await authFetch(`/api/schools/search?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
-        el.schoolResultsList.innerHTML = '';
-        (data.schools || []).forEach(s => {
-          const item = document.createElement('div');
-          item.className = 'school-result-item';
-          item.innerHTML = `
-            <div class="school-result-name">${escapeHtml(s.displayName)}</div>
-            <div class="school-result-meta">${escapeHtml(s.address || s.serverUrl || '')} · Kürzel: ${escapeHtml(s.loginName)}</div>
-          `;
-          item.addEventListener('click', () => {
-            el.cfgSchool.value = s.loginName;
-            el.cfgServer.value = s.serverUrl || s.server;
-            el.cfgProfileName.value = s.displayName;
-            el.schoolResultsList.innerHTML = '';
-            showToast(`Schule '${s.displayName}' übernommen`);
-          });
-          el.schoolResultsList.appendChild(item);
-        });
-      } finally {
-        el.searchSchoolBtn.disabled = false;
-      }
-    });
+    // Global keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    // Toggle Password in Settings
-    el.togglePasswordBtn.addEventListener('click', () => {
-      const isPwd = el.cfgPassword.type === 'password';
-      el.cfgPassword.type = isPwd ? 'text' : 'password';
-    });
-
-    // Detail Sheet Close
-    el.sheetCloseBtn.addEventListener('click', closeDetailSheet);
-    el.sheetBackdrop.addEventListener('click', closeDetailSheet);
-
-    // Keyboard Shortcuts (Arrow keys, T, D, W, Esc)
-    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        closeDetailSheet();
-        closeSettings();
-        el.classDropdownWrapper.classList.remove('open');
-        el.profileDropdownWrapper.classList.remove('open');
-        if (state.onboardingSelectedSchool && !state.needsOnboarding) {
-          showOnboardingScreen(false);
-        }
-      } else if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
-        if (e.key === 'ArrowLeft') {
-          stepDate(-1);
-        } else if (e.key === 'ArrowRight') {
-          stepDate(1);
-        } else if (e.key === 't' || e.key === 'T') {
-          state.currentDate = new Date();
-          updateDateDisplay();
-          loadTimetable();
-        } else if (e.key === 'd' || e.key === 'D') {
-          state.currentView = 'day';
-          updateViewToggle();
-          updateDateDisplay();
-          renderCurrentView();
-          updateLiveTimeline();
-        } else if (e.key === 'w' || e.key === 'W') {
-          state.currentView = 'week';
-          updateViewToggle();
-          updateDateDisplay();
-          loadTimetable();
-        }
+        closeNewHomeworkModal();
+        closeNewAbsenceModal();
+        closeMessageDetailModal();
+        closeLessonDetailModal();
+      } else if (e.key === 'ArrowLeft') {
+        navigateDate(-1);
+      } else if (e.key === 'ArrowRight') {
+        navigateDate(1);
+      } else if (e.key.toLowerCase() === 't') {
+        jumpToToday();
+      } else if (e.key.toLowerCase() === 'd') {
+        setTimetableMode('day');
+      } else if (e.key.toLowerCase() === 'w') {
+        setTimetableMode('week');
       }
     });
+
+    // Live marker tick
+    setInterval(updateLiveTimeMarker, 30000);
   }
 
-  function escapeHtml(str) {
+  // Utilities
+  function escapeHTML(str) {
     if (!str) return '';
     return String(str)
       .replace(/&/g, '&amp;')
@@ -1347,10 +1411,42 @@
       .replace(/'/g, '&#039;');
   }
 
-  // Launch on DOM ready
+  function formatDateTime(dtStr) {
+    if (!dtStr) return '';
+    try {
+      const d = new Date(dtStr);
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    } catch {
+      return dtStr;
+    }
+  }
+
+  // Expose global methods for inline HTML onclick handlers
+  window.switchView = switchView;
+  window.switchResourceTab = switchResourceTab;
+  window.selectResourceItem = selectResourceItem;
+  window.filterHomework = filterHomework;
+  window.toggleHomeworkComplete = toggleHomeworkComplete;
+  window.deleteHomeworkItem = deleteHomeworkItem;
+  window.openNewHomeworkModal = openNewHomeworkModal;
+  window.closeNewHomeworkModal = closeNewHomeworkModal;
+  window.deleteAbsenceItem = deleteAbsenceItem;
+  window.openNewAbsenceModal = openNewAbsenceModal;
+  window.closeNewAbsenceModal = closeNewAbsenceModal;
+  window.loadMessages = loadMessages;
+  window.openMessageDetailModal = openMessageDetailModal;
+  window.closeMessageDetailModal = closeMessageDetailModal;
+  window.openLessonDetailModal = openLessonDetailModal;
+  window.closeLessonDetailModal = closeLessonDetailModal;
+  window.switchActiveProfile = switchActiveProfile;
+  window.deleteProfile = deleteProfile;
+  window.selectSearchSchool = selectSearchSchool;
+  window.cancelAddSchool = cancelAddSchool;
+
+  // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initApp);
   } else {
-    init();
+    initApp();
   }
 })();

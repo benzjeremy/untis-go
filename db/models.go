@@ -39,3 +39,28 @@ type Setting struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+// Homework models an assignment/homework in SQLite
+type Homework struct {
+	ID          string    `json:"id"`
+	ProfileID   string    `json:"profileId"`
+	Subject     string    `json:"subject"`
+	Description string    `json:"description"`
+	DueDate     string    `json:"dueDate"` // Format "YYYY-MM-DD"
+	Completed   bool      `json:"completed"`
+	CreatedAt   time.Time `json:"createdAt"`
+	Source      string    `json:"source,omitempty"` // "local" or "webuntis"
+}
+
+// Absence models a recorded absence in SQLite
+type Absence struct {
+	ID        string    `json:"id"`
+	ProfileID string    `json:"profileId"`
+	Reason    string    `json:"reason"`
+	Text      string    `json:"text"`
+	StartDate string    `json:"startDate"` // Format "YYYY-MM-DD" or "YYYY-MM-DD HH:mm"
+	EndDate   string    `json:"endDate"`   // Format "YYYY-MM-DD" or "YYYY-MM-DD HH:mm"
+	IsExcused bool      `json:"isExcused"`
+	CreatedAt time.Time `json:"createdAt"`
+	Source    string    `json:"source,omitempty"` // "local" or "webuntis"
+}

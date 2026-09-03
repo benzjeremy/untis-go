@@ -125,9 +125,32 @@ func (d *Database) createSchema() error {
 		value TEXT NOT NULL
 	);
 
+	CREATE TABLE IF NOT EXISTS homework (
+		id TEXT PRIMARY KEY,
+		profile_id TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		description TEXT NOT NULL,
+		due_date TEXT NOT NULL,
+		completed INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS absences (
+		id TEXT PRIMARY KEY,
+		profile_id TEXT NOT NULL,
+		reason TEXT NOT NULL,
+		text TEXT NOT NULL,
+		start_date TEXT NOT NULL,
+		end_date TEXT NOT NULL,
+		is_excused INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_classes_school ON classes(school);
 	CREATE INDEX IF NOT EXISTS idx_tt_cache ON timetable_cache(class_id, date);
 	CREATE INDEX IF NOT EXISTS idx_profiles_active ON profiles(is_active);
+	CREATE INDEX IF NOT EXISTS idx_homework_profile ON homework(profile_id);
+	CREATE INDEX IF NOT EXISTS idx_absences_profile ON absences(profile_id);
 	`
 
 	_, err := d.db.Exec(schema)
