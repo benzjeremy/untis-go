@@ -16,8 +16,12 @@ import (
 
 	"github.com/benzjeremy/untis-go/api"
 	"github.com/benzjeremy/untis-go/db"
+	"github.com/benzjeremy/untis-go/updater"
 	"github.com/benzjeremy/untis-go/web"
 )
+
+// AppVersion defines the current application version
+const AppVersion = "1.1.0"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -97,6 +101,8 @@ func (s *Server) Start(port int) (string, error) {
 	apiMux.HandleFunc("/api/absences", s.handleAbsences)
 	apiMux.HandleFunc("/api/settings", s.handleSettings)
 	apiMux.HandleFunc("/api/refresh", s.handleRefresh)
+	apiMux.HandleFunc("/api/updates/check", s.handleUpdateCheck)
+	apiMux.HandleFunc("/api/updates/apply", s.handleUpdateApply)
 
 	// Route dispatch with token verification for /api/
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -704,102 +710,178 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	germanWeekday := api.GermanDayName(now.Weekday())
 	dateFormatted := fmt.Sprintf("%s, %d. %s %d", germanWeekday, now.Day(), germanMonthName(now.Month()), now.Year())
 
-	var todayLessons []api.EnrichedLesson
-	var nextLesson *api.EnrichedLesson
+	var (
+		todayLessons        []api.EnrichedLesson
+		nextLesson          *api.EnrichedLesson
+		isUpcomingSchoolDay bool
+		upcomingDayLabel    string
+		openHomework        []db.Homework
+		openHwCount         int
+		recentMessages      []api.Message
+		messagesCount       int
+		totalAbs            int
+		excAbs              int
+		unexcAbs            int
+		mu                  sync.Mutex
+		wg                  sync.WaitGroup
+	)
 
-	if client != nil {
-		// Use own student timetable
-		if lessons, err := client.GetOwnTimetable(now, now); err == nil && len(lessons) > 0 {
-			todayLessons = lessons
+	// 1. Timetable (Concurrent)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if client == nil {
+			return
+		}
+		var lessons []api.EnrichedLesson
+		if l, err := client.GetOwnTimetable(now, now); err == nil && len(l) > 0 {
+			lessons = l
 		} else {
-			// Try selected class
 			classID := s.database.GetIntSetting("selected_class_id", 0)
 			if classID != 0 {
 				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
-					todayLessons = clLessons
+					lessons = clLessons
 				}
 			}
 		}
 
 		nowTimeStr := now.Format("15:04")
-		for _, l := range todayLessons {
+		var nextL *api.EnrichedLesson
+		for _, l := range lessons {
 			if !l.IsCancelled && l.EndTimeStr >= nowTimeStr {
-				nextLesson = &l
+				nextL = &l
 				break
 			}
 		}
-	}
 
-	var openHomework []db.Homework
-	var openHwCount int
-	if localHw, err := s.database.GetHomeworks(activeProf.ID); err == nil {
-		for _, h := range localHw {
-			if !h.Completed {
-				openHwCount++
-				if len(openHomework) < 5 {
-					openHomework = append(openHomework, h)
+		var isNextDay bool
+		var nextLabel string
+		// If today has no lessons or after 17:00 when school is done, determine next school day
+		if len(lessons) == 0 || (now.Hour() >= 17 && nextL == nil) {
+			nextDay := now.AddDate(0, 0, 1)
+			for nextDay.Weekday() == time.Saturday || nextDay.Weekday() == time.Sunday {
+				nextDay = nextDay.AddDate(0, 0, 1)
+			}
+			if nl, err := client.GetOwnTimetable(nextDay, nextDay); err == nil && len(nl) > 0 {
+				lessons = nl
+				isNextDay = true
+				nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
+				if nextL == nil && len(nl) > 0 {
+					nextL = &nl[0]
 				}
 			}
 		}
-	}
 
-	if client != nil {
-		if wuHw, err := client.GetHomeworks(now.AddDate(0, 0, -7), now.AddDate(0, 0, 14)); err == nil {
-			for _, h := range wuHw {
+		mu.Lock()
+		todayLessons = lessons
+		nextLesson = nextL
+		isUpcomingSchoolDay = isNextDay
+		upcomingDayLabel = nextLabel
+		mu.Unlock()
+	}()
+
+	// 2. Homework (Concurrent)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var hwList []db.Homework
+		var hwCount int
+		if localHw, err := s.database.GetHomeworks(activeProf.ID); err == nil {
+			for _, h := range localHw {
 				if !h.Completed {
-					openHwCount++
-					if len(openHomework) < 5 {
-						openHomework = append(openHomework, db.Homework{
-							ID:          fmt.Sprintf("wu_%d", h.ID),
-							ProfileID:   activeProf.ID,
-							Subject:     h.Subject,
-							Description: h.Text,
-							DueDate:     h.DueDateStr,
-							Completed:   h.Completed,
-							Source:      "webuntis",
-						})
+					hwCount++
+					if len(hwList) < 5 {
+						hwList = append(hwList, h)
 					}
 				}
 			}
 		}
-	}
+		if client != nil {
+			if wuHw, err := client.GetHomeworks(now.AddDate(0, 0, -7), now.AddDate(0, 0, 14)); err == nil {
+				for _, h := range wuHw {
+					if !h.Completed {
+						hwCount++
+						if len(hwList) < 5 {
+							hwList = append(hwList, db.Homework{
+								ID:          fmt.Sprintf("wu_%d", h.ID),
+								ProfileID:   activeProf.ID,
+								Subject:     h.Subject,
+								Description: h.Text,
+								DueDate:     h.DueDateStr,
+								Completed:   h.Completed,
+								Source:      "webuntis",
+							})
+						}
+					}
+				}
+			}
+		}
+		mu.Lock()
+		openHomework = hwList
+		openHwCount = hwCount
+		mu.Unlock()
+	}()
 
-	var recentMessages []api.Message
-	var messagesCount int
-	if client != nil {
+	// 3. Messages (Concurrent)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if client == nil {
+			return
+		}
 		if msgs, err := client.GetMessages(); err == nil {
+			mu.Lock()
 			messagesCount = len(msgs)
 			if len(msgs) > 5 {
 				recentMessages = msgs[:5]
 			} else {
 				recentMessages = msgs
 			}
+			mu.Unlock()
 		}
-	}
+	}()
 
-	var totalAbs, excAbs, unexcAbs int
-	if localAbs, err := s.database.GetAbsences(activeProf.ID); err == nil {
-		totalAbs += len(localAbs)
-		for _, a := range localAbs {
-			if a.IsExcused {
-				excAbs++
-			} else {
-				unexcAbs++
-			}
-		}
-	}
-	if client != nil {
-		if wuAbs, err := client.GetAbsences(now.AddDate(0, -6, 0), now.AddDate(0, 6, 0)); err == nil {
-			totalAbs += len(wuAbs)
-			for _, a := range wuAbs {
+	// 4. Absences (Concurrent)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var tot, exc, unexc int
+		if localAbs, err := s.database.GetAbsences(activeProf.ID); err == nil {
+			tot += len(localAbs)
+			for _, a := range localAbs {
 				if a.IsExcused {
-					excAbs++
+					exc++
 				} else {
-					unexcAbs++
+					unexc++
 				}
 			}
 		}
-	}
+		if client != nil {
+			startYear := now.Year()
+			if now.Month() < time.August {
+				startYear--
+			}
+			schoolYearStart := time.Date(startYear, 8, 1, 0, 0, 0, 0, time.Local)
+			schoolYearEnd := time.Date(startYear+1, 7, 31, 23, 59, 59, 0, time.Local)
+			if wuAbs, err := client.GetAbsences(schoolYearStart, schoolYearEnd); err == nil {
+				tot += len(wuAbs)
+				for _, a := range wuAbs {
+					if a.IsExcused {
+						exc++
+					} else {
+						unexc++
+					}
+				}
+			}
+		}
+		mu.Lock()
+		totalAbs = tot
+		excAbs = exc
+		unexcAbs = unexc
+		mu.Unlock()
+	}()
+
+	wg.Wait()
 
 	if todayLessons == nil {
 		todayLessons = []api.EnrichedLesson{}
@@ -812,17 +894,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"needsOnboarding":   false,
-		"greeting":          greetingFull,
-		"displayName":       displayName,
-		"school":            activeProf.School,
-		"dateFormatted":     dateFormatted,
-		"todayLessons":      todayLessons,
-		"nextLesson":        nextLesson,
-		"openHomeworkCount": openHwCount,
-		"openHomework":      openHomework,
-		"messagesCount":     messagesCount,
-		"recentMessages":    recentMessages,
+		"needsOnboarding":     false,
+		"greeting":            greetingFull,
+		"displayName":         displayName,
+		"school":              activeProf.School,
+		"dateFormatted":       dateFormatted,
+		"todayLessons":        todayLessons,
+		"nextLesson":          nextLesson,
+		"isUpcomingSchoolDay": isUpcomingSchoolDay,
+		"upcomingDayLabel":    upcomingDayLabel,
+		"openHomeworkCount":   openHwCount,
+		"openHomework":        openHomework,
+		"messagesCount":       messagesCount,
+		"recentMessages":      recentMessages,
 		"absencesSummary": map[string]int{
 			"total":     totalAbs,
 			"excused":   excAbs,
@@ -872,13 +956,49 @@ func (s *Server) handleOwnTimetable(w http.ResponseWriter, r *http.Request) {
 		endDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 0, targetDate.Location())
 	}
 
+	dateKey := startDate.Format("2006-01-02")
+	cacheKey := fmt.Sprintf("own_%s_%s", view, dateKey)
+	forceRefresh := q.Get("force") == "true"
+
+	// Zero-Lag SQLite Cache Lookup (< 1ms)
+	cachedJSON, updatedAt, found, err := s.database.GetTimetableCache(-100, cacheKey)
+	if err == nil && found && !forceRefresh && cachedJSON != "" {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("X-Cache-Lookup", "HIT")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cachedJSON))
+
+		if time.Since(updatedAt) > 15*time.Minute {
+			go func() {
+				if l, err := client.GetOwnTimetable(startDate, endDate); err == nil && len(l) > 0 {
+					if b, errM := json.Marshal(l); errM == nil {
+						_ = s.database.SaveTimetableCache(-100, cacheKey, string(b))
+					}
+				}
+			}()
+		}
+		return
+	}
+
 	lessons, err := client.GetOwnTimetable(startDate, endDate)
 	if err != nil || lessons == nil {
 		if err != nil {
 			log.Printf("[OwnTimetable] Fehler: %v", err)
 		}
+		if found && cachedJSON != "" {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(cachedJSON))
+			return
+		}
 		writeJSON(w, http.StatusOK, []api.EnrichedLesson{})
 		return
+	}
+
+	if len(lessons) > 0 {
+		if b, errM := json.Marshal(lessons); errM == nil {
+			_ = s.database.SaveTimetableCache(-100, cacheKey, string(b))
+		}
 	}
 
 	writeJSON(w, http.StatusOK, lessons)
@@ -937,6 +1057,20 @@ func (s *Server) handleResourceTimetable(w http.ResponseWriter, r *http.Request)
 		endDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 0, targetDate.Location())
 	}
 
+	if resType == "ROOM" {
+		// 1. Try direct WebUntis room query
+		lessons, err := client.GetTimetableForResource("ROOM", resID, startDate, endDate, "STANDARD")
+		if err == nil && len(lessons) > 0 {
+			writeJSON(w, http.StatusOK, lessons)
+			return
+		}
+
+		// 2. Calculate room timetable from class lessons
+		roomLessons := s.computeRoomTimetable(client, resID, startDate, endDate)
+		writeJSON(w, http.StatusOK, roomLessons)
+		return
+	}
+
 	lessons, err := client.GetTimetableForResource(resType, resID, startDate, endDate, "STANDARD")
 	if err != nil || lessons == nil {
 		if err != nil {
@@ -947,6 +1081,94 @@ func (s *Server) handleResourceTimetable(w http.ResponseWriter, r *http.Request)
 	}
 
 	writeJSON(w, http.StatusOK, lessons)
+}
+
+func (s *Server) computeRoomTimetable(client *api.Client, roomID int, startDate, endDate time.Time) []api.EnrichedLesson {
+	rooms, err := client.GetRooms()
+	if err != nil || len(rooms) == 0 {
+		return []api.EnrichedLesson{}
+	}
+
+	var roomName string
+	for _, r := range rooms {
+		if r.ID == roomID {
+			roomName = r.Name
+			break
+		}
+	}
+
+	if roomName == "" {
+		return []api.EnrichedLesson{}
+	}
+
+	startStr := startDate.Format("2006-01-02")
+	endStr := endDate.Format("2006-01-02")
+
+	jsonBlobs, _ := s.database.FindCachedLessonsRange(startStr, endStr)
+	if len(jsonBlobs) < 3 {
+		classes, _ := s.database.GetClasses(client.School)
+		if len(classes) == 0 {
+			classesApi, _ := client.GetKlassen()
+			for _, ca := range classesApi {
+				classes = append(classes, db.Class{ID: ca.ID, School: client.School, Name: ca.Name})
+			}
+		}
+		limit := 8
+		if len(classes) < limit {
+			limit = len(classes)
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < limit; i++ {
+			cID := classes[i].ID
+			wg.Add(1)
+			go func(clsID int) {
+				defer wg.Done()
+				_, _ = s.fetchAndCacheTimetable(client, clsID, startDate, endDate, startStr)
+			}(cID)
+		}
+		wg.Wait()
+		jsonBlobs, _ = s.database.FindCachedLessonsRange(startStr, endStr)
+	}
+
+	type lessonKey struct {
+		Date      string
+		StartTime string
+		Subject   string
+		Class     string
+	}
+	seen := make(map[lessonKey]bool)
+	var matched []api.EnrichedLesson
+
+	for _, blob := range jsonBlobs {
+		var lessons []api.EnrichedLesson
+		if err := json.Unmarshal([]byte(blob), &lessons); err != nil {
+			continue
+		}
+		for _, l := range lessons {
+			rClean := strings.TrimSpace(l.Room)
+			if strings.EqualFold(rClean, roomName) || strings.Contains(strings.ToLower(rClean), strings.ToLower(roomName)) {
+				key := lessonKey{
+					Date:      l.Date,
+					StartTime: l.StartTimeStr,
+					Subject:   l.Subject,
+					Class:     l.Class,
+				}
+				if !seen[key] {
+					seen[key] = true
+					matched = append(matched, l)
+				}
+			}
+		}
+	}
+
+	sort.Slice(matched, func(i, j int) bool {
+		if matched[i].Date != matched[j].Date {
+			return matched[i].Date < matched[j].Date
+		}
+		return matched[i].StartTimeStr < matched[j].StartTimeStr
+	})
+
+	return matched
 }
 
 // Handler: /api/teachers
@@ -1198,18 +1420,54 @@ func (s *Server) handleAbsences(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		var combined []db.Absence
 
+		yearParam := r.URL.Query().Get("year")
+		now := time.Now()
+		startYear := now.Year()
+		if now.Month() < time.August {
+			startYear--
+		}
+		currentSchoolYear := fmt.Sprintf("%d/%d", startYear, startYear+1)
+		if yearParam == "" {
+			yearParam = currentSchoolYear
+		}
+
+		var filterStart, filterEnd string
+		if yearParam != "all" {
+			parts := strings.Split(yearParam, "/")
+			if len(parts) == 2 {
+				if sy, err := strconv.Atoi(parts[0]); err == nil {
+					filterStart = fmt.Sprintf("%04d-08-01", sy)
+					filterEnd = fmt.Sprintf("%04d-07-31", sy+1)
+				}
+			}
+		}
+
 		// 1. Local SQLite absences
 		if localAbs, err := s.database.GetAbsences(profID); err == nil {
-			combined = append(combined, localAbs...)
+			for _, a := range localAbs {
+				if filterStart != "" && (a.StartDate < filterStart || a.StartDate > filterEnd) {
+					continue
+				}
+				combined = append(combined, a)
+			}
 		}
 
 		// 2. WebUntis absences
 		if client != nil {
-			now := time.Now()
-			start := now.AddDate(0, -6, 0)
-			end := now.AddDate(0, 6, 0)
-			if wuAbs, err := client.GetAbsences(start, end); err == nil {
+			var queryStart, queryEnd time.Time
+			if filterStart != "" {
+				queryStart, _ = time.Parse("2006-01-02", filterStart)
+				queryEnd, _ = time.Parse("2006-01-02", filterEnd)
+			} else {
+				queryStart = now.AddDate(-2, 0, 0)
+				queryEnd = now.AddDate(1, 0, 0)
+			}
+
+			if wuAbs, err := client.GetAbsences(queryStart, queryEnd); err == nil {
 				for _, a := range wuAbs {
+					if filterStart != "" && (a.StartDateStr < filterStart || a.StartDateStr > filterEnd) {
+						continue
+					}
 					combined = append(combined, db.Absence{
 						ID:        fmt.Sprintf("wu_%d", a.ID),
 						ProfileID: profID,
@@ -1227,6 +1485,18 @@ func (s *Server) handleAbsences(w http.ResponseWriter, r *http.Request) {
 		sort.Slice(combined, func(i, j int) bool {
 			return combined[i].StartDate > combined[j].StartDate
 		})
+
+		w.Header().Set("X-Selected-School-Year", yearParam)
+		w.Header().Set("X-Current-School-Year", currentSchoolYear)
+
+		if r.URL.Query().Get("format") == "envelope" || r.URL.Query().Get("format") == "full" {
+			writeJSON(w, http.StatusOK, map[string]interface{}{
+				"absences":           combined,
+				"selectedSchoolYear": yearParam,
+				"currentSchoolYear":  currentSchoolYear,
+			})
+			return
+		}
 
 		writeJSON(w, http.StatusOK, combined)
 
@@ -1434,3 +1704,58 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(data)
 }
+
+// Handler: /api/updates/check
+func (s *Server) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	info, err := updater.CheckForUpdate(AppVersion)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"currentVersion": AppVersion,
+			"hasUpdate":      false,
+			"error":          err.Error(),
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, info)
+}
+
+// Handler: /api/updates/apply
+func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		DownloadURL string `json:"downloadUrl"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	downloadURL := req.DownloadURL
+	if downloadURL == "" {
+		info, err := updater.CheckForUpdate(AppVersion)
+		if err != nil || info.DownloadURL == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"success": false,
+				"message": "Keine Download-URL für dieses System gefunden",
+			})
+			return
+		}
+		downloadURL = info.DownloadURL
+	}
+
+	if err := updater.ApplyUpdate(downloadURL); err != nil {
+		log.Printf("[Update] Fehler beim Aktualisieren: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": fmt.Sprintf("Update fehlgeschlagen: %v", err),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Update erfolgreich installiert! Bitte starte die Anwendung neu.",
+	})
+}
+

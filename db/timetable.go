@@ -136,3 +136,29 @@ func (d *Database) ClearTimetableCache(classID ...int) error {
 	_, err := d.db.Exec(`DELETE FROM timetable_cache`)
 	return err
 }
+
+// FindCachedLessonsRange returns all data_json strings for the given date range across all classes
+func (d *Database) FindCachedLessonsRange(startDate, endDate string) ([]string, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	rows, err := d.db.Query(`
+		SELECT data_json 
+		FROM timetable_cache 
+		WHERE date >= ? AND date <= ?
+	`, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var blobs []string
+	for rows.Next() {
+		var j string
+		if err := rows.Scan(&j); err == nil {
+			blobs = append(blobs, j)
+		}
+	}
+	return blobs, nil
+}
+
