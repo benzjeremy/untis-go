@@ -1,4 +1,4 @@
-# 🚀 untis-go [BETA]
+# 🚀 untis-go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/benzjeremy/untis-go.svg)](https://pkg.go.dev/github.com/benzjeremy/untis-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/benzjeremy/untis-go)](https://goreportcard.com/report/github.com/benzjeremy/untis-go)
@@ -11,8 +11,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-success.svg?style=for-the-badge&logo=lock)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 
-> ⚠️ **WICHTIGER HINWEIS: BETA-VERSION**  
-> **Dies ist eine frühe Beta-Version.** Die Anwendung wird aktiv weiterentwickelt und optimiert.  
+> ⚠️ **WICHTIGER HINWEIS: Erste RELEASE-VERSION**  
+> **Dies ist eine frühe RELEASE-Version.** Die Anwendung wird aktiv weiterentwickelt und optimiert.  
 > Sollten dir **Fehler, Darstellungs-Bugs oder unerwartetes Verhalten** auffallen, erstelle bitte direkt ein Ticket unter [**GitHub Issues**](https://github.com/benzjeremy/untis-go/issues)! Feedback, Fehlerberichte und Pull Requests sind ausdrücklich erwünscht und helfen, die App zu verbessern.
 
 ---
@@ -121,7 +121,7 @@ go build -o untis-go .
 
 ## 🐛 Fehler gefunden? (Issue erstellen)
 
-Da sich `untis-go` aktuell in der **BETA-Phase** befindet, sind Fehlerberichte extrem wertvoll!  
+Da sich `untis-go` aktuell in der **Ersten RELEASE-Phase** befindet, sind Fehlerberichte extrem wertvoll!  
 Wenn etwas nicht wie erwartet funktioniert:
 
 1. Öffne den Tab [**Issues**](https://github.com/benzjeremy/untis-go/issues).
