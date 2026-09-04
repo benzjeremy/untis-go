@@ -22,7 +22,7 @@ func main() {
 
 	log.Println("==================================================")
 	log.Printf(" Untis Stundenplan-Anwendung (Go) v%s\n", AppVersion)
-	log.Println(" Release: PC-Desktop Remake (MIT-Lizenz)")
+	log.Println(" Release: PC-Desktop Remake (GPL-3.0 Lizenz)")
 	log.Println("==================================================")
 
 	// 1. Initialize SQLite database & encryption at ~/.local/share/untis-go/untis.db
