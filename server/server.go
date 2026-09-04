@@ -1065,10 +1065,8 @@ func (s *Server) handleHomework(w http.ResponseWriter, r *http.Request) {
 		var combined []db.Homework
 
 		// 1. Local SQLite homework
-		if profID != "" {
-			if localHw, err := s.database.GetHomeworks(profID); err == nil {
-				combined = append(combined, localHw...)
-			}
+		if localHw, err := s.database.GetHomeworks(profID); err == nil {
+			combined = append(combined, localHw...)
 		}
 
 		// 2. WebUntis homework
@@ -1201,10 +1199,8 @@ func (s *Server) handleAbsences(w http.ResponseWriter, r *http.Request) {
 		var combined []db.Absence
 
 		// 1. Local SQLite absences
-		if profID != "" {
-			if localAbs, err := s.database.GetAbsences(profID); err == nil {
-				combined = append(combined, localAbs...)
-			}
+		if localAbs, err := s.database.GetAbsences(profID); err == nil {
+			combined = append(combined, localAbs...)
 		}
 
 		// 2. WebUntis absences
