@@ -56,8 +56,8 @@ func TestDatabaseOperations(t *testing.T) {
 	p1 := &Profile{
 		ID:       "1",
 		Name:     "Test Student",
-		School:   "bk-technik-siegen",
-		Server:   "https://bk-technik-siegen.webuntis.com",
+		School:   "test-schule",
+		Server:   "https://untis.testschule.de",
 		Username: "student1",
 		Password: "supersecretpassword1",
 		IsActive: true,
@@ -70,8 +70,8 @@ func TestDatabaseOperations(t *testing.T) {
 	p2 := &Profile{
 		ID:       "2",
 		Name:     "Test Teacher",
-		School:   "bk-technik-siegen",
-		Server:   "https://bk-technik-siegen.webuntis.com",
+		School:   "test-schule",
+		Server:   "https://untis.testschule.de",
 		Username: "teacher1",
 		Password: "supersecretpassword2",
 		IsActive: false,

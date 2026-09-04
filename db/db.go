@@ -66,9 +66,11 @@ func InitDB(customPath ...string) (*Database, error) {
 		return nil, fmt.Errorf("failed to create database schema: %w", err)
 	}
 
-	// Automatically run legacy migration if profiles table is empty
-	if err := db.checkAndMigrate(); err != nil {
-		log.Printf("[DB Migration] Hinweis bei Migration: %v", err)
+	// Automatically run legacy migration only for default standard database (never in tests with customPath)
+	if len(customPath) == 0 {
+		if err := db.checkAndMigrate(); err != nil {
+			log.Printf("[DB Migration] Hinweis bei Migration: %v", err)
+		}
 	}
 
 	return db, nil
