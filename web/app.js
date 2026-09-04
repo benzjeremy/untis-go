@@ -1461,12 +1461,22 @@
     const password = document.getElementById('newPassword').value;
     const profileName = document.getElementById('newProfileName').value.trim();
 
+    let serverHost = selectedSearchSchool.server || selectedSearchSchool.serverUrl || '';
+    if (serverHost.startsWith('http://') || serverHost.startsWith('https://')) {
+      try {
+        const u = new URL(serverHost);
+        serverHost = u.origin;
+      } catch (err) {}
+    } else if (serverHost) {
+      serverHost = 'https://' + serverHost.split('/')[0];
+    }
+
     showLoading(true, 'Verbinde mit WebUntis...');
     const res = await apiFetch('/api/profiles', {
       method: 'POST',
       body: JSON.stringify({
         school: selectedSearchSchool.loginName || selectedSearchSchool.displayName,
-        server: selectedSearchSchool.serverUrl || selectedSearchSchool.server,
+        server: serverHost,
         name: profileName || selectedSearchSchool.displayName,
         username,
         password,
@@ -1652,8 +1662,8 @@
     const progWrap = document.getElementById('updateProgressWrap');
     const btn = document.getElementById('btnApplyUpdate');
 
-    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.3';
-    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.3';
+    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.3.1';
+    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.3.1';
     if (titleEl) titleEl.textContent = availableUpdateInfo.title || `Untis Desktop ${availableUpdateInfo.latestVersion}`;
     if (notesEl) notesEl.textContent = availableUpdateInfo.releaseNotes || 'Keine Versionshinweise verfügbar.';
 

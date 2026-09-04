@@ -21,7 +21,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.3"
+const AppVersion = "1.3.1"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -288,7 +288,7 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		req.School = strings.TrimSpace(req.School)
-		req.Server = strings.TrimSpace(req.Server)
+		req.Server = api.NormalizeServerURL(req.Server)
 		req.Username = strings.TrimSpace(req.Username)
 
 		if req.School == "" || req.Server == "" {

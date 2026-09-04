@@ -155,6 +155,27 @@ type Client struct {
 	detailCache  map[string]map[string]interface{}
 }
 
+// NormalizeServerURL cleans and extracts the base origin (e.g. "https://bk-technik-siegen.webuntis.com")
+// stripping any subpaths like /WebUntis/ or query parameters like ?school=...
+func NormalizeServerURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return strings.TrimRight(raw, "/")
+	}
+	scheme := u.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, u.Host)
+}
+
 // NewClient initializes a real WebUntis client
 func NewClient(server, school, username, password, authType string) *Client {
 	jar, _ := cookiejar.New(nil)
@@ -163,11 +184,7 @@ func NewClient(server, school, username, password, authType string) *Client {
 		Timeout: 20 * time.Second,
 	}
 
-	cleanServer := strings.TrimSpace(server)
-	if !strings.HasPrefix(cleanServer, "http://") && !strings.HasPrefix(cleanServer, "https://") {
-		cleanServer = "https://" + cleanServer
-	}
-	cleanServer = strings.TrimSuffix(cleanServer, "/")
+	cleanServer := NormalizeServerURL(server)
 
 	if authType == "" {
 		authType = "password"
@@ -273,14 +290,25 @@ func (c *Client) Authenticate() error {
 	}
 
 	var loginResult struct {
-		State    string `json:"state"`
-		SwitchUI bool   `json:"switchUI"`
+		State      string `json:"state"`
+		LoginError string `json:"loginError"`
+		Message    string `json:"message"`
+		SwitchUI   bool   `json:"switchUI"`
 	}
 	if err := json.Unmarshal(respBytes, &loginResult); err != nil {
 		return fmt.Errorf("ungültige antwort vom server: %s", string(respBytes))
 	}
 
 	if loginResult.State != "SUCCESS" {
+		if loginResult.State == "NO_MANDANT" {
+			return fmt.Errorf("schule '%s' wurde auf dem Server nicht gefunden (NO_MANDANT)", c.School)
+		}
+		if loginResult.LoginError != "" {
+			return fmt.Errorf("anmeldung fehlgeschlagen: %s", loginResult.LoginError)
+		}
+		if loginResult.Message != "" {
+			return fmt.Errorf("anmeldung fehlgeschlagen: %s", loginResult.Message)
+		}
 		return fmt.Errorf("anmeldung fehlgeschlagen: ungültige zugangsdaten für schule '%s' und benutzer '%s'", c.School, c.Username)
 	}
 

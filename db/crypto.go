@@ -16,8 +16,8 @@ import (
 
 var (
 	ErrInvalidCiphertext = errors.New("invalid or corrupted ciphertext")
-	appCryptoSalt        = []byte("untis-go-secure-salt-v1.3.0-desktop-production")
-	legacyCryptoSalt     = []byte("untis-go-secure-salt-v1.0.0-jeremy-benz-2026")
+	appCryptoSalt        = []byte("untis-go-secure-salt-v1.3.1-desktop-production")
+	legacyCryptoSalt     = []byte("untis-go-secure-salt-v1.3.0-desktop-production")
 )
 
 // getMachineID retrieves the unique machine-id from standard Linux locations
