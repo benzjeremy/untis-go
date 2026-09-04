@@ -1116,6 +1116,7 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 	wg.Wait()
 
 	var lessons []EnrichedLesson
+	seenLessons := make(map[string]bool)
 
 	for _, d := range rawEntries.Days {
 		for _, ge := range d.GridEntries {
@@ -1324,6 +1325,13 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 				lessonID = ge.IDs[0]
 			}
 
+			// Deduplication: prevent duplicate lessons returned by WebUntis for split/combined groups
+			dedupKey := fmt.Sprintf("%s_%s_%s_%s_%s_%s", dateStr, startTimeStr, endTimeStr, subjShort, roomStr, teacherShort)
+			if seenLessons[dedupKey] {
+				continue
+			}
+			seenLessons[dedupKey] = true
+
 			lesson := EnrichedLesson{
 				ID:              lessonID,
 				Date:            dateStr,
@@ -1441,7 +1449,7 @@ func extractTime(dt string) string {
 }
 
 func computePeriod(start, end string) (string, int) {
-	// Standard timetable periods for vocational schools:
+	// School timetable periods (regular and evening classes up to 23:00):
 	switch start {
 	case "07:30":
 		if end == "09:00" {
@@ -1478,8 +1486,40 @@ func computePeriod(start, end string) (string, int) {
 		return "9. Stunde", 9
 	case "15:15":
 		return "10. Stunde", 10
+	case "16:00", "16:15":
+		if end == "17:45" {
+			return "11. - 12. Stunde", 11
+		}
+		return "11. Stunde", 11
+	case "17:00":
+		return "12. Stunde", 12
+	case "17:45", "18:00":
+		if end == "19:30" {
+			return "13. - 14. Stunde", 13
+		}
+		return "13. Stunde", 13
+	case "18:45":
+		return "14. Stunde", 14
+	case "19:30", "19:45":
+		if end == "21:15" {
+			return "15. - 16. Stunde", 15
+		}
+		return "15. Stunde", 15
+	case "20:30":
+		return "16. Stunde", 16
+	case "21:15":
+		return "17. Stunde", 17
 	default:
-		return fmt.Sprintf("%s - %s", start, end), 1
+		h, m := 0, 0
+		fmt.Sscanf(start, "%d:%d", &h, &m)
+		pIdx := 1
+		if h >= 7 {
+			totalMin := (h-7)*60 + m - 30
+			if totalMin > 0 {
+				pIdx = 1 + (totalMin / 50)
+			}
+		}
+		return fmt.Sprintf("%d. Stunde (%s - %s)", pIdx, start, end), pIdx
 	}
 }
 

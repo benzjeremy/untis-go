@@ -21,7 +21,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.1.0"
+const AppVersion = "1.2"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -100,6 +100,7 @@ func (s *Server) Start(port int) (string, error) {
 	apiMux.HandleFunc("/api/homework", s.handleHomework)
 	apiMux.HandleFunc("/api/absences", s.handleAbsences)
 	apiMux.HandleFunc("/api/settings", s.handleSettings)
+	apiMux.HandleFunc("/api/settings/aliases", s.handleSubjectAliases)
 	apiMux.HandleFunc("/api/refresh", s.handleRefresh)
 	apiMux.HandleFunc("/api/updates/check", s.handleUpdateCheck)
 	apiMux.HandleFunc("/api/updates/apply", s.handleUpdateApply)
@@ -1629,6 +1630,62 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// Handler: /api/settings/aliases
+func (s *Server) handleSubjectAliases(w http.ResponseWriter, r *http.Request) {
+	activeProf, err := s.database.GetActiveProfile()
+	if err != nil || activeProf == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Kein aktives Profil"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		aliases, err := s.database.GetSubjectAliases(activeProf.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, aliases)
+
+	case http.MethodPost:
+		var req struct {
+			Original string `json:"original"`
+			Alias    string `json:"alias"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Original) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Ungültige Eingabe"})
+			return
+		}
+		if err := s.database.SetSubjectAlias(activeProf.ID, strings.TrimSpace(req.Original), strings.TrimSpace(req.Alias)); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+
+	case http.MethodDelete:
+		orig := r.URL.Query().Get("original")
+		if orig == "" {
+			var req struct {
+				Original string `json:"original"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			orig = req.Original
+		}
+		if orig == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Original-Fach fehlt"})
+			return
+		}
+		if err := s.database.DeleteSubjectAlias(activeProf.ID, orig); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
 
 	default:

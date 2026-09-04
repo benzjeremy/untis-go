@@ -141,96 +141,52 @@
 
         <!-- ==================== VIEW 1: DASHBOARD (ÜBERSICHT) ==================== -->
         <section class="desktop-view-pane active" id="viewPaneDashboard">
-          <!-- Hero Banner -->
+          <!-- Hero Banner with Live Clock & School Period Status -->
           <div class="dashboard-hero-banner">
             <div class="hero-text-group">
               <h2 class="hero-greeting" id="dashHeroGreeting">Guten Tag, Jeremy Benz</h2>
-              <p class="hero-subtitle" id="dashHeroDate">Lade Datum...</p>
-            </div>
-            <div class="hero-school-chip" id="dashHeroSchool">BK Technik Siegen</div>
-          </div>
-
-          <!-- Highlight Metric Cards -->
-          <div class="dashboard-metric-grid">
-            <!-- Next Lesson Card -->
-            <div class="metric-card metric-next-lesson" id="dashNextLessonCard">
-              <div class="metric-card-header">
-                <span class="metric-tag">NÄCHSTE STUNDE</span>
-                <span class="metric-time-badge" id="dashNextLessonTime">--:--</span>
-              </div>
-              <div class="metric-body">
-                <div class="metric-subject-wrap">
-                  <h3 class="metric-subject" id="dashNextLessonSubject">Kein Unterricht</h3>
-                  <span class="metric-room" id="dashNextLessonRoom">-</span>
-                </div>
-                <div class="metric-subtext" id="dashNextLessonSubtext">Der Schultag ist beendet oder unterrichtsfrei.</div>
+              <div class="hero-sub-row">
+                <p class="hero-subtitle" id="dashHeroDate">Lade Datum...</p>
+                <div class="hero-school-chip" id="dashHeroSchool">BK Technik Siegen</div>
               </div>
             </div>
-
-            <!-- Open Homework Card -->
-            <div class="metric-card" id="dashHwCard" onclick="switchView('homework')">
-              <div class="metric-card-header">
-                <span class="metric-tag">HAUSAUFGABEN</span>
-                <span class="metric-count-pill" id="dashHwCount">0 offen</span>
-              </div>
-              <div class="metric-body">
-                <h3 class="metric-headline" id="dashHwHeadline">Keine offenen Aufgaben</h3>
-                <p class="metric-subtext">Klicke hier, um neue Aufgaben einzutragen oder abzuhaken.</p>
-              </div>
-            </div>
-
-            <!-- Messages Card -->
-            <div class="metric-card" id="dashMsgCard" onclick="switchView('messages')">
-              <div class="metric-card-header">
-                <span class="metric-tag">MITTEILUNGEN</span>
-                <span class="metric-count-pill secondary" id="dashMsgCount">0 Nachrichten</span>
-              </div>
-              <div class="metric-body">
-                <h3 class="metric-headline" id="dashMsgHeadline">Posteingang prüfen</h3>
-                <p class="metric-subtext">Aktuelle Durchsagen und Nachrichten der Schulleitung.</p>
-              </div>
-            </div>
-
-            <!-- Absences Summary Card -->
-            <div class="metric-card" id="dashAbsCard" onclick="switchView('absences')">
-              <div class="metric-card-header">
-                <span class="metric-tag">FEHLZEITEN</span>
-                <span class="metric-count-pill success" id="dashAbsCount">0 Fehlstunden</span>
-              </div>
-              <div class="metric-body">
-                <div class="abs-stat-row">
-                  <span class="abs-status-tag excused" id="dashAbsExcused">0 Entschuldigt</span>
-                  <span class="abs-status-tag unexcused" id="dashAbsUnexcused">0 Unentschuldigt</span>
-                </div>
-                <p class="metric-subtext">Krankmeldung oder Abwesenheit einreichen.</p>
+            <div class="dash-clock-card">
+              <div class="dash-digital-clock" id="dashDigitalClock">--:--:--</div>
+              <div class="dash-lesson-countdown" id="dashLessonCountdown">
+                <span class="dash-clock-dot"></span>
+                <span id="dashCountdownText">Lade Unterrichtsstatus...</span>
               </div>
             </div>
           </div>
 
-          <!-- 2-Column Dashboard Body -->
-          <div class="dashboard-columns">
-            <!-- Left: Today's Schedule -->
-            <div class="dash-column left">
+          <!-- Unified Clean Single HOME Layout -->
+          <div class="dashboard-home-grid">
+            <!-- Left Column: Timetable (Heute / Nächster Schultag) -->
+            <div class="dash-home-card dash-schedule-card">
               <div class="section-card-header">
                 <div class="sec-title-wrap">
                   <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-                  <h3>Heutiger Stundenplan</h3>
+                  <div>
+                    <h3 id="dashScheduleTitle">Stundenplan</h3>
+                    <span class="dash-card-subtitle" id="dashScheduleSubtitle">Heute</span>
+                  </div>
                 </div>
                 <button class="btn-text-sm" onclick="switchView('own-timetable')">Vollansicht &rarr;</button>
               </div>
               <div class="today-lessons-card-list" id="dashTodayLessonsList">
-                <div class="empty-inline-state">Lade heutige Stunden...</div>
+                <div class="empty-inline-state">Lade Stundenplan...</div>
               </div>
             </div>
 
-            <!-- Right: Homework & Messages Summary -->
-            <div class="dash-column right">
-              <!-- Homework Preview Box -->
-              <div class="dash-sub-box">
+            <!-- Right Column: Homework, Messages & Absences -->
+            <div class="dash-home-sidebar-cards">
+              <!-- Homework Box -->
+              <div class="dash-home-card">
                 <div class="section-card-header">
                   <div class="sec-title-wrap">
                     <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                    <h3>Offene Hausaufgaben</h3>
+                    <h3>Hausaufgaben</h3>
+                    <span class="metric-count-pill" id="dashHwCountBadge">0</span>
                   </div>
                   <button class="btn-action-primary-sm" onclick="openNewHomeworkModal()">+ Neu</button>
                 </div>
@@ -239,17 +195,34 @@
                 </div>
               </div>
 
-              <!-- Messages Preview Box -->
-              <div class="dash-sub-box" style="margin-top:20px;">
+              <!-- Messages Box -->
+              <div class="dash-home-card">
                 <div class="section-card-header">
                   <div class="sec-title-wrap">
                     <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-                    <h3>Schul-Mitteilungen</h3>
+                    <h3>Mitteilungen</h3>
+                    <span class="metric-count-pill secondary" id="dashMsgCountBadge">0 neu</span>
                   </div>
-                  <button class="btn-text-sm" onclick="switchView('messages')">Alle anzeigen &rarr;</button>
+                  <button class="btn-text-sm" onclick="switchView('messages')">Alle &rarr;</button>
                 </div>
                 <div class="dash-messages-list" id="dashMsgList">
                   <div class="empty-inline-state">Keine neuen Mitteilungen.</div>
+                </div>
+              </div>
+
+              <!-- Absences Quick Stat -->
+              <div class="dash-home-card dash-abs-compact-card" onclick="switchView('absences')">
+                <div class="section-card-header">
+                  <div class="sec-title-wrap">
+                    <svg viewBox="0 0 24 24" class="sec-icon" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                    <h3>Fehlzeiten</h3>
+                    <span class="metric-count-pill success" id="dashAbsCountBadge">0</span>
+                  </div>
+                  <button class="btn-text-sm">+ Melden &rarr;</button>
+                </div>
+                <div class="abs-stat-row" style="margin-top:6px;">
+                  <span class="abs-status-tag excused" id="dashAbsExcused">0 Entschuldigt</span>
+                  <span class="abs-status-tag unexcused" id="dashAbsUnexcused">0 Unentschuldigt</span>
                 </div>
               </div>
             </div>
@@ -585,58 +558,94 @@
     </div>
   </div>
 
-  <!-- Modal: Profile & Schulen verwalten (Popup aus User-Menü) -->
+  <!-- Modal: Profile & Schulen & Fachnamen verwalten -->
   <div class="desktop-modal-backdrop" id="profilesModalBackdrop" style="display:none;">
     <div class="desktop-modal-dialog profiles-modal-dialog">
       <div class="modal-title-bar">
-        <h3>Profile & Schulen verwalten</h3>
+        <h3>Einstellungen & Profile</h3>
         <button class="modal-close-icon" onclick="closeProfilesModal()">&times;</button>
       </div>
+      <div class="modal-nav-tabs">
+        <button type="button" class="modal-tab-btn active" id="profModalTabProfiles" onclick="switchSettingsModalTab('profiles')">Schulen & Konten</button>
+        <button type="button" class="modal-tab-btn" id="profModalTabAliases" onclick="switchSettingsModalTab('aliases')">Eigene Fachnamen (Aliase)</button>
+      </div>
       <div class="profiles-modal-scroll-body">
-        <!-- Saved Profiles Grid -->
-        <div class="profiles-section-wrap">
-          <h4 class="section-sub-heading">Gespeicherte Profile (SQLite verschlüsselt)</h4>
-          <div class="profiles-cards-grid" id="profilesManagementList">
-            <!-- Rendered by JS with RED TRASH CAN ICONS! -->
+        <!-- Tab 1: Profiles & School Connections -->
+        <div id="settingsProfilesTabContent">
+          <!-- Saved Profiles Grid -->
+          <div class="profiles-section-wrap">
+            <h4 class="section-sub-heading">Gespeicherte Profile (SQLite verschlüsselt)</h4>
+            <div class="profiles-cards-grid" id="profilesManagementList">
+              <!-- Rendered by JS with RED TRASH CAN ICONS! -->
+            </div>
+          </div>
+
+          <!-- Add New School Section -->
+          <div class="add-school-section" style="margin-top:16px;">
+            <h4 class="section-sub-heading">+ Neue Schule hinzufügen (WebUntis Schulsuche)</h4>
+            <div class="add-school-search-bar">
+              <svg viewBox="0 0 24 24" class="search-ic" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input type="text" id="addSchoolSearchInput" class="compact-school-input" placeholder="Name der Schule oder Stadt..." autocomplete="off">
+              <button type="button" class="btn-filled btn-sm" id="btnSearchSchool">Suchen</button>
+            </div>
+
+            <!-- School Search Results -->
+            <div class="school-search-results-list" id="addSchoolResultsList"></div>
+
+            <!-- Credentials Box for adding -->
+            <form id="addSchoolForm" class="add-school-credentials-box" style="display:none;">
+              <div class="selected-school-preview" id="selectedSchoolPreview"></div>
+
+              <div class="form-grid-row">
+                <div class="form-group">
+                  <label for="newUsername">Benutzername</label>
+                  <input type="text" id="newUsername" placeholder="WebUntis Benutzername" autocomplete="username">
+                </div>
+                <div class="form-group">
+                  <label for="newPassword">Passwort</label>
+                  <input type="password" id="newPassword" placeholder="WebUntis Passwort" autocomplete="current-password">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="newProfileName">Profilname (optional)</label>
+                <input type="text" id="newProfileName" placeholder="z.B. Meine Berufsschule">
+              </div>
+
+              <div class="form-actions-row">
+                <button type="button" class="btn-outlined" onclick="cancelAddSchool()">Abbrechen</button>
+                <button type="submit" class="btn-filled">Verbinden & Speichern</button>
+              </div>
+            </form>
           </div>
         </div>
 
-        <!-- Add New School Section -->
-        <div class="add-school-section" style="margin-top:16px;">
-          <h4 class="section-sub-heading">+ Neue Schule hinzufügen (WebUntis Schulsuche)</h4>
-          <div class="add-school-search-bar">
-            <svg viewBox="0 0 24 24" class="search-ic" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input type="text" id="addSchoolSearchInput" class="compact-school-input" placeholder="Name der Schule oder Stadt..." autocomplete="off">
-            <button type="button" class="btn-filled btn-sm" id="btnSearchSchool">Suchen</button>
+        <!-- Tab 2: Custom Subject Aliases -->
+        <div id="settingsAliasesTabContent" style="display:none;">
+          <div class="aliases-intro-box">
+            <h4>Eigene Fach- und Stundenbezeichnungen</h4>
+            <p>Lege eigene Namen für Schulkürzel fest (z.B. <strong>FB02</strong> &rarr; <strong>IT-Systeme</strong> oder <strong>E</strong> &rarr; <strong>Englisch</strong>). Diese werden im Stundenplan und auf dem Dashboard statt der Standardkürzel angezeigt.</p>
           </div>
 
-          <!-- School Search Results -->
-          <div class="school-search-results-list" id="addSchoolResultsList"></div>
-
-          <!-- Credentials Box for adding -->
-          <form id="addSchoolForm" class="add-school-credentials-box" style="display:none;">
-            <div class="selected-school-preview" id="selectedSchoolPreview"></div>
-
+          <form id="formAddAlias" class="add-alias-form" onsubmit="handleSaveAlias(event)" style="margin-top:14px;">
             <div class="form-grid-row">
               <div class="form-group">
-                <label for="newUsername">Benutzername</label>
-                <input type="text" id="newUsername" placeholder="WebUntis Benutzername" autocomplete="username">
+                <label for="aliasOriginalInput">Schul-Kürzel</label>
+                <input type="text" id="aliasOriginalInput" placeholder="z.B. FB02, E, LF01" required>
               </div>
               <div class="form-group">
-                <label for="newPassword">Passwort</label>
-                <input type="password" id="newPassword" placeholder="WebUntis Passwort" autocomplete="current-password">
+                <label for="aliasCustomInput">Eigener Wunschname</label>
+                <input type="text" id="aliasCustomInput" placeholder="z.B. Fachpraxis IT, Englisch" required>
               </div>
             </div>
-            <div class="form-group">
-              <label for="newProfileName">Profilname (optional)</label>
-              <input type="text" id="newProfileName" placeholder="z.B. Meine Berufsschule">
-            </div>
-
-            <div class="form-actions-row">
-              <button type="button" class="btn-outlined" onclick="cancelAddSchool()">Abbrechen</button>
-              <button type="submit" class="btn-filled">Verbinden & Speichern</button>
-            </div>
+            <button type="submit" class="btn-filled btn-sm" style="margin-top:8px;">+ Alias speichern</button>
           </form>
+
+          <div class="aliases-table-wrap" style="margin-top:20px;">
+            <h4 class="section-sub-heading">Gespeicherte Fach-Aliase</h4>
+            <div class="aliases-list" id="aliasesListContainer">
+              <div class="empty-inline-state">Lade Aliase...</div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-button-row">
@@ -654,11 +663,11 @@
       </div>
       <div class="update-modal-body">
         <div class="update-version-row">
-          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v1.0.0</span></div>
+          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v1.2</span></div>
           <div class="ver-arrow">&rarr;</div>
-          <div class="ver-badge next">Neu: <span id="updateNewVer">v1.1.0</span></div>
+          <div class="ver-badge next">Neu: <span id="updateNewVer">v1.2</span></div>
         </div>
-        <h4 id="updateReleaseTitle" style="margin: 12px 0 6px;">Untis Desktop v1.1.0</h4>
+        <h4 id="updateReleaseTitle" style="margin: 12px 0 6px;">Untis Desktop</h4>
         <div class="update-release-notes" id="updateReleaseNotes">Lade Versionshinweise...</div>
         <div id="updateProgressWrap" style="display:none; margin-top:14px; text-align:center;">
           <div class="desktop-spinner" style="margin:0 auto 10px;"></div>

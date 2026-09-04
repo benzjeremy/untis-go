@@ -146,11 +146,19 @@ func (d *Database) createSchema() error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
+	CREATE TABLE IF NOT EXISTS subject_aliases (
+		profile_id TEXT NOT NULL,
+		original_subject TEXT NOT NULL,
+		custom_alias TEXT NOT NULL,
+		PRIMARY KEY (profile_id, original_subject)
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_classes_school ON classes(school);
 	CREATE INDEX IF NOT EXISTS idx_tt_cache ON timetable_cache(class_id, date);
 	CREATE INDEX IF NOT EXISTS idx_profiles_active ON profiles(is_active);
 	CREATE INDEX IF NOT EXISTS idx_homework_profile ON homework(profile_id);
 	CREATE INDEX IF NOT EXISTS idx_absences_profile ON absences(profile_id);
+	CREATE INDEX IF NOT EXISTS idx_subject_aliases ON subject_aliases(profile_id);
 	`
 
 	_, err := d.db.Exec(schema)

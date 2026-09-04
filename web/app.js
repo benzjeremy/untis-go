@@ -27,6 +27,8 @@
     profiles: [],
     
     hwFilter: 'all', // 'all', 'open', 'completed'
+    subjectAliases: {},
+    dashboardData: null,
   };
 
   // Extract Session Token from URL or storage
@@ -88,6 +90,15 @@
     const days = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
     const months = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'];
     return `${days[d.getDay()]}, ${d.getDate()}. ${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function getDisplaySubject(item) {
+    if (!item) return '';
+    const code = typeof item === 'string' ? item : (item.subject || '');
+    if (state.subjectAliases && state.subjectAliases[code]) {
+      return state.subjectAliases[code];
+    }
+    return code;
   }
 
   function showLoading(show, text = 'Wird geladen...') {
@@ -242,8 +253,15 @@
       document.title = 'Untis Stundenplan';
     }
 
+    // Load custom subject aliases
+    await loadSubjectAliases();
+
     // Automatic update check in background
     checkForSoftwareUpdates(true);
+
+    // Start live clock & period countdown timer
+    setInterval(updateLiveClockAndCountdown, 1000);
+    updateLiveClockAndCountdown();
 
     if (status.needsOnboarding) {
       openProfilesModal();
@@ -255,10 +273,83 @@
     switchView('dashboard');
   }
 
+  // ==================== LIVE DIGITAL CLOCK & PERIOD TIMER ====================
+  function updateLiveClockAndCountdown() {
+    const clockEl = document.getElementById('dashDigitalClock');
+    const textEl = document.getElementById('dashCountdownText');
+    const dotEl = document.querySelector('.dash-clock-dot');
+    if (!clockEl && !textEl) return;
+
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    if (clockEl) clockEl.textContent = `${h}:${m}:${s}`;
+
+    if (!textEl) return;
+
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    const data = state.dashboardData;
+    if (!data) {
+      textEl.textContent = 'Bereit';
+      return;
+    }
+
+    const lessons = data.todayLessons || [];
+    if (data.isUpcomingSchoolDay) {
+      if (dotEl) dotEl.className = 'dash-clock-dot free';
+      if (data.nextLesson) {
+        const nextSubj = getDisplaySubject(data.nextLesson);
+        const nextRoom = data.nextLesson.room ? ` in ${data.nextLesson.room}` : '';
+        textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} (${data.nextLesson.startTimeStr})`;
+      } else {
+        textEl.textContent = 'Unterrichtsfrei';
+      }
+      return;
+    }
+
+    let activeLesson = null;
+    let nextUpcoming = null;
+
+    for (const l of lessons) {
+      if (l.isCancelled) continue;
+      const [sh, sm] = (l.startTimeStr || '00:00').split(':').map(Number);
+      const [eh, em] = (l.endTimeStr || '00:00').split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+
+      if (curMin >= startMin && curMin < endMin) {
+        activeLesson = { lesson: l, remaining: endMin - curMin };
+        break;
+      } else if (startMin > curMin) {
+        if (!nextUpcoming || startMin < nextUpcoming.startMin) {
+          nextUpcoming = { lesson: l, wait: startMin - curMin, startMin };
+        }
+      }
+    }
+
+    if (activeLesson) {
+      if (dotEl) dotEl.className = 'dash-clock-dot';
+      const subj = getDisplaySubject(activeLesson.lesson);
+      const room = activeLesson.lesson.room ? ` in ${activeLesson.lesson.room}` : '';
+      textEl.textContent = `Jetzt: ${activeLesson.lesson.period} [${subj}${room}] · Noch ${activeLesson.remaining} Min. verbleibend`;
+    } else if (nextUpcoming) {
+      if (dotEl) dotEl.className = 'dash-clock-dot in-break';
+      const subj = getDisplaySubject(nextUpcoming.lesson);
+      const room = nextUpcoming.lesson.room ? ` in ${nextUpcoming.lesson.room}` : '';
+      textEl.textContent = `Pause · Nächste Stunde: ${subj}${room} in ${nextUpcoming.wait} Min. (um ${nextUpcoming.lesson.startTimeStr})`;
+    } else {
+      if (dotEl) dotEl.className = 'dash-clock-dot free';
+      textEl.textContent = 'Schultag beendet · Schöne Freizeit!';
+    }
+  }
+
   // ==================== DASHBOARD MODULE ====================
   async function loadDashboard() {
     const data = await apiFetch('/api/dashboard');
     if (!data) return;
+    state.dashboardData = data;
 
     // Greeting & Hero
     const greetingEl = document.getElementById('dashHeroGreeting');
@@ -280,7 +371,7 @@
       }
     }
 
-    // Mitteilungen: calculate unread count based on read message IDs!
+    // Mitteilungen: calculate unread count based on read message IDs
     const readIds = getReadMessageIds();
     let unreadCount = 0;
     if (data.recentMessages && data.recentMessages.length > 0) {
@@ -308,53 +399,19 @@
       }
     }
 
-    // Metric: Next Lesson
-    const nextSubj = document.getElementById('dashNextLessonSubject');
-    const nextRoom = document.getElementById('dashNextLessonRoom');
-    const nextTime = document.getElementById('dashNextLessonTime');
-    const nextSubtext = document.getElementById('dashNextLessonSubtext');
+    // Home Section Badges
+    const hwCountBadge = document.getElementById('dashHwCountBadge');
+    if (hwCountBadge) hwCountBadge.textContent = data.openHomeworkCount || 0;
 
-    if (data.nextLesson) {
-      const l = data.nextLesson;
-      if (nextSubj) nextSubj.textContent = l.subjectLong || l.subject;
-      if (nextRoom) nextRoom.textContent = `Raum: ${l.room || 'k.A.'}`;
-      if (nextTime) nextTime.textContent = l.startTimeStr;
-      if (nextSubtext) {
-        if (data.isUpcomingSchoolDay && data.upcomingDayLabel) {
-          nextSubtext.textContent = `${data.upcomingDayLabel} · ${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
-        } else {
-          nextSubtext.textContent = `${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
-        }
-      }
-    } else {
-      if (nextSubj) nextSubj.textContent = 'Kein Unterricht';
-      if (nextRoom) nextRoom.textContent = '';
-      if (nextTime) nextTime.textContent = '--:--';
-      if (nextSubtext) nextSubtext.textContent = 'Der heutige Schultag ist beendet oder unterrichtsfrei.';
-    }
+    const msgCountBadge = document.getElementById('dashMsgCountBadge');
+    if (msgCountBadge) msgCountBadge.textContent = `${unreadCount} neu`;
 
-    // Metric: Homework
-    const hwCountEl = document.getElementById('dashHwCount');
-    const hwHeadlineEl = document.getElementById('dashHwHeadline');
-    if (hwCountEl) hwCountEl.textContent = `${data.openHomeworkCount} offen`;
-    if (hwHeadlineEl) {
-      hwHeadlineEl.textContent = data.openHomeworkCount > 0 ? `${data.openHomeworkCount} Aufgaben zu erledigen` : 'Alles erledigt!';
-    }
+    const absCountBadge = document.getElementById('dashAbsCountBadge');
+    if (absCountBadge) absCountBadge.textContent = `${data.absencesSummary?.total || 0}`;
 
-    // Metric: Messages
-    const msgCountEl = document.getElementById('dashMsgCount');
-    const msgHeadlineEl = document.getElementById('dashMsgHeadline');
-    if (msgCountEl) msgCountEl.textContent = `${unreadCount} ungelesen`;
-    if (msgHeadlineEl) {
-      msgHeadlineEl.textContent = unreadCount > 0 ? `${unreadCount} neue Mitteilungen` : 'Keine ungelesenen Nachrichten';
-    }
-
-    // Metric: Absences
-    const absCountEl = document.getElementById('dashAbsCount');
     const absExcEl = document.getElementById('dashAbsExcused');
     const absUnexcEl = document.getElementById('dashAbsUnexcused');
     if (data.absencesSummary) {
-      if (absCountEl) absCountEl.textContent = `${data.absencesSummary.total} Einträge`;
       if (absExcEl) absExcEl.textContent = `${data.absencesSummary.excused} Entschuldigt`;
       if (absUnexcEl) absUnexcEl.textContent = `${data.absencesSummary.unexcused} Unentschuldigt`;
     }
@@ -362,18 +419,34 @@
     // Today's Lessons List (or upcoming day)
     renderDashboardLessons(data.todayLessons || [], data.isUpcomingSchoolDay, data.upcomingDayLabel);
 
-    // Homework Preview List
+    // Homework List
     renderDashboardHomework(data.openHomework || []);
 
-    // Messages Preview List
+    // Messages List
     renderDashboardMessages(data.recentMessages || []);
+
+    // Live clock update
+    updateLiveClockAndCountdown();
   }
 
   function renderDashboardLessons(lessons, isUpcomingDay, upcomingLabel) {
     const list = document.getElementById('dashTodayLessonsList');
+    const subtitleEl = document.getElementById('dashScheduleSubtitle');
+    if (subtitleEl) {
+      subtitleEl.textContent = isUpcomingDay && upcomingLabel ? upcomingLabel : 'Heute';
+    }
     if (!list) return;
 
-    if (!lessons || lessons.length === 0) {
+    // Deduplicate lessons
+    const seen = new Set();
+    const uniqueLessons = (lessons || []).filter(l => {
+      const key = `${l.date || l.Date}_${l.startTimeStr}_${l.endTimeStr}_${l.subject}_${l.room}_${l.teacher}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    if (uniqueLessons.length === 0) {
       list.innerHTML = '<div class="empty-inline-state">Heute steht kein planmäßiger Unterricht an.</div>';
       return;
     }
@@ -385,11 +458,20 @@
          </div>`
       : '';
 
-    list.innerHTML = headerNote + lessons.map(l => {
+    list.innerHTML = headerNote + uniqueLessons.map(l => {
       const color = l.color || '#ff7a00';
-      const statusBadge = l.isCancelled ? '<span class="status-pill cancelled">Ausfall</span>' : (l.isSubstitution ? '<span class="status-pill substitution">Vertretung</span>' : '');
+      const isSubst = l.isSubstitution || l.isRoomChange;
+      const isCanc = l.isCancelled;
+      const displaySubj = getDisplaySubject(l);
+      const roomText = l.room || '';
+      const teacherText = l.teacher || '';
+
+      const statusBadge = isCanc 
+        ? '<span class="status-pill cancelled">Ausfall</span>' 
+        : (isSubst ? '<span class="status-pill substitution">Änderung</span>' : '');
+
       return `
-        <div class="dash-lesson-item" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+        <div class="dash-lesson-item ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
           <div class="lesson-time-col">
             <span class="l-time-range">${l.timeRange}</span>
             <span class="l-period">${l.period}</span>
@@ -397,11 +479,11 @@
           <div class="lesson-color-bar" style="background-color:${color};"></div>
           <div class="lesson-main-col">
             <div class="l-subject-row">
-              <span class="l-subject">${l.subject}</span>
-              ${l.room ? `<span class="l-room-tag">${l.room}</span>` : ''}
+              <span class="l-subject">${escapeHTML(displaySubj)}</span>
+              ${roomText ? `<span class="l-room-tag">${escapeHTML(roomText)}</span>` : ''}
               ${statusBadge}
             </div>
-            <span class="l-teacher">${l.teacherLong || l.teacher || ''}</span>
+            <span class="l-teacher">${escapeHTML(teacherText)}</span>
           </div>
         </div>
       `;
@@ -492,21 +574,43 @@
     const container = document.getElementById(targetElementId);
     if (!container) return;
 
-    container.innerHTML = lessons.map(l => {
+    // Deduplicate lessons
+    const seen = new Set();
+    const uniqueLessons = (lessons || []).filter(l => {
+      const key = `${l.date || l.Date}_${l.startTimeStr}_${l.endTimeStr}_${l.subject}_${l.room}_${l.teacher}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    if (uniqueLessons.length === 0) {
+      container.innerHTML = '<div class="empty-inline-state">Kein Unterricht verzeichnet.</div>';
+      return;
+    }
+
+    container.innerHTML = uniqueLessons.map(l => {
       const color = l.color || '#ff7a00';
-      const statusBadge = l.isCancelled ? '<span class="status-pill cancelled">Ausfall</span>' : (l.isSubstitution ? '<span class="status-pill substitution">Vertretung</span>' : '');
+      const isSubst = l.isSubstitution || l.isRoomChange;
+      const isCanc = l.isCancelled;
+      const displaySubj = getDisplaySubject(l);
+      const roomText = l.room || '';
+      const teacherText = l.teacher || '';
+
+      const statusBadge = isCanc 
+        ? '<span class="status-pill cancelled">Ausfall</span>' 
+        : (isSubst ? '<span class="status-pill substitution">Änderung</span>' : '');
 
       return `
-        <div class="lesson-card" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+        <div class="lesson-card ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
           <div class="lesson-left-group">
             <div class="lesson-card-badge" style="background-color:${color}; color:${l.textColor || '#ffffff'};">
-              ${l.subject.slice(0, 4)}
+              ${displaySubj.slice(0, 4)}
             </div>
             <div class="lesson-info-group">
-              <span class="lesson-card-title">${l.subjectLong || l.subject}</span>
+              <span class="lesson-card-title">${escapeHTML(displaySubj)}</span>
               <span class="lesson-card-meta">
-                ${l.teacher ? `Lehrkraft: <strong>${l.teacherLong || l.teacher}</strong>` : ''} 
-                ${l.room ? `· Raum: <strong>${l.room}</strong>` : ''}
+                ${teacherText ? `Lehrkraft: <strong>${escapeHTML(teacherText)}</strong>` : ''} 
+                ${roomText ? `· Raum: <strong>${escapeHTML(roomText)}</strong>` : ''}
               </span>
               ${statusBadge}
             </div>
@@ -525,6 +629,15 @@
     const bodyEl = document.getElementById(bodyId);
     if (!headerEl || !bodyEl) return;
 
+    // Deduplicate lessons
+    const seen = new Set();
+    const uniqueLessons = (lessons || []).filter(l => {
+      const key = `${l.date || l.Date}_${l.startTimeStr}_${l.endTimeStr}_${l.subject}_${l.room}_${l.teacher}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     // Compute Monday of active week
     const target = new Date(state.currentDate);
     const dayOfWeek = target.getDay();
@@ -541,50 +654,128 @@
     const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
     const todayStr = formatDateISO(new Date());
 
-    // Header cells
-    headerEl.innerHTML = weekDays.map((d, idx) => {
-      const iso = formatDateISO(d);
-      const isToday = iso === todayStr;
-      return `
-        <div class="week-day-header-cell ${isToday ? 'today' : ''}">
-          <div class="w-day-name">${dayNames[idx]}</div>
-          <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
-        </div>
-      `;
-    }).join('');
+    // Header: Left column is "Std. / Zeit", followed by 5 days
+    headerEl.innerHTML = `
+      <div class="week-time-header-cell">Std. / Zeit</div>
+      ${weekDays.map((d, idx) => {
+        const iso = formatDateISO(d);
+        const isToday = iso === todayStr;
+        return `
+          <div class="week-day-header-cell ${isToday ? 'today' : ''}">
+            <div class="w-day-name">${dayNames[idx]}</div>
+            <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
+          </div>
+        `;
+      }).join('')}
+    `;
 
     // Group lessons by date
     const lessonGroups = {};
     weekDays.forEach(d => lessonGroups[formatDateISO(d)] = []);
-    lessons.forEach(l => {
+    uniqueLessons.forEach(l => {
       const d = l.date || l.Date;
       if (lessonGroups[d]) {
         lessonGroups[d].push(l);
       }
     });
 
-    // Body columns
-    bodyEl.innerHTML = weekDays.map(d => {
+    // Extract unique periods from this week's lessons
+    const periodsMap = new Map();
+    uniqueLessons.forEach(l => {
+      if (l.startTimeStr && l.endTimeStr) {
+        const k = `${l.startTimeStr}-${l.endTimeStr}`;
+        if (!periodsMap.has(k)) {
+          periodsMap.set(k, {
+            start: l.startTimeStr,
+            end: l.endTimeStr,
+            periodNum: l.periodNum || 1,
+            period: l.period || `${l.startTimeStr} - ${l.endTimeStr}`,
+          });
+        }
+      }
+    });
+
+    let periods = Array.from(periodsMap.values());
+    periods.sort((a, b) => a.start.localeCompare(b.start));
+
+    // Fallback if no lessons: standard periods
+    if (periods.length === 0) {
+      periods = [
+        { periodNum: 1, period: "1. Stunde", start: "07:30", end: "08:15" },
+        { periodNum: 2, period: "2. Stunde", start: "08:15", end: "09:00" },
+        { periodNum: 3, period: "3. Stunde", start: "09:15", end: "10:00" },
+        { periodNum: 4, period: "4. Stunde", start: "10:00", end: "10:45" },
+        { periodNum: 5, period: "5. Stunde", start: "11:00", end: "11:45" },
+        { periodNum: 6, period: "6. Stunde", start: "11:45", end: "12:30" },
+        { periodNum: 7, period: "7. Stunde", start: "12:45", end: "13:30" },
+        { periodNum: 8, period: "8. Stunde", start: "13:30", end: "14:15" },
+      ];
+    }
+
+    // Left Time Column
+    const timeColHtml = `
+      <div class="week-time-col">
+        ${periods.map(p => `
+          <div class="week-time-slot">
+            <span class="slot-period-num">${escapeHTML(p.period)}</span>
+            <span class="slot-time-str">${p.start} - ${p.end}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // 5 Day Columns
+    const dayColsHtml = weekDays.map(d => {
       const iso = formatDateISO(d);
       const dayLessons = lessonGroups[iso] || [];
 
-      const boxesHtml = dayLessons.map(l => {
-        const color = l.color || '#ff7a00';
+      const slotCellsHtml = periods.map(p => {
+        // Find lesson for this slot
+        const lesson = dayLessons.find(l => {
+          if (l.startTimeStr === p.start && l.endTimeStr === p.end) return true;
+          if (l.startTimeStr <= p.start && l.endTimeStr >= p.end) return true;
+          return false;
+        });
+
+        if (!lesson) {
+          // Empty slot (Freistunde)
+          return `<div class="week-slot-cell"><div class="week-slot-empty" title="Freistunde"></div></div>`;
+        }
+
+        const isSubst = lesson.isSubstitution || lesson.isRoomChange;
+        const isCanc = lesson.isCancelled;
+        const color = lesson.color || '#ff7a00';
+        const displaySubj = getDisplaySubject(lesson);
+        const roomText = lesson.room || '';
+        const teacherText = lesson.teacher || '';
+
         return `
-          <div class="week-lesson-box" style="border-left: 4px solid ${color};" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
-            <span class="w-time">${l.startTimeStr} - ${l.endTimeStr}</span>
-            <div class="w-subj">${l.subject}</div>
-            <div class="w-details">${l.room || ''} · ${l.teacher || ''}</div>
+          <div class="week-slot-cell">
+            <div class="week-lesson-box ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" 
+                 style="border-left: 4px solid ${color};"
+                 onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(lesson))})"
+                 title="${escapeHTML(lesson.subjectLong || displaySubj)}">
+              <span class="w-time">${lesson.startTimeStr} - ${lesson.endTimeStr}</span>
+              <div class="w-subj">${escapeHTML(displaySubj)}</div>
+              <div class="w-details">
+                ${roomText ? `<strong>${escapeHTML(roomText)}</strong>` : ''} 
+                ${teacherText ? `· ${escapeHTML(teacherText)}` : ''}
+                ${isSubst ? '<span style="color:#ef4444; font-weight:700;">(Änderung)</span>' : ''}
+                ${isCanc ? '<span style="color:var(--text-muted);">(Ausfall)</span>' : ''}
+              </div>
+            </div>
           </div>
         `;
       }).join('');
 
       return `
         <div class="week-day-col">
-          ${boxesHtml || '<div class="empty-inline-state" style="padding:12px 0;">Frei</div>'}
+          ${slotCellsHtml}
         </div>
       `;
     }).join('');
+
+    bodyEl.innerHTML = timeColHtml + dayColsHtml;
   }
 
   // ==================== WEITERE STUNDENPLÄNE MODULE ====================
@@ -1302,7 +1493,9 @@
     const modal = document.getElementById('profilesModalBackdrop');
     if (modal) {
       modal.style.display = 'flex';
+      switchSettingsModalTab('profiles');
       loadProfiles();
+      loadSubjectAliases();
     }
   }
 
@@ -1311,6 +1504,109 @@
     if (modal) modal.style.display = 'none';
     cancelAddSchool();
   }
+
+  window.switchSettingsModalTab = function(tab) {
+    const profTabBtn = document.getElementById('profModalTabProfiles');
+    const aliasTabBtn = document.getElementById('profModalTabAliases');
+    const profContent = document.getElementById('settingsProfilesTabContent');
+    const aliasContent = document.getElementById('settingsAliasesTabContent');
+
+    if (tab === 'aliases') {
+      profTabBtn?.classList.remove('active');
+      aliasTabBtn?.classList.add('active');
+      if (profContent) profContent.style.display = 'none';
+      if (aliasContent) aliasContent.style.display = 'block';
+      loadSubjectAliases();
+    } else {
+      aliasTabBtn?.classList.remove('active');
+      profTabBtn?.classList.add('active');
+      if (aliasContent) aliasContent.style.display = 'none';
+      if (profContent) profContent.style.display = 'block';
+      loadProfiles();
+    }
+  };
+
+  // ==================== SUBJECT ALIASES (EIGENE FACHNAMEN) ====================
+  async function loadSubjectAliases() {
+    const res = await apiFetch('/api/settings/aliases');
+    if (res && typeof res === 'object') {
+      state.subjectAliases = res;
+      renderSubjectAliases();
+    }
+  }
+
+  function renderSubjectAliases() {
+    const container = document.getElementById('aliasesListContainer');
+    if (!container) return;
+
+    const keys = Object.keys(state.subjectAliases || {});
+    if (keys.length === 0) {
+      container.innerHTML = '<div class="empty-inline-state">Noch keine eigenen Fachnamen definiert.</div>';
+      return;
+    }
+
+    container.innerHTML = keys.map(k => `
+      <div class="alias-item-row">
+        <div class="alias-map-text">
+          <span class="alias-orig-badge">${escapeHTML(k)}</span>
+          <span class="alias-arrow">&rarr;</span>
+          <span class="alias-custom-val">${escapeHTML(state.subjectAliases[k])}</span>
+        </div>
+        <button type="button" class="btn-delete-alias" onclick="deleteSubjectAlias('${escapeHTML(k)}')" title="Alias löschen">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+          </svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  window.handleSaveAlias = async function(e) {
+    if (e) e.preventDefault();
+    const origInput = document.getElementById('aliasOriginalInput');
+    const customInput = document.getElementById('aliasCustomInput');
+    const orig = (origInput?.value || '').trim();
+    const custom = (customInput?.value || '').trim();
+
+    if (!orig || !custom) return;
+
+    showLoading(true, 'Speichere Fachnamen...');
+    const res = await apiFetch('/api/settings/aliases', {
+      method: 'POST',
+      body: JSON.stringify({ original: orig, alias: custom }),
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      showToast(`Fach '${orig}' wird nun als '${custom}' angezeigt.`);
+      if (origInput) origInput.value = '';
+      if (customInput) customInput.value = '';
+      await loadSubjectAliases();
+      if (state.currentView === 'dashboard') loadDashboard();
+      else if (state.currentView === 'own-timetable') loadOwnTimetable();
+      else if (state.currentView === 'other-timetables') loadResourceTimetable();
+    } else {
+      showToast(res?.message || 'Fehler beim Speichern des Alias', 'error');
+    }
+  };
+
+  window.deleteSubjectAlias = async function(orig) {
+    showLoading(true, 'Lösche Fach-Alias...');
+    const res = await apiFetch(`/api/settings/aliases?original=${encodeURIComponent(orig)}`, {
+      method: 'DELETE',
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      showToast(`Alias für '${orig}' entfernt.`);
+      await loadSubjectAliases();
+      if (state.currentView === 'dashboard') loadDashboard();
+      else if (state.currentView === 'own-timetable') loadOwnTimetable();
+      else if (state.currentView === 'other-timetables') loadResourceTimetable();
+    } else {
+      showToast(res?.message || 'Fehler beim Löschen', 'error');
+    }
+  };
 
   // ==================== UPDATE SYSTEM MODULE ====================
   let availableUpdateInfo = null;
@@ -1352,8 +1648,8 @@
     const progWrap = document.getElementById('updateProgressWrap');
     const btn = document.getElementById('btnApplyUpdate');
 
-    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.0.0';
-    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.1.0';
+    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.2';
+    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.2';
     if (titleEl) titleEl.textContent = availableUpdateInfo.title || `Untis Desktop ${availableUpdateInfo.latestVersion}`;
     if (notesEl) notesEl.textContent = availableUpdateInfo.releaseNotes || 'Keine Versionshinweise verfügbar.';
 
@@ -1412,16 +1708,18 @@
     if (!modal) return;
 
     const chip = document.getElementById('lessonModalSubjChip');
+    const displaySubj = getDisplaySubject(lesson);
     if (chip) {
-      chip.textContent = (lesson.subject || 'LF').slice(0, 4);
+      chip.textContent = (displaySubj || 'LF').slice(0, 4);
       chip.style.backgroundColor = lesson.color || '#ff7a00';
       chip.style.color = lesson.textColor || '#ffffff';
     }
 
-    document.getElementById('lessonModalSubject').textContent = lesson.subjectLong || lesson.subject;
+    const fullSubjectTitle = displaySubj + (lesson.subjectLong && lesson.subjectLong !== displaySubj ? ` (${lesson.subjectLong})` : '');
+    document.getElementById('lessonModalSubject').textContent = fullSubjectTitle;
     document.getElementById('lessonModalTime').textContent = `${lesson.timeRange} (${lesson.period})`;
     document.getElementById('lessonModalTeacher').textContent = lesson.teacherLong || lesson.teacher || '-';
-    document.getElementById('lessonModalRoom').textContent = lesson.roomLong || lesson.room || '-';
+    document.getElementById('lessonModalRoom').textContent = lesson.room || '-';
     document.getElementById('lessonModalClass').textContent = lesson.class || '-';
 
     let statusText = 'Regulär';
