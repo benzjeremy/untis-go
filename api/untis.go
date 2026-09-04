@@ -126,7 +126,7 @@ type EnrichedLesson struct {
 	Room            string   `json:"room"`            // "D105, D305"
 	RoomLong        string   `json:"roomLong"`        // "Labor VR EIT, Labor IT"
 	OriginalRoom    string   `json:"originalRoom,omitempty"`
-	Class           string   `json:"class"`           // "ITT125"
+	Class           string   `json:"class"`           // e.g. "10A"
 	IsCancelled     bool     `json:"isCancelled"`     // status == CANCELLED
 	IsSubstitution  bool     `json:"isSubstitution"`  // status == CHANGED or teacher replaced
 	IsRoomChange    bool     `json:"isRoomChange"`    // room changed
@@ -357,7 +357,7 @@ func (c *Client) fetchGeneralData() {
 			Roles:       gd.User.Roles,
 		}
 
-		// Try extracting class name from email or name (e.g. "itt125.jeremy.benz@..." -> "ITT125")
+		// Try extracting class name from email prefix (e.g. "itt125.max.mustermann@..." -> "ITT125")
 		emailPrefix := strings.Split(gd.User.Email, ".")[0]
 		if len(emailPrefix) >= 3 && len(emailPrefix) <= 10 && !strings.EqualFold(emailPrefix, "schule") {
 			c.UserInfo.DetectedClass = strings.ToUpper(emailPrefix)
@@ -830,7 +830,7 @@ func (c *Client) GetAbsences(startDate, endDate time.Time) ([]WebUntisAbsence, e
 
 	personID := c.UserInfo.PersonID
 	if personID == 0 {
-		personID = 10690 // Jeremy Benz fallback
+		return nil, fmt.Errorf("keine gültige Schüler-ID gefunden")
 	}
 
 	startStr := startDate.Format("20060102")
@@ -916,43 +916,43 @@ func (c *Client) GetAbsences(startDate, endDate time.Time) ([]WebUntisAbsence, e
 	return list, nil
 }
 
-// GetOwnTimetable retrieves the personal student timetable (e.g. for Jeremy Benz)
+// GetOwnTimetable retrieves the personal student timetable
 func (c *Client) GetOwnTimetable(startDate, endDate time.Time) ([]EnrichedLesson, error) {
+	var lessons []EnrichedLesson
+	var err error
+
 	personID := c.UserInfo.PersonID
-	if personID == 0 {
-		personID = 10690 // Jeremy Benz ID fallback
-	}
-	lessons, err := c.GetTimetableForResource("STUDENT", personID, startDate, endDate, "MY_TIMETABLE")
-	if err == nil && len(lessons) > 0 {
-		return lessons, nil
+	if personID > 0 {
+		lessons, err = c.GetTimetableForResource("STUDENT", personID, startDate, endDate, "MY_TIMETABLE")
+		if err == nil && len(lessons) > 0 {
+			return lessons, nil
+		}
 	}
 
 	// If individual student timetable has NO_DATA (standard for German vocational schools),
-	// fallback to the student's assigned class (e.g. ITT125)
+	// fallback to the student's detected assigned class
 	var classID int
-	c.mu.Lock()
-	for id, k := range c.klassenCache {
-		if strings.EqualFold(k.Name, "ITT125") || (c.UserInfo.DetectedClass != "" && strings.EqualFold(k.Name, c.UserInfo.DetectedClass)) {
-			classID = id
-			break
+	if c.UserInfo.DetectedClass != "" {
+		c.mu.Lock()
+		for id, k := range c.klassenCache {
+			if strings.EqualFold(k.Name, c.UserInfo.DetectedClass) {
+				classID = id
+				break
+			}
 		}
-	}
-	c.mu.Unlock()
+		c.mu.Unlock()
 
-	// If not cached yet, try loading classes
-	if classID == 0 {
-		if klassen, errK := c.GetKlassen(); errK == nil {
-			for _, k := range klassen {
-				if strings.EqualFold(k.Name, "ITT125") || (c.UserInfo.DetectedClass != "" && strings.EqualFold(k.Name, c.UserInfo.DetectedClass)) {
-					classID = k.ID
-					break
+		// If not cached yet, try loading classes
+		if classID == 0 {
+			if klassen, errK := c.GetKlassen(); errK == nil {
+				for _, k := range klassen {
+					if strings.EqualFold(k.Name, c.UserInfo.DetectedClass) {
+						classID = k.ID
+						break
+					}
 				}
 			}
 		}
-	}
-
-	if classID == 0 {
-		classID = 9817 // Known ITT125 ID fallback
 	}
 
 	if classID != 0 {

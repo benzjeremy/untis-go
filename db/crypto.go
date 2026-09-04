@@ -16,7 +16,8 @@ import (
 
 var (
 	ErrInvalidCiphertext = errors.New("invalid or corrupted ciphertext")
-	appCryptoSalt        = []byte("untis-go-secure-salt-v1.0.0-jeremy-benz-2026")
+	appCryptoSalt        = []byte("untis-go-secure-salt-v1.3.0-desktop-production")
+	legacyCryptoSalt     = []byte("untis-go-secure-salt-v1.0.0-jeremy-benz-2026")
 )
 
 // getMachineID retrieves the unique machine-id from standard Linux locations
@@ -42,8 +43,8 @@ func getMachineID() string {
 	return "untis-go-default-machine-key"
 }
 
-// DeriveKey generates a 32-byte key for AES-256 from machine ID and user environment
-func DeriveKey() ([]byte, error) {
+// deriveKeyWithSalt generates a 32-byte key for AES-256 using the specified salt
+func deriveKeyWithSalt(salt []byte) ([]byte, error) {
 	machID := getMachineID()
 
 	username := os.Getenv("USER")
@@ -57,15 +58,18 @@ func DeriveKey() ([]byte, error) {
 
 	homeDir, _ := os.UserHomeDir()
 
-	// Hash the combined values with SHA-256 to produce a 32-byte AES key
 	h := sha256.New()
-	h.Write(appCryptoSalt)
+	h.Write(salt)
 	h.Write([]byte(machID))
 	h.Write([]byte(username))
 	h.Write([]byte(homeDir))
 
-	key := h.Sum(nil)
-	return key, nil
+	return h.Sum(nil), nil
+}
+
+// DeriveKey generates a 32-byte key for AES-256 from machine ID and user environment
+func DeriveKey() ([]byte, error) {
+	return deriveKeyWithSalt(appCryptoSalt)
 }
 
 // EncryptPassword encrypts a plaintext password using AES-256-GCM
@@ -100,22 +104,8 @@ func EncryptPassword(plaintext string) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-// DecryptPassword decrypts a base64-encoded AES-256-GCM ciphertext
-func DecryptPassword(encoded string) (string, error) {
-	if encoded == "" {
-		return "", nil
-	}
-
-	raw, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return "", fmt.Errorf("invalid base64 ciphertext: %w", err)
-	}
-
-	key, err := DeriveKey()
-	if err != nil {
-		return "", fmt.Errorf("failed to derive decryption key: %w", err)
-	}
-
+// decryptWithKey attempts to decrypt ciphertext using a given key
+func decryptWithKey(key []byte, raw []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cipher: %w", err)
@@ -134,8 +124,39 @@ func DecryptPassword(encoded string) (string, error) {
 	nonce, ciphertext := raw[:nonceSize], raw[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return "", fmt.Errorf("decryption failed (wrong key or corrupted data): %w", err)
+		return "", err
 	}
 
 	return string(plaintext), nil
+}
+
+// DecryptPassword decrypts a base64-encoded AES-256-GCM ciphertext
+func DecryptPassword(encoded string) (string, error) {
+	if encoded == "" {
+		return "", nil
+	}
+
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", fmt.Errorf("invalid base64 ciphertext: %w", err)
+	}
+
+	key, err := DeriveKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to derive decryption key: %w", err)
+	}
+
+	// Try standard key
+	if pt, err := decryptWithKey(key, raw); err == nil {
+		return pt, nil
+	}
+
+	// Try legacy salt key fallback (for credentials stored before v1.3 salt rotation)
+	if legacyKey, err := deriveKeyWithSalt(legacyCryptoSalt); err == nil {
+		if pt, err := decryptWithKey(legacyKey, raw); err == nil {
+			return pt, nil
+		}
+	}
+
+	return "", fmt.Errorf("decryption failed (wrong key or corrupted data)")
 }
