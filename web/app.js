@@ -117,6 +117,10 @@
 
   // ==================== VIEW SWITCHING ====================
   function switchView(viewName) {
+    if (viewName === 'profiles') {
+      openProfilesModal();
+      return;
+    }
     state.currentView = viewName;
 
     // Update Nav buttons
@@ -217,10 +221,11 @@
     const userAvatarEl = document.getElementById('sidebarUserAvatar');
     const heroSchoolEl = document.getElementById('dashHeroSchool');
 
-    if (schoolNameEl) schoolNameEl.textContent = status.school || 'WebUntis';
-    if (heroSchoolEl) heroSchoolEl.textContent = status.school || 'WebUntis';
+    const school = status.school || 'WebUntis';
+    const displayName = status.displayName || status.profileName || status.username || 'Benutzer';
 
-    const displayName = status.displayName || status.profileName || 'Benutzer';
+    if (schoolNameEl) schoolNameEl.textContent = school;
+    if (heroSchoolEl) heroSchoolEl.textContent = school;
     if (userNameEl) userNameEl.textContent = displayName;
     if (userAvatarEl) {
       const parts = displayName.split(' ');
@@ -228,8 +233,20 @@
       userAvatarEl.textContent = initials || 'U';
     }
 
+    // Dynamic window title: Untis Stundenplan - <Schule> - <Schülername>
+    if (school && displayName) {
+      document.title = `Untis Stundenplan - ${school} - ${displayName}`;
+    } else if (school) {
+      document.title = `Untis Stundenplan - ${school}`;
+    } else {
+      document.title = 'Untis Stundenplan';
+    }
+
+    // Automatic update check in background
+    checkForSoftwareUpdates(true);
+
     if (status.needsOnboarding) {
-      switchView('profiles');
+      openProfilesModal();
       return;
     }
 
@@ -263,11 +280,21 @@
       }
     }
 
+    // Mitteilungen: calculate unread count based on read message IDs!
+    const readIds = getReadMessageIds();
+    let unreadCount = 0;
+    if (data.recentMessages && data.recentMessages.length > 0) {
+      unreadCount = data.recentMessages.filter(m => !readIds.includes(String(m.id))).length;
+    } else if (data.messagesCount > 0) {
+      unreadCount = Math.max(0, data.messagesCount - readIds.length);
+    }
+
     if (msgBadge) {
-      if (data.messagesCount > 0) {
-        msgBadge.textContent = data.messagesCount;
+      if (unreadCount > 0) {
+        msgBadge.textContent = unreadCount;
         msgBadge.style.display = 'inline-block';
       } else {
+        msgBadge.textContent = '0';
         msgBadge.style.display = 'none';
       }
     }
@@ -292,7 +319,13 @@
       if (nextSubj) nextSubj.textContent = l.subjectLong || l.subject;
       if (nextRoom) nextRoom.textContent = `Raum: ${l.room || 'k.A.'}`;
       if (nextTime) nextTime.textContent = l.startTimeStr;
-      if (nextSubtext) nextSubtext.textContent = `${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
+      if (nextSubtext) {
+        if (data.isUpcomingSchoolDay && data.upcomingDayLabel) {
+          nextSubtext.textContent = `${data.upcomingDayLabel} · ${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
+        } else {
+          nextSubtext.textContent = `${l.period} · Lehrkraft: ${l.teacher || 'k.A.'}`;
+        }
+      }
     } else {
       if (nextSubj) nextSubj.textContent = 'Kein Unterricht';
       if (nextRoom) nextRoom.textContent = '';
@@ -311,9 +344,9 @@
     // Metric: Messages
     const msgCountEl = document.getElementById('dashMsgCount');
     const msgHeadlineEl = document.getElementById('dashMsgHeadline');
-    if (msgCountEl) msgCountEl.textContent = `${data.messagesCount} Mitteilungen`;
+    if (msgCountEl) msgCountEl.textContent = `${unreadCount} ungelesen`;
     if (msgHeadlineEl) {
-      msgHeadlineEl.textContent = data.messagesCount > 0 ? `${data.messagesCount} neue Durchsagen` : 'Keine neuen Nachrichten';
+      msgHeadlineEl.textContent = unreadCount > 0 ? `${unreadCount} neue Mitteilungen` : 'Keine ungelesenen Nachrichten';
     }
 
     // Metric: Absences
@@ -326,8 +359,8 @@
       if (absUnexcEl) absUnexcEl.textContent = `${data.absencesSummary.unexcused} Unentschuldigt`;
     }
 
-    // Today's Lessons List
-    renderDashboardLessons(data.todayLessons || []);
+    // Today's Lessons List (or upcoming day)
+    renderDashboardLessons(data.todayLessons || [], data.isUpcomingSchoolDay, data.upcomingDayLabel);
 
     // Homework Preview List
     renderDashboardHomework(data.openHomework || []);
@@ -336,7 +369,7 @@
     renderDashboardMessages(data.recentMessages || []);
   }
 
-  function renderDashboardLessons(lessons) {
+  function renderDashboardLessons(lessons, isUpcomingDay, upcomingLabel) {
     const list = document.getElementById('dashTodayLessonsList');
     if (!list) return;
 
@@ -345,7 +378,14 @@
       return;
     }
 
-    list.innerHTML = lessons.map(l => {
+    const headerNote = isUpcomingDay && upcomingLabel
+      ? `<div style="font-size:12px; font-weight:700; color:var(--accent-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+           ${escapeHTML(upcomingLabel)}
+         </div>`
+      : '';
+
+    list.innerHTML = headerNote + lessons.map(l => {
       const color = l.color || '#ff7a00';
       const statusBadge = l.isCancelled ? '<span class="status-pill cancelled">Ausfall</span>' : (l.isSubstitution ? '<span class="status-pill substitution">Vertretung</span>' : '');
       return `
@@ -517,8 +557,9 @@
     const lessonGroups = {};
     weekDays.forEach(d => lessonGroups[formatDateISO(d)] = []);
     lessons.forEach(l => {
-      if (lessonGroups[l.Date]) {
-        lessonGroups[l.Date].push(l);
+      const d = l.date || l.Date;
+      if (lessonGroups[d]) {
+        lessonGroups[d].push(l);
       }
     });
 
@@ -547,9 +588,34 @@
   }
 
   // ==================== WEITERE STUNDENPLÄNE MODULE ====================
+  function getFavoriteClasses() {
+    try {
+      return JSON.parse(localStorage.getItem('untis_fav_classes') || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  window.toggleFavoriteClass = function(id, e) {
+    if (e) e.stopPropagation();
+    let favs = getFavoriteClasses();
+    const idx = favs.indexOf(id);
+    if (idx >= 0) {
+      favs.splice(idx, 1);
+    } else {
+      favs.push(id);
+    }
+    localStorage.setItem('untis_fav_classes', JSON.stringify(favs));
+    renderResourceItems(state.classes, 'CLASS');
+  };
+
   async function loadOtherTimetablesTab() {
     const listEl = document.getElementById('resourceItemsList');
     if (!listEl) return;
+
+    if (state.otherTab !== 'CLASS' && state.otherTab !== 'ROOM') {
+      state.otherTab = 'CLASS';
+    }
 
     if (state.otherTab === 'CLASS') {
       if (state.classes.length === 0) {
@@ -559,14 +625,6 @@
         showLoading(false);
       }
       renderResourceItems(state.classes, 'CLASS');
-    } else if (state.otherTab === 'TEACHER') {
-      if (state.teachers.length === 0) {
-        showLoading(true, 'Lade Lehrkräfte...');
-        const teachers = await apiFetch('/api/teachers');
-        state.teachers = teachers || [];
-        showLoading(false);
-      }
-      renderResourceItems(state.teachers, 'TEACHER');
     } else if (state.otherTab === 'ROOM') {
       if (state.rooms.length === 0) {
         showLoading(true, 'Lade Fachräume...');
@@ -583,14 +641,16 @@
   }
 
   function switchResourceTab(tabName) {
+    if (tabName !== 'CLASS' && tabName !== 'ROOM') {
+      tabName = 'CLASS';
+    }
     state.otherTab = tabName;
     document.querySelectorAll('.res-tab-btn').forEach(b => b.classList.remove('active'));
     if (tabName === 'CLASS') document.getElementById('tabResClasses')?.classList.add('active');
-    if (tabName === 'TEACHER') document.getElementById('tabResTeachers')?.classList.add('active');
     if (tabName === 'ROOM') document.getElementById('tabResRooms')?.classList.add('active');
 
     const pill = document.getElementById('otherResTypePill');
-    if (pill) pill.textContent = tabName === 'CLASS' ? 'KLASSE' : (tabName === 'TEACHER' ? 'LEHRKRAFT' : 'FACHRAUM');
+    if (pill) pill.textContent = tabName === 'CLASS' ? 'KLASSE' : 'FACHRAUM';
 
     loadOtherTimetablesTab();
   }
@@ -599,14 +659,25 @@
     const listEl = document.getElementById('resourceItemsList');
     if (!listEl) return;
 
-    const search = document.getElementById('resourceSearchInput')?.value.toLowerCase() || '';
+    const search = document.getElementById('resourceSearchInput')?.value.toLowerCase().trim() || '';
 
-    const filtered = items.filter(it => {
+    let filtered = items.filter(it => {
       const name = (it.name || it.longName || '').toLowerCase();
       const longName = (it.longName || '').toLowerCase();
-      const foreName = (it.foreName || '').toLowerCase();
-      return name.includes(search) || longName.includes(search) || foreName.includes(search);
+      return name.includes(search) || longName.includes(search);
     });
+
+    // Pinned Favorites to top for Klassen
+    const favs = getFavoriteClasses();
+    if (type === 'CLASS') {
+      filtered.sort((a, b) => {
+        const aFav = favs.includes(a.id);
+        const bFav = favs.includes(b.id);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
 
     if (filtered.length === 0) {
       listEl.innerHTML = '<div class="empty-inline-state">Keine Einträge gefunden.</div>';
@@ -616,15 +687,19 @@
     listEl.innerHTML = filtered.map(it => {
       const isSelected = state.otherSelectedId === it.id && state.otherTab === type;
       let label = it.name;
-      if (type === 'TEACHER' && it.longName) {
-        label = `${it.longName}, ${it.foreName || ''} (${it.name})`;
-      } else if (type === 'ROOM' && it.longName) {
+      if (type === 'ROOM' && it.longName && it.longName !== it.name) {
         label = `${it.name} - ${it.longName}`;
       }
+
+      const isFav = favs.includes(it.id);
+      const favHtml = type === 'CLASS'
+        ? `<button class="btn-fav-heart ${isFav ? 'active' : ''}" onclick="toggleFavoriteClass(${it.id}, event)" title="${isFav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">${isFav ? '❤️' : '🤍'}</button>`
+        : '';
 
       return `
         <div class="res-item-row ${isSelected ? 'active' : ''}" onclick="selectResourceItem(${it.id}, '${escapeHTML(label)}', '${type}')">
           <span>${escapeHTML(label)}</span>
+          ${favHtml}
         </div>
       `;
     }).join('');
@@ -639,7 +714,7 @@
     if (heading) heading.textContent = name;
 
     renderResourceItems(
-      type === 'CLASS' ? state.classes : (type === 'TEACHER' ? state.teachers : state.rooms),
+      type === 'CLASS' ? state.classes : state.rooms,
       type
     );
 
@@ -803,12 +878,29 @@
   // ==================== ABWESENHEITEN MODULE ====================
   async function loadAbsences() {
     showLoading(true, 'Lade Fehlzeiten...');
-    const data = await apiFetch('/api/absences');
+    const year = state.selectedSchoolYear || '2026/2027';
+    const data = await apiFetch(`/api/absences?year=${encodeURIComponent(year)}&format=full`);
     showLoading(false);
 
-    state.absences = data || [];
+    if (data && Array.isArray(data)) {
+      state.absences = data;
+    } else if (data && data.absences) {
+      state.absences = data.absences;
+      if (data.selectedSchoolYear) {
+        state.selectedSchoolYear = data.selectedSchoolYear;
+        const sel = document.getElementById('absSchoolYearSelect');
+        if (sel) sel.value = data.selectedSchoolYear;
+      }
+    } else {
+      state.absences = [];
+    }
     renderAbsenceCards();
   }
+
+  window.onAbsenceSchoolYearChange = function(val) {
+    state.selectedSchoolYear = val;
+    loadAbsences();
+  };
 
   function renderAbsenceCards() {
     const container = document.getElementById('absencesCardsContainer');
@@ -832,7 +924,7 @@
     if (!container) return;
 
     if (state.absences.length === 0) {
-      container.innerHTML = '<div class="empty-state"><h3>Keine Fehlzeiten verzeichnet</h3><p>Reiche über den Button oben eine Krankmeldung oder Abwesenheit ein.</p></div>';
+      container.innerHTML = '<div class="empty-state"><h3>Keine Fehlzeiten im gewählten Schuljahr</h3><p>Reiche über den Button oben eine Krankmeldung oder Abwesenheit ein.</p></div>';
       return;
     }
 
@@ -916,12 +1008,62 @@
   }
 
   // ==================== MITTEILUNGEN MODULE ====================
+  function getReadMessageIds() {
+    try {
+      return JSON.parse(localStorage.getItem('untis_read_msgs') || '[]');
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function markMessageAsRead(id) {
+    const ids = getReadMessageIds();
+    const idStr = String(id);
+    if (!ids.includes(idStr)) {
+      ids.push(idStr);
+      localStorage.setItem('untis_read_msgs', JSON.stringify(ids));
+    }
+    updateMessagesBadge();
+  }
+
+  window.markAllMessagesAsRead = function() {
+    const ids = getReadMessageIds();
+    (state.messages || []).forEach(m => {
+      const s = String(m.id);
+      if (!ids.includes(s)) ids.push(s);
+    });
+    localStorage.setItem('untis_read_msgs', JSON.stringify(ids));
+    updateMessagesBadge();
+    renderMessages();
+    showToast('Alle Mitteilungen als gelesen markiert.');
+  };
+
+  function updateMessagesBadge() {
+    const readIds = getReadMessageIds();
+    const unreadCount = (state.messages || []).filter(m => !readIds.includes(String(m.id))).length;
+    const msgBadge = document.getElementById('sidebarMsgBadge');
+    if (msgBadge) {
+      if (unreadCount > 0) {
+        msgBadge.textContent = unreadCount;
+        msgBadge.style.display = 'inline-block';
+      } else {
+        msgBadge.textContent = '0';
+        msgBadge.style.display = 'none';
+      }
+    }
+    const dashMsgCount = document.getElementById('dashMsgCount');
+    const dashMsgHeadline = document.getElementById('dashMsgHeadline');
+    if (dashMsgCount) dashMsgCount.textContent = unreadCount > 0 ? `${unreadCount} ungelesen` : '0 ungelesen';
+    if (dashMsgHeadline) dashMsgHeadline.textContent = unreadCount > 0 ? `${unreadCount} neue Mitteilungen` : 'Alle Mitteilungen gelesen';
+  }
+
   async function loadMessages() {
     showLoading(true, 'Lade Mitteilungen...');
     const data = await apiFetch('/api/messages');
     showLoading(false);
 
     state.messages = data || [];
+    updateMessagesBadge();
     renderMessages();
   }
 
@@ -934,21 +1076,32 @@
       return;
     }
 
-    container.innerHTML = state.messages.map(m => `
-      <div class="message-card" onclick="openMessageDetailModal(${m.id})">
-        <div class="msg-header-row">
-          <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
-          <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
+    const readIds = getReadMessageIds();
+
+    container.innerHTML = state.messages.map(m => {
+      const isUnread = !readIds.includes(String(m.id));
+      return `
+        <div class="message-card ${isUnread ? 'unread' : ''}" onclick="openMessageDetailModal(${m.id})">
+          <div class="msg-header-row">
+            <div style="display:flex; align-items:center;">
+              ${isUnread ? '<span class="msg-unread-tag" title="Ungelesen"></span>' : ''}
+              <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
+            </div>
+            <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
+          </div>
+          <div class="msg-subject-line">${escapeHTML(m.subject)}</div>
+          <div class="msg-preview-text">${escapeHTML(m.contentPreview || '')}</div>
         </div>
-        <div class="msg-subject-line">${escapeHTML(m.subject)}</div>
-        <div class="msg-preview-text">${escapeHTML(m.contentPreview || '')}</div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   async function openMessageDetailModal(id) {
     const modal = document.getElementById('messageDetailBackdrop');
     if (!modal) return;
+
+    markMessageAsRead(id);
+    renderMessages();
 
     modal.style.display = 'flex';
     document.getElementById('msgDetailSubject').textContent = 'Lade Nachricht...';
@@ -1142,6 +1295,114 @@
       window.location.reload();
     } else {
       showToast(res?.message || 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.', 'error');
+    }
+  }
+
+  function openProfilesModal() {
+    const modal = document.getElementById('profilesModalBackdrop');
+    if (modal) {
+      modal.style.display = 'flex';
+      loadProfiles();
+    }
+  }
+
+  function closeProfilesModal() {
+    const modal = document.getElementById('profilesModalBackdrop');
+    if (modal) modal.style.display = 'none';
+    cancelAddSchool();
+  }
+
+  // ==================== UPDATE SYSTEM MODULE ====================
+  let availableUpdateInfo = null;
+
+  async function checkForSoftwareUpdates(silent = false) {
+    try {
+      const res = await apiFetch('/api/updates/check');
+      if (res && res.hasUpdate) {
+        availableUpdateInfo = res;
+        const topBadge = document.getElementById('topbarUpdateBadge');
+        const topText = document.getElementById('topbarUpdateText');
+        if (topBadge) topBadge.style.display = 'inline-flex';
+        if (topText) topText.textContent = `Update ${res.latestVersion} verfügbar`;
+
+        if (!silent) {
+          openUpdateModal();
+        }
+      } else {
+        if (!silent) {
+          showToast(`Untis Desktop ist auf dem neuesten Stand (${res?.currentVersion || 'aktuell'}).`);
+        }
+      }
+    } catch (e) {
+      if (!silent) {
+        showToast('Fehler beim Prüfen auf Updates', 'error');
+      }
+    }
+  }
+
+  function openUpdateModal() {
+    if (!availableUpdateInfo) return;
+    const modal = document.getElementById('updateModalBackdrop');
+    if (!modal) return;
+
+    const currVerEl = document.getElementById('updateCurrentVer');
+    const newVerEl = document.getElementById('updateNewVer');
+    const titleEl = document.getElementById('updateReleaseTitle');
+    const notesEl = document.getElementById('updateReleaseNotes');
+    const progWrap = document.getElementById('updateProgressWrap');
+    const btn = document.getElementById('btnApplyUpdate');
+
+    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.0.0';
+    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.1.0';
+    if (titleEl) titleEl.textContent = availableUpdateInfo.title || `Untis Desktop ${availableUpdateInfo.latestVersion}`;
+    if (notesEl) notesEl.textContent = availableUpdateInfo.releaseNotes || 'Keine Versionshinweise verfügbar.';
+
+    if (progWrap) progWrap.style.display = 'none';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Jetzt aktualisieren';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeUpdateModal() {
+    const modal = document.getElementById('updateModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function applySoftwareUpdate() {
+    if (!availableUpdateInfo) return;
+
+    const btn = document.getElementById('btnApplyUpdate');
+    const progressWrap = document.getElementById('updateProgressWrap');
+    const progressText = document.getElementById('updateProgressText');
+
+    if (btn) btn.disabled = true;
+    if (progressWrap) progressWrap.style.display = 'block';
+    if (progressText) progressText.textContent = 'Update wird heruntergeladen und installiert...';
+
+    try {
+      const res = await apiFetch('/api/updates/apply', {
+        method: 'POST',
+        body: JSON.stringify({ downloadUrl: availableUpdateInfo.downloadUrl }),
+      });
+
+      if (res && res.success) {
+        if (progressText) progressText.textContent = 'Update erfolgreich installiert! Starte App neu...';
+        showToast('Update erfolgreich installiert!');
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        if (btn) btn.disabled = false;
+        if (progressText) progressText.textContent = `Fehler: ${res?.message || 'Update fehlgeschlagen'}`;
+        showToast(res?.message || 'Update fehlgeschlagen', 'error');
+      }
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (progressText) progressText.textContent = 'Fehler beim Ausführen des Updates.';
+      showToast('Fehler beim Ausführen des Updates', 'error');
     }
   }
 
@@ -1379,6 +1640,8 @@
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       if (e.key === 'Escape') {
+        closeProfilesModal();
+        closeUpdateModal();
         closeNewHomeworkModal();
         closeNewAbsenceModal();
         closeMessageDetailModal();
@@ -1442,6 +1705,12 @@
   window.deleteProfile = deleteProfile;
   window.selectSearchSchool = selectSearchSchool;
   window.cancelAddSchool = cancelAddSchool;
+  window.openProfilesModal = openProfilesModal;
+  window.closeProfilesModal = closeProfilesModal;
+  window.checkForSoftwareUpdates = checkForSoftwareUpdates;
+  window.openUpdateModal = openUpdateModal;
+  window.closeUpdateModal = closeUpdateModal;
+  window.applySoftwareUpdate = applySoftwareUpdate;
 
   // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {

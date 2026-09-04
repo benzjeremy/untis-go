@@ -12,7 +12,7 @@ import (
 	"github.com/benzjeremy/untis-go/server"
 )
 
-const AppVersion = "1.0.0"
+const AppVersion = server.AppVersion
 
 func main() {
 	portFlag := flag.Int("port", 0, "HTTP-Port für den lokalen Untis-Server (Standard: 0 für dynamischen Zufallsport)")
@@ -78,11 +78,11 @@ func main() {
 
 	windowTitle := "Untis Stundenplan"
 	if activeProf != nil && activeProf.School != "" {
-		windowTitle = fmt.Sprintf("Untis Stundenplan - %s", activeProf.School)
-		className := database.GetSetting("selected_class_name", "")
-		if className != "" {
-			windowTitle = fmt.Sprintf("Untis Stundenplan - %s (%s)", activeProf.School, className)
+		userName := activeProf.Name
+		if activeProf.Username != "" {
+			userName = activeProf.Username
 		}
+		windowTitle = fmt.Sprintf("Untis Stundenplan - %s - %s", activeProf.School, userName)
 	}
 
 	// Launch native WebKitGTK (hardware accelerated) or browser

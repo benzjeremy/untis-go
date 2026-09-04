@@ -18,6 +18,13 @@ static void on_window_destroy(GtkWidget *widget, gpointer data) {
     gtk_main_quit();
 }
 
+static void on_title_changed(WebKitWebView *web_view, GParamSpec *pspec, GtkWindow *window) {
+    const gchar *new_title = webkit_web_view_get_title(web_view);
+    if (new_title && *new_title) {
+        gtk_window_set_title(window, new_title);
+    }
+}
+
 static void run_gtk_window(const char *title, const char *url, int width, int height) {
     int argc = 0;
     char **argv = NULL;
@@ -39,6 +46,8 @@ static void run_gtk_window(const char *title, const char *url, int width, int he
     webkit_settings_set_enable_webgl(settings, TRUE);
     webkit_settings_set_enable_2d_canvas_acceleration(settings, TRUE);
     webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS);
+
+    g_signal_connect(webview, "notify::title", G_CALLBACK(on_title_changed), window);
 
     gtk_container_add(GTK_CONTAINER(window), webview);
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url);
