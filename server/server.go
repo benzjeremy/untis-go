@@ -349,7 +349,7 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 			} else if req.Username != "" {
 				profName = fmt.Sprintf("%s (%s)", req.Username, req.School)
 			} else {
-				profName = req.School
+				profName = fmt.Sprintf("%s (Anonym)", req.School)
 			}
 		}
 

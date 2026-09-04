@@ -163,6 +163,36 @@ func TestServerSecurityAndEndpoints(t *testing.T) {
 	if _, err := database.GetProfile("dummy_delete_test"); err == nil {
 		t.Fatalf("expected profile to be deleted from database")
 	}
+
+	// 8. Test anonymous profile saving and needsOnboarding transition
+	anonProf := &db.Profile{
+		ID:       "anon_test",
+		Name:     "Testschule (Anonym)",
+		School:   "test-school",
+		Server:   "https://test.webuntis.com",
+		Username: "",
+		IsActive: true,
+	}
+	if err := database.SaveProfile(anonProf); err != nil {
+		t.Fatalf("failed to save anonymous profile: %v", err)
+	}
+	if err := database.SetActiveProfile("anon_test"); err != nil {
+		t.Fatalf("failed to set active profile: %v", err)
+	}
+
+	reqStatusAfter, _ := http.NewRequest("GET", baseURL+"/api/status", nil)
+	reqStatusAfter.Header.Set("X-Session-Token", token)
+	respStatusAfter, err := http.DefaultClient.Do(reqStatusAfter)
+	if err != nil || respStatusAfter.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK after profile set, got %v", respStatusAfter.StatusCode)
+	}
+	var statusAfter map[string]interface{}
+	_ = json.NewDecoder(respStatusAfter.Body).Decode(&statusAfter)
+	respStatusAfter.Body.Close()
+
+	if needsOnboard, _ := statusAfter["needsOnboarding"].(bool); needsOnboard {
+		t.Fatalf("expected needsOnboarding=false after profile configured, got true")
+	}
 }
 
 func fmtBaseURL(port int) string {

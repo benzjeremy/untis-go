@@ -733,7 +733,8 @@
 
               <div class="form-actions-row">
                 <button type="button" class="btn-outlined" onclick="cancelAddSchool()">Abbrechen</button>
-                <button type="submit" class="btn-filled">Verbinden & Speichern</button>
+                <button type="button" class="btn-outlined" onclick="saveSchoolAnonymous()" style="color:var(--accent-primary); border-color:var(--accent-primary);">🔓 Anonym als Gast</button>
+                <button type="submit" class="btn-filled">Mit Konto verbinden</button>
               </div>
             </form>
           </div>
@@ -797,6 +798,143 @@
       <div class="modal-button-row" id="updateButtonRow">
         <button type="button" class="btn-outlined" onclick="closeUpdateModal()">Später</button>
         <button type="button" class="btn-filled" id="btnApplyUpdate" onclick="applySoftwareUpdate()">Jetzt aktualisieren</button>
+      </div>
+    </div>
+  <!-- ==================== ONBOARDING SETUP WIZARD ==================== -->
+  <div class="onboarding-wizard-backdrop" id="onboardingWizardBackdrop" style="display:none;">
+    <div class="onboarding-wizard-modal">
+      <!-- Wizard Header -->
+      <div class="onboarding-header">
+        <div class="onboard-logo-row">
+          <img src="/icon.png" alt="untis-go" class="onboard-logo" width="44" height="44">
+          <div>
+            <h2 class="onboard-title">Willkommen bei untis-go</h2>
+            <p class="onboard-sub">Dein schneller, sicherer WebUntis Desktop Client</p>
+          </div>
+        </div>
+        <!-- Steps Progress Bar -->
+        <div class="onboard-steps-bar">
+          <div class="onboard-step-item active" id="onboardStepDot1">
+            <span class="step-circle">1</span>
+            <span class="step-label">Schule wählen</span>
+          </div>
+          <div class="onboard-step-line" id="onboardStepLine1"></div>
+          <div class="onboard-step-item" id="onboardStepDot2">
+            <span class="step-circle">2</span>
+            <span class="step-label">Anmeldung</span>
+          </div>
+          <div class="onboard-step-line" id="onboardStepLine2"></div>
+          <div class="onboard-step-item" id="onboardStepDot3">
+            <span class="step-circle">3</span>
+            <span class="step-label">Startklar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: School Search -->
+      <div class="onboard-step-content" id="onboardStep1Content">
+        <h3 class="step-section-title">Finde deine Schule</h3>
+        <p class="step-section-desc">Gib den Namen deiner Schule, deiner Stadt oder deine Schulnummer ein:</p>
+        <div class="onboard-search-box">
+          <svg viewBox="0 0 24 24" class="search-ic" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="onboardSchoolSearchInput" class="onboard-input" placeholder="z.B. Berufskolleg Technik, Gymnasium..." autocomplete="off">
+          <button type="button" class="btn-filled" id="btnOnboardSearch">Suchen</button>
+        </div>
+        <div class="onboard-results-list" id="onboardResultsList">
+          <div class="onboard-empty-tip">Tippe oben einen Suchbegriff ein, um nach deiner Schule zu suchen.</div>
+        </div>
+      </div>
+
+      <!-- Step 2: Login Options -->
+      <div class="onboard-step-content" id="onboardStep2Content" style="display:none;">
+        <button type="button" class="btn-text-sm onboard-back-btn" onclick="goToOnboardStep(1)">
+          &larr; Andere Schule wählen
+        </button>
+        <div class="onboard-chosen-school-card" id="onboardChosenSchoolCard">
+          <div class="chosen-school-icon">🏫</div>
+          <div class="chosen-school-info">
+            <h4 id="onboardChosenSchoolName">Schulname</h4>
+            <span id="onboardChosenSchoolServer">server.webuntis.com</span>
+          </div>
+        </div>
+
+        <div class="onboard-login-options-grid">
+          <!-- Option A: With Account -->
+          <div class="onboard-option-card">
+            <div class="opt-badge">Empfohlen</div>
+            <h4>Mit WebUntis-Konto anmelden</h4>
+            <p class="opt-desc">Für deinen persönlichen Stundenplan, Hausaufgaben und Krankmeldungen.</p>
+            <form id="onboardCredentialsForm" onsubmit="handleOnboardCredentialsSubmit(event)">
+              <div class="form-group">
+                <label for="onboardUsername">Benutzername</label>
+                <input type="text" id="onboardUsername" class="onboard-input" placeholder="WebUntis Benutzername" autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="onboardPassword">Passwort</label>
+                <input type="password" id="onboardPassword" class="onboard-input" placeholder="Passwort" autocomplete="current-password">
+              </div>
+              <div class="form-group">
+                <label for="onboardProfileName">Profilname (optional)</label>
+                <input type="text" id="onboardProfileName" class="onboard-input" placeholder="z.B. Mein Stundenplan">
+              </div>
+              <button type="submit" class="btn-filled onboard-submit-btn" id="btnOnboardLogin">
+                Anmelden & Speichern &rarr;
+              </button>
+            </form>
+          </div>
+
+          <!-- Option B: Anonymous / Guest -->
+          <div class="onboard-option-card guest-card">
+            <div class="opt-badge guest">Schnellstart</div>
+            <h4>🔓 Anonym als Gast fortfahren</h4>
+            <p class="opt-desc">Kein Benutzerkonto nötig! Sieh dir öffentliche Klassen-, Lehrer- und Raumstundenpläne an (genau wie in der WebUntis App).</p>
+            <div class="guest-features-list">
+              <div>✓ Sofortiger Zugriff ohne Passwort</div>
+              <div>✓ Alle Klassen- und Raumpläne einsehen</div>
+              <div>✓ Keine Registrierung erforderlich</div>
+            </div>
+            <button type="button" class="btn-outlined onboard-guest-btn" id="btnOnboardGuest" onclick="handleOnboardAnonymousSubmit()">
+              Als Gast fortfahren &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Success & Tips -->
+      <div class="onboard-step-content" id="onboardStep3Content" style="display:none;">
+        <div class="onboard-success-box">
+          <div class="success-check-bubble">✓</div>
+          <h3>Schule erfolgreich eingerichtet!</h3>
+          <p id="onboardSuccessSubtitle">Dein Stundenplan ist bereit.</p>
+
+          <div class="onboard-tips-grid">
+            <div class="onboard-tip-item">
+              <div class="tip-num">⚡</div>
+              <div>
+                <h5>Zero-Lag Caching</h5>
+                <p>Deine Pläne werden lokal verschlüsselt gespeichert und öffnen in unter 1 Millisekunde.</p>
+              </div>
+            </div>
+            <div class="onboard-tip-item">
+              <div class="tip-num">⌨️</div>
+              <div>
+                <h5>Tastaturkürzel</h5>
+                <p>Nutze <strong>W</strong> für die Wochenansicht, <strong>D</strong> für den Tag und <strong>T</strong> für Heute.</p>
+              </div>
+            </div>
+            <div class="onboard-tip-item">
+              <div class="tip-num">❤️</div>
+              <div>
+                <h5>Klassen-Favoriten</h5>
+                <p>Klicke in <em>Weitere Stundenpläne</em> auf das Herz neben einer Klasse, um sie oben anzuheften.</p>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-filled onboard-finish-btn" onclick="finishOnboarding()">
+            Untis GO starten 🚀
+          </button>
+        </div>
       </div>
     </div>
   </div>

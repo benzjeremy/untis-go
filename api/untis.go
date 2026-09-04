@@ -262,6 +262,23 @@ func (c *Client) Authenticate() error {
 		return fmt.Errorf("server oder schule nicht konfiguriert")
 	}
 
+	// Anonymous / Guest access: No credentials required
+	if strings.TrimSpace(c.Username) == "" && c.Password == "" {
+		c.UserInfo.DisplayName = "Gast"
+		c.UserInfo.DetectedClass = ""
+		initURL := fmt.Sprintf("%s/WebUntis/index.do?school=%s", c.Server, url.QueryEscape(c.School))
+		req, err := http.NewRequest("GET", initURL, nil)
+		if err == nil {
+			req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
+			resp, errDo := c.httpClient.Do(req)
+			if errDo == nil {
+				_ = resp.Body.Close()
+			}
+		}
+		c.Token = "ANONYMOUS"
+		return nil
+	}
+
 	form := url.Values{}
 	form.Set("school", c.School)
 	form.Set("j_username", c.Username)
@@ -340,6 +357,12 @@ func (c *Client) Authenticate() error {
 	return nil
 }
 
+func (c *Client) setAuthHeader(req *http.Request) {
+	if c.Token != "" && c.Token != "ANONYMOUS" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+}
+
 func (c *Client) fetchGeneralData() {
 	dataURL := fmt.Sprintf("%s/WebUntis/api/rest/view/v1/app/data", c.Server)
 	req, err := http.NewRequest("GET", dataURL, nil)
@@ -348,9 +371,7 @@ func (c *Client) fetchGeneralData() {
 	}
 	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
 	req.Header.Set("Accept", "application/json")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
+	c.setAuthHeader(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -421,9 +442,7 @@ func (c *Client) GetKlassen() ([]Klasse, error) {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
-		if c.Token != "" {
-			req.Header.Set("Authorization", "Bearer "+c.Token)
-		}
+		c.setAuthHeader(req)
 		return c.httpClient.Do(req)
 	}
 
@@ -507,9 +526,7 @@ func (c *Client) GetTeachers() ([]Teacher, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
+	c.setAuthHeader(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -587,9 +604,7 @@ func (c *Client) GetRooms() ([]Room, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
+	c.setAuthHeader(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err == nil {
@@ -621,9 +636,7 @@ func (c *Client) GetRooms() ([]Room, error) {
 	restReq, err := http.NewRequest("GET", restURL, nil)
 	if err == nil {
 		restReq.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
-		if c.Token != "" {
-			restReq.Header.Set("Authorization", "Bearer "+c.Token)
-		}
+		c.setAuthHeader(restReq)
 		if restResp, err := c.httpClient.Do(restReq); err == nil {
 			defer restResp.Body.Close()
 			var restData struct {
@@ -676,9 +689,7 @@ func (c *Client) GetMessages() ([]Message, error) {
 	}
 	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
 	req.Header.Set("Accept", "application/json")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
+	c.setAuthHeader(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -722,9 +733,7 @@ func (c *Client) GetMessageById(id int) (*Message, error) {
 	}
 	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
 	req.Header.Set("Accept", "application/json")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
+	c.setAuthHeader(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -1040,9 +1049,7 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 		}
 		req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
 		req.Header.Set("Accept", "application/json")
-		if c.Token != "" {
-			req.Header.Set("Authorization", "Bearer "+c.Token)
-		}
+		c.setAuthHeader(req)
 		return c.httpClient.Do(req)
 	}
 

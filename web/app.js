@@ -286,7 +286,7 @@
     updateLiveClockAndCountdown();
 
     if (status.needsOnboarding) {
-      openProfilesModal();
+      openOnboardingWizard();
       return;
     }
 
@@ -316,6 +316,9 @@
       return;
     }
 
+    const bigTimerEl = document.getElementById('dashHeroGreeting');
+    const eyebrowEl = document.getElementById('dashCountdownEyebrow');
+
     if (data.isUpcomingSchoolDay && data.nextLesson) {
       if (dotEl) dotEl.className = 'dash-clock-dot free';
       const nextSubj = getDisplaySubject(data.nextLesson);
@@ -337,6 +340,9 @@
           const secs = totSec % 60;
           const timePart = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
+          if (eyebrowEl) eyebrowEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'} beginnt in:`;
+          if (bigTimerEl) bigTimerEl.textContent = days > 0 ? `${days}d ${timePart}` : timePart;
+
           if (days > 0) {
             textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} in ${days}T ${timePart}`;
           } else {
@@ -345,6 +351,8 @@
           return;
         }
       }
+      if (eyebrowEl) eyebrowEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}:`;
+      if (bigTimerEl) bigTimerEl.textContent = tStr;
       textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} (${tStr})`;
       return;
     }
@@ -378,6 +386,8 @@
       const mins = Math.floor(activeLesson.remainingSec / 60);
       const secs = activeLesson.remainingSec % 60;
       const timePart = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      if (eyebrowEl) eyebrowEl.textContent = `Jetzt: ${subj}${room}`;
+      if (bigTimerEl) bigTimerEl.textContent = `Noch ${timePart}`;
       textEl.textContent = `Jetzt: ${subj}${room} · Noch ${timePart} bis Pause`;
     } else if (nextUpcoming) {
       if (dotEl) dotEl.className = 'dash-clock-dot in-break';
@@ -386,9 +396,13 @@
       const mins = Math.floor(nextUpcoming.waitSec / 60);
       const secs = nextUpcoming.waitSec % 60;
       const timePart = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      if (eyebrowEl) eyebrowEl.textContent = `Nächste Stunde in:`;
+      if (bigTimerEl) bigTimerEl.textContent = timePart;
       textEl.textContent = `Pause · Nächste Std: ${subj}${room} in ${timePart}`;
     } else {
       if (dotEl) dotEl.className = 'dash-clock-dot free';
+      if (eyebrowEl) eyebrowEl.textContent = `Schultag beendet:`;
+      if (bigTimerEl) bigTimerEl.textContent = `Freizeit 🎉`;
       textEl.textContent = 'Schultag beendet · Schöne Freizeit!';
     }
   }
@@ -519,22 +533,28 @@
         : (isSubst ? '<span class="status-pill substitution">Änderung</span>' : '');
 
       const storeId = registerLesson(l);
+      const nextL = state.dashboardData?.nextLesson;
+      const isNext = (nextL && 
+                      (nextL.date || nextL.Date) === (l.date || l.Date) &&
+                      nextL.startTimeStr === l.startTimeStr &&
+                      nextL.subject === l.subject);
 
       return `
-        <div class="dash-lesson-item ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonById('${storeId}')">
+        <div class="dash-lesson-item ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''} ${isNext ? 'is-next-lesson' : ''}" onclick="openLessonById('${storeId}')">
           <div class="lesson-time-col">
-            <span class="l-time-range">${l.timeRange}</span>
-            <span class="l-period">${l.period}</span>
+            <span class="l-time-range">${escapeHTML(l.timeRange)}</span>
+            <span class="l-period">${escapeHTML(l.period)}</span>
           </div>
           <div class="lesson-color-bar" style="background-color:${color};"></div>
           <div class="lesson-main-col">
             <div class="l-subject-row">
               <span class="l-subject">${escapeHTML(displaySubj)}</span>
-              ${roomText ? `<span class="l-room-tag">${escapeHTML(roomText)}</span>` : ''}
+              ${roomText ? `<span class="l-room-tag">Raum ${escapeHTML(roomText)}</span>` : ''}
               ${statusBadge}
             </div>
             <span class="l-teacher">${escapeHTML(teacherText)}</span>
           </div>
+          ${teacherText ? `<span class="l-teacher-badge">${escapeHTML(teacherText.slice(0, 4))}</span>` : ''}
         </div>
       `;
     }).join('');
@@ -1550,7 +1570,7 @@
     }
 
     list.innerHTML = data.schools.map(s => `
-      <div class="school-result-item" onclick="selectSearchSchool(${escapeHTML(JSON.stringify(s))})">
+      <div class="school-result-item" data-school='${escapeHTML(JSON.stringify(s))}' onclick="selectSearchSchool(this)">
         <div>
           <div class="sr-name">${escapeHTML(s.displayName)}</div>
           <div class="sr-details">${escapeHTML(s.address || s.serverUrl || s.server)}</div>
@@ -1564,18 +1584,20 @@
     const schoolData = element.getAttribute('data-school');
     if (!schoolData) return;
 
-    const school = JSON.parse(schoolData);
-    selectedSearchSchool = school;
-    const form = document.getElementById('addSchoolForm');
-    const preview = document.getElementById('selectedSchoolPreview');
+    try {
+      const school = JSON.parse(schoolData);
+      selectedSearchSchool = school;
+      const form = document.getElementById('addSchoolForm');
+      const preview = document.getElementById('selectedSchoolPreview');
 
-    if (preview) {
-      preview.textContent = `Ausgewählte Schule: ${school.displayName} (${school.loginName || school.server})`;
-    }
-    if (form) {
-      form.style.display = 'flex';
-      form.scrollIntoView({ behavior: 'smooth' });
-    }
+      if (preview) {
+        preview.textContent = `Ausgewählte Schule: ${school.displayName} (${school.loginName || school.server})`;
+      }
+      if (form) {
+        form.style.display = 'flex';
+        form.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch (err) {}
   }
 
   function cancelAddSchool() {
@@ -1622,6 +1644,218 @@
     } else {
       showToast(res?.message || 'Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen.', 'error');
     }
+  }
+
+  async function saveSchoolAnonymous() {
+    if (!selectedSearchSchool) return;
+
+    let serverHost = selectedSearchSchool.server || selectedSearchSchool.serverUrl || '';
+    if (serverHost.startsWith('http://') || serverHost.startsWith('https://')) {
+      try {
+        const u = new URL(serverHost);
+        serverHost = u.origin;
+      } catch (err) {}
+    } else if (serverHost) {
+      serverHost = 'https://' + serverHost.split('/')[0];
+    }
+
+    const profileName = document.getElementById('newProfileName')?.value.trim() || (selectedSearchSchool.displayName + ' (Anonym)');
+
+    showLoading(true, 'Verbinde anonym mit WebUntis...');
+    const res = await apiFetch('/api/profiles', {
+      method: 'POST',
+      body: JSON.stringify({
+        school: selectedSearchSchool.loginName || selectedSearchSchool.displayName,
+        server: serverHost,
+        name: profileName,
+        username: '',
+        password: '',
+        setActive: true,
+      }),
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      showToast('Anonym als Gast verbunden!');
+      window.location.reload();
+    } else {
+      showToast(res?.message || 'Verbindung fehlgeschlagen', 'error');
+    }
+  }
+
+  // ==================== ONBOARDING SETUP WIZARD ====================
+  let onboardSelectedSchool = null;
+
+  function openOnboardingWizard() {
+    const backdrop = document.getElementById('onboardingWizardBackdrop');
+    if (!backdrop) return;
+    backdrop.style.display = 'flex';
+    goToOnboardStep(1);
+
+    const searchInput = document.getElementById('onboardSchoolSearchInput');
+    const searchBtn = document.getElementById('btnOnboardSearch');
+
+    if (searchInput && !searchInput.dataset.hasListener) {
+      searchInput.dataset.hasListener = 'true';
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleOnboardSchoolSearch();
+      });
+    }
+    if (searchBtn && !searchBtn.dataset.hasListener) {
+      searchBtn.dataset.hasListener = 'true';
+      searchBtn.addEventListener('click', handleOnboardSchoolSearch);
+    }
+  }
+
+  function goToOnboardStep(step) {
+    for (let i = 1; i <= 3; i++) {
+      const dot = document.getElementById(`onboardStepDot${i}`);
+      const content = document.getElementById(`onboardStep${i}Content`);
+      if (dot) {
+        dot.classList.remove('active', 'completed');
+        if (i < step) dot.classList.add('completed');
+        if (i === step) dot.classList.add('active');
+      }
+      if (content) {
+        content.style.display = (i === step) ? 'block' : 'none';
+      }
+    }
+    const line1 = document.getElementById('onboardStepLine1');
+    const line2 = document.getElementById('onboardStepLine2');
+    if (line1) line1.classList.toggle('active', step >= 2);
+    if (line2) line2.classList.toggle('active', step >= 3);
+  }
+
+  async function handleOnboardSchoolSearch() {
+    const input = document.getElementById('onboardSchoolSearchInput');
+    const query = input ? input.value.trim() : '';
+    if (!query) return;
+
+    const list = document.getElementById('onboardResultsList');
+    if (list) list.innerHTML = '<div class="onboard-empty-tip">Suche nach Schulen...</div>';
+
+    const data = await apiFetch(`/api/schools/search?q=${encodeURIComponent(query)}`);
+    if (!list) return;
+
+    if (!data || !data.schools || data.schools.length === 0) {
+      list.innerHTML = '<div class="onboard-empty-tip">Keine Schule gefunden. Bitte Suchbegriff anpassen.</div>';
+      return;
+    }
+
+    list.innerHTML = data.schools.map(s => `
+      <div class="onboard-school-item" data-school='${escapeHTML(JSON.stringify(s))}' onclick="selectOnboardSchool(this)">
+        <div>
+          <div class="onboard-school-name">${escapeHTML(s.displayName)}</div>
+          <div class="onboard-school-meta">${escapeHTML(s.address || s.serverUrl || s.server)}</div>
+        </div>
+        <button type="button" class="btn-text-sm">Auswählen &rarr;</button>
+      </div>
+    `).join('');
+  }
+
+  function selectOnboardSchool(element) {
+    const schoolData = element.getAttribute('data-school');
+    if (!schoolData) return;
+    try {
+      onboardSelectedSchool = JSON.parse(schoolData);
+    } catch {
+      return;
+    }
+
+    const nameEl = document.getElementById('onboardChosenSchoolName');
+    const serverEl = document.getElementById('onboardChosenSchoolServer');
+    if (nameEl) nameEl.textContent = onboardSelectedSchool.displayName;
+    if (serverEl) serverEl.textContent = onboardSelectedSchool.server || onboardSelectedSchool.serverUrl || 'webuntis.com';
+
+    goToOnboardStep(2);
+  }
+
+  async function handleOnboardCredentialsSubmit(e) {
+    if (e) e.preventDefault();
+    if (!onboardSelectedSchool) return;
+
+    const username = document.getElementById('onboardUsername').value.trim();
+    const password = document.getElementById('onboardPassword').value;
+    const profileName = document.getElementById('onboardProfileName').value.trim();
+
+    if (!username) {
+      showToast('Bitte Benutzernamen eingeben', 'error');
+      return;
+    }
+
+    let serverHost = onboardSelectedSchool.server || onboardSelectedSchool.serverUrl || '';
+    if (serverHost.startsWith('http://') || serverHost.startsWith('https://')) {
+      try {
+        const u = new URL(serverHost);
+        serverHost = u.origin;
+      } catch (err) {}
+    } else if (serverHost) {
+      serverHost = 'https://' + serverHost.split('/')[0];
+    }
+
+    showLoading(true, 'Prüfe Zugangsdaten...');
+    const res = await apiFetch('/api/profiles', {
+      method: 'POST',
+      body: JSON.stringify({
+        school: onboardSelectedSchool.loginName || onboardSelectedSchool.displayName,
+        server: serverHost,
+        name: profileName || onboardSelectedSchool.displayName,
+        username,
+        password,
+        setActive: true,
+      }),
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      const subEl = document.getElementById('onboardSuccessSubtitle');
+      if (subEl) subEl.textContent = `Angemeldet als ${res.displayName || username}.`;
+      goToOnboardStep(3);
+    } else {
+      showToast(res?.message || 'Anmeldung fehlgeschlagen. Zugangsdaten prüfen.', 'error');
+    }
+  }
+
+  async function handleOnboardAnonymousSubmit() {
+    if (!onboardSelectedSchool) return;
+
+    let serverHost = onboardSelectedSchool.server || onboardSelectedSchool.serverUrl || '';
+    if (serverHost.startsWith('http://') || serverHost.startsWith('https://')) {
+      try {
+        const u = new URL(serverHost);
+        serverHost = u.origin;
+      } catch (err) {}
+    } else if (serverHost) {
+      serverHost = 'https://' + serverHost.split('/')[0];
+    }
+
+    showLoading(true, 'Verbinde anonym mit WebUntis...');
+    const res = await apiFetch('/api/profiles', {
+      method: 'POST',
+      body: JSON.stringify({
+        school: onboardSelectedSchool.loginName || onboardSelectedSchool.displayName,
+        server: serverHost,
+        name: onboardSelectedSchool.displayName + ' (Anonym)',
+        username: '',
+        password: '',
+        setActive: true,
+      }),
+    });
+    showLoading(false);
+
+    if (res && res.success) {
+      const subEl = document.getElementById('onboardSuccessSubtitle');
+      if (subEl) subEl.textContent = `Verbunden mit ${onboardSelectedSchool.displayName} als Gast.`;
+      goToOnboardStep(3);
+    } else {
+      showToast(res?.message || 'Verbindung fehlgeschlagen', 'error');
+    }
+  }
+
+  function finishOnboarding() {
+    const backdrop = document.getElementById('onboardingWizardBackdrop');
+    if (backdrop) backdrop.style.display = 'none';
+    window.location.reload();
   }
 
   function openProfilesModal() {
@@ -2385,6 +2619,14 @@
   window.openLessonById = openLessonById;
   window.loadAboutView = loadAboutView;
   window.checkForUpdatesFromAbout = checkForUpdatesFromAbout;
+  window.openOnboardingWizard = openOnboardingWizard;
+  window.goToOnboardStep = goToOnboardStep;
+  window.handleOnboardSchoolSearch = handleOnboardSchoolSearch;
+  window.selectOnboardSchool = selectOnboardSchool;
+  window.handleOnboardCredentialsSubmit = handleOnboardCredentialsSubmit;
+  window.handleOnboardAnonymousSubmit = handleOnboardAnonymousSubmit;
+  window.finishOnboarding = finishOnboarding;
+  window.saveSchoolAnonymous = saveSchoolAnonymous;
 
   // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {
