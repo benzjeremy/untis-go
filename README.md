@@ -1,5 +1,9 @@
 # 🚀 untis-go [BETA]
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/benzjeremy/untis-go.svg)](https://pkg.go.dev/github.com/benzjeremy/untis-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/benzjeremy/untis-go)](https://goreportcard.com/report/github.com/benzjeremy/untis-go)
+[![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
+[![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Release: v1.0.0-beta.1](https://img.shields.io/badge/Release-v1.0.0--beta.1-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
 [![Status: Beta](https://img.shields.io/badge/Status-BETA-yellow.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)

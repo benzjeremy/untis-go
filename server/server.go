@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"untis-go/api"
-	"untis-go/db"
-	"untis-go/web"
+	"github.com/benzjeremy/untis-go/api"
+	"github.com/benzjeremy/untis-go/db"
+	"github.com/benzjeremy/untis-go/web"
 )
 
 // Server coordinates the local HTTP API and SQLite database

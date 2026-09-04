@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"untis-go/db"
-	"untis-go/server"
+	"github.com/benzjeremy/untis-go/db"
+	"github.com/benzjeremy/untis-go/server"
 )
 
 const AppVersion = "1.0.0"

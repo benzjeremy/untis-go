@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"untis-go/db"
+	"github.com/benzjeremy/untis-go/db"
 )
 
 func TestServerSecurityAndEndpoints(t *testing.T) {

@@ -1,4 +1,4 @@
-module untis-go
+module github.com/benzjeremy/untis-go
 
 go 1.27.0
 
