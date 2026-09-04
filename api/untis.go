@@ -359,7 +359,7 @@ func (c *Client) fetchGeneralData() {
 
 		// Try extracting class name from email or name (e.g. "itt125.jeremy.benz@..." -> "ITT125")
 		emailPrefix := strings.Split(gd.User.Email, ".")[0]
-		if len(emailPrefix) >= 3 && len(emailPrefix) <= 10 {
+		if len(emailPrefix) >= 3 && len(emailPrefix) <= 10 && !strings.EqualFold(emailPrefix, "schule") {
 			c.UserInfo.DetectedClass = strings.ToUpper(emailPrefix)
 		}
 	}
@@ -1039,6 +1039,20 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 		return nil, err
 	}
 
+	type rawGridPosItem struct {
+		Current *struct {
+			Type        string `json:"type"`
+			Status      string `json:"status"`
+			ShortName   string `json:"shortName"`
+			LongName    string `json:"longName"`
+			DisplayName string `json:"displayName"`
+		} `json:"current"`
+		Removed *struct {
+			Type      string `json:"type"`
+			ShortName string `json:"shortName"`
+		} `json:"removed"`
+	}
+
 	var rawEntries struct {
 		Days []struct {
 			Date        string `json:"date"`
@@ -1053,28 +1067,11 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 				SubstitutionText string `json:"substitutionText"`
 				LessonText       string `json:"lessonText"`
 				Color            string `json:"color"`
-				Position1        []struct {
-					Current *struct {
-						Type      string `json:"type"`
-						Status    string `json:"status"`
-						ShortName string `json:"shortName"`
-						LongName  string `json:"longName"`
-					} `json:"current"`
-					Removed *struct {
-						ShortName string `json:"shortName"`
-					} `json:"removed"`
-				} `json:"position1"`
-				Position2 []struct {
-					Current *struct {
-						Type      string `json:"type"`
-						Status    string `json:"status"`
-						ShortName string `json:"shortName"`
-						LongName  string `json:"longName"`
-					} `json:"current"`
-					Removed *struct {
-						ShortName string `json:"shortName"`
-					} `json:"removed"`
-				} `json:"position2"`
+				Position1 []rawGridPosItem `json:"position1"`
+				Position2 []rawGridPosItem `json:"position2"`
+				Position3 []rawGridPosItem `json:"position3"`
+				Position4 []rawGridPosItem `json:"position4"`
+				LessonInfo string           `json:"lessonInfo"`
 			} `json:"gridEntries"`
 		} `json:"days"`
 	}
@@ -1132,46 +1129,90 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 			periodStr, pNum := computePeriod(startTimeStr, endTimeStr)
 
 			var subjShort, subjLong, origSubj string
-			if len(ge.Position1) > 0 {
-				if ge.Position1[0].Current != nil {
-					subjShort = ge.Position1[0].Current.ShortName
-					subjLong = ge.Position1[0].Current.LongName
-				}
-				if ge.Position1[0].Removed != nil {
-					origSubj = ge.Position1[0].Removed.ShortName
+			var teachers, teachersLong []string
+			var origTeacher string
+			var rooms, roomsLong, origRooms []string
+			var classes []string
+
+			allPositions := [][]rawGridPosItem{ge.Position1, ge.Position2, ge.Position3, ge.Position4}
+			for _, posList := range allPositions {
+				for _, p := range posList {
+					if p.Current != nil {
+						switch p.Current.Type {
+						case "SUBJECT":
+							if subjShort == "" {
+								subjShort = p.Current.ShortName
+								subjLong = p.Current.LongName
+							}
+						case "TEACHER":
+							teachers = append(teachers, p.Current.ShortName)
+							if p.Current.LongName != "" {
+								teachersLong = append(teachersLong, p.Current.LongName)
+							}
+						case "ROOM":
+							rooms = append(rooms, p.Current.ShortName)
+							if p.Current.LongName != "" {
+								roomsLong = append(roomsLong, p.Current.LongName)
+							}
+						case "CLASS":
+							classes = append(classes, p.Current.ShortName)
+						}
+					}
+					if p.Removed != nil {
+						switch p.Removed.Type {
+						case "SUBJECT":
+							origSubj = p.Removed.ShortName
+						case "ROOM":
+							origRooms = append(origRooms, p.Removed.ShortName)
+						case "TEACHER":
+							origTeacher = p.Removed.ShortName
+						}
+					}
 				}
 			}
 
-			var rooms []string
-			var roomsLong []string
-			var origRooms []string
-			for _, p2 := range ge.Position2 {
-				if p2.Current != nil {
-					rooms = append(rooms, p2.Current.ShortName)
-					if p2.Current.LongName != "" {
-						roomsLong = append(roomsLong, p2.Current.LongName)
-					}
-				}
-				if p2.Removed != nil {
-					origRooms = append(origRooms, p2.Removed.ShortName)
+			// Fallback: If no subject was found, but lessonInfo / lessonText exists
+			if subjShort == "" {
+				if ge.LessonInfo != "" {
+					subjShort = ge.LessonInfo
+					subjLong = ge.LessonInfo
+				} else if ge.LessonText != "" {
+					subjShort = ge.LessonText
+					subjLong = ge.LessonText
+				} else if ge.SubstitutionText != "" {
+					subjShort = ge.SubstitutionText
+					subjLong = ge.SubstitutionText
 				}
 			}
+
+			// Fallback: If still no subject, check Position1
+			if subjShort == "" && len(ge.Position1) > 0 && ge.Position1[0].Current != nil {
+				subjShort = ge.Position1[0].Current.ShortName
+				subjLong = ge.Position1[0].Current.LongName
+			}
+
+			teacherShort := strings.Join(teachers, ", ")
+			teacherLong := strings.Join(teachersLong, ", ")
 			roomStr := strings.Join(rooms, ", ")
 			roomLongStr := strings.Join(roomsLong, ", ")
 			origRoomStr := strings.Join(origRooms, ", ")
+			entryClass := className
+			if len(classes) > 0 {
+				entryClass = strings.Join(classes, ", ")
+			}
 
 			isCancelled := ge.Status == "CANCELLED"
 			isSubst := ge.Status == "CHANGED" || ge.SubstitutionText != "" || origSubj != ""
 			isRoomChange := origRoomStr != "" && origRoomStr != roomStr
 
-			var teacherShort, teacherLong, origTeacher, teachingContent string
+			var teachingContent string
 			var homeworks []string
-			entryClass := className
 
 			// Check detailMap
 			detailKey := ge.Duration.Start + "_" + ge.Duration.End
 			if det, ok := detailsMap[detailKey]; ok {
-				if tArr, ok := det["teachers"].([]interface{}); ok {
+				// 1. Teachers from detail
+				if tArr, ok := det["teachers"].([]interface{}); ok && len(tArr) > 0 {
 					var tShorts, tLongs []string
 					for _, item := range tArr {
 						if tMap, ok := item.(map[string]interface{}); ok {
@@ -1191,31 +1232,60 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 					}
 				}
 
-				if rArr, ok := det["rooms"].([]interface{}); ok && roomStr == "" {
-					var rNames []string
+				// 2. Subject from detail
+				if subjMap, ok := det["subject"].(map[string]interface{}); ok {
+					if s, ok := subjMap["shortName"].(string); ok && s != "" {
+						subjShort = s
+					}
+					if l, ok := subjMap["longName"].(string); ok && l != "" {
+						subjLong = l
+					}
+				}
+
+				// 3. Rooms from detail
+				if rArr, ok := det["rooms"].([]interface{}); ok && len(rArr) > 0 {
+					var rNames, rLongs []string
 					for _, item := range rArr {
 						if rMap, ok := item.(map[string]interface{}); ok {
-							if s, ok := rMap["name"].(string); ok && s != "" {
+							if s, ok := rMap["shortName"].(string); ok && s != "" {
 								rNames = append(rNames, s)
+							}
+							if l, ok := rMap["longName"].(string); ok && l != "" {
+								rLongs = append(rLongs, l)
 							}
 						}
 					}
 					if len(rNames) > 0 {
 						roomStr = strings.Join(rNames, ", ")
 					}
+					if len(rLongs) > 0 {
+						roomLongStr = strings.Join(rLongs, ", ")
+					}
 				}
 
-				if cArr, ok := det["classes"].([]interface{}); ok && entryClass == "" {
+				// 4. Klasses from detail (WebUntis uses 'klasses')
+				var kArr []interface{}
+				if k, ok := det["klasses"].([]interface{}); ok {
+					kArr = k
+				} else if c, ok := det["classes"].([]interface{}); ok {
+					kArr = c
+				}
+				if len(kArr) > 0 {
 					var cNames []string
-					for _, item := range cArr {
+					for _, item := range kArr {
 						if cMap, ok := item.(map[string]interface{}); ok {
-							if s, ok := cMap["name"].(string); ok && s != "" {
+							if s, ok := cMap["shortName"].(string); ok && s != "" {
+								cNames = append(cNames, s)
+							} else if s, ok := cMap["name"].(string); ok && s != "" {
 								cNames = append(cNames, s)
 							}
 						}
 					}
 					if len(cNames) > 0 {
 						entryClass = strings.Join(cNames, ", ")
+						if c.UserInfo.DetectedClass == "" || strings.EqualFold(c.UserInfo.DetectedClass, "SCHULE") {
+							c.UserInfo.DetectedClass = cNames[0]
+						}
 					}
 				}
 
