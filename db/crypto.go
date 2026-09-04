@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"os/user"

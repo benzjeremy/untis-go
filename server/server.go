@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -1884,13 +1885,13 @@ func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 }
 
 // isValidGitHubReleaseURL validates that the URL is a GitHub release download URL
-func isValidGitHubReleaseURL(url string) bool {
-	if url == "" {
+func isValidGitHubReleaseURL(rawURL string) bool {
+	if rawURL == "" {
 		return false
 	}
 
 	// Parse URL to validate format
-	u, err := url.Parse(url)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false
 	}
