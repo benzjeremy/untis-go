@@ -32,3 +32,8 @@ config.json
 .idea/
 *.swp
 *~
+
+# Build and distribution archives
+dist/
+*.tar.gz
+*.zip
