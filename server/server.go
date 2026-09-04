@@ -21,7 +21,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.2"
+const AppVersion = "1.3"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -1661,6 +1661,10 @@ func (s *Server) handleSubjectAliases(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Original) == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Ungültige Eingabe"})
+			return
+		}
+		if err := db.ValidateCustomAlias(req.Alias); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
 			return
 		}
 		if err := s.database.SetSubjectAlias(activeProf.ID, strings.TrimSpace(req.Original), strings.TrimSpace(req.Alias)); err != nil {

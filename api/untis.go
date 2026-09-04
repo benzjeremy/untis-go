@@ -1449,78 +1449,89 @@ func extractTime(dt string) string {
 }
 
 func computePeriod(start, end string) (string, int) {
-	// School timetable periods (regular and evening classes up to 23:00):
-	switch start {
-	case "07:30":
-		if end == "09:00" {
-			return "1. - 2. Stunde", 1
-		}
-		return "1. Stunde", 1
-	case "08:15":
-		return "2. Stunde", 2
-	case "09:15":
-		if end == "10:45" {
-			return "3. - 4. Stunde", 3
-		}
-		return "3. Stunde", 3
-	case "10:00":
-		return "4. Stunde", 4
-	case "11:00":
-		if end == "12:30" {
-			return "5. - 6. Stunde", 5
-		}
-		return "5. Stunde", 5
-	case "11:45":
-		return "6. Stunde", 6
-	case "12:45":
-		if end == "14:15" {
-			return "7. - 8. Stunde", 7
-		}
-		return "7. Stunde", 7
-	case "13:30":
-		return "8. Stunde", 8
-	case "14:30":
-		if end == "16:00" {
-			return "9. - 10. Stunde", 9
-		}
-		return "9. Stunde", 9
-	case "15:15":
-		return "10. Stunde", 10
-	case "16:00", "16:15":
-		if end == "17:45" {
-			return "11. - 12. Stunde", 11
-		}
-		return "11. Stunde", 11
-	case "17:00":
-		return "12. Stunde", 12
-	case "17:45", "18:00":
-		if end == "19:30" {
-			return "13. - 14. Stunde", 13
-		}
-		return "13. Stunde", 13
-	case "18:45":
-		return "14. Stunde", 14
-	case "19:30", "19:45":
-		if end == "21:15" {
-			return "15. - 16. Stunde", 15
-		}
-		return "15. Stunde", 15
-	case "20:30":
-		return "16. Stunde", 16
-	case "21:15":
-		return "17. Stunde", 17
-	default:
-		h, m := 0, 0
-		fmt.Sscanf(start, "%d:%d", &h, &m)
-		pIdx := 1
-		if h >= 7 {
-			totalMin := (h-7)*60 + m - 30
-			if totalMin > 0 {
-				pIdx = 1 + (totalMin / 50)
-			}
-		}
-		return fmt.Sprintf("%d. Stunde (%s - %s)", pIdx, start, end), pIdx
+	// School timetable periods (regular and evening classes up to 23:00)
+	startMap := map[string]int{
+		"07:30": 1, "07:35": 1, "07:45": 1, "08:00": 1,
+		"08:15": 2, "08:20": 2, "08:30": 2,
+		"09:15": 3, "09:20": 3, "09:30": 3,
+		"10:00": 4, "10:05": 4, "10:15": 4,
+		"11:00": 5, "11:05": 5, "11:15": 5,
+		"11:45": 6, "12:00": 6,
+		"12:45": 7, "12:50": 7, "13:00": 7,
+		"13:30": 8, "13:45": 8,
+		"14:30": 9, "14:45": 9,
+		"15:15": 10, "15:30": 10,
+		"16:15": 11, "16:30": 11,
+		"17:00": 12, "17:15": 12,
+		"18:00": 13, "18:15": 13,
+		"18:45": 14, "19:00": 14,
+		"19:45": 15, "20:00": 15,
+		"20:30": 16, "20:45": 16,
+		"21:15": 17,
 	}
+
+	endMap := map[string]int{
+		"08:15": 1, "08:20": 1,
+		"09:00": 2, "09:05": 2,
+		"10:00": 3, "10:05": 3,
+		"10:45": 4, "10:50": 4,
+		"11:45": 5, "11:50": 5,
+		"12:30": 6, "12:35": 6,
+		"13:30": 7, "13:35": 7,
+		"14:15": 8, "14:20": 8,
+		"15:15": 9,
+		"16:00": 10,
+		"17:00": 11,
+		"17:45": 12,
+		"18:45": 13,
+		"19:30": 14,
+		"20:30": 15,
+		"21:15": 16,
+		"22:00": 17,
+		"22:45": 18,
+	}
+
+	pStart, hasStart := startMap[start]
+	pEnd, hasEnd := endMap[end]
+
+	if !hasStart {
+		var h, m int
+		fmt.Sscanf(start, "%d:%d", &h, &m)
+		if h >= 7 {
+			min := (h-7)*60 + m - 30
+			if min >= 0 {
+				pStart = 1 + (min / 50)
+			} else {
+				pStart = 1
+			}
+		} else {
+			pStart = 1
+		}
+	}
+
+	if !hasEnd {
+		var h, m int
+		fmt.Sscanf(end, "%d:%d", &h, &m)
+		if h >= 8 {
+			min := (h-7)*60 + m - 30
+			if min > 0 {
+				pEnd = 1 + (min / 50)
+			} else {
+				pEnd = pStart
+			}
+		} else {
+			pEnd = pStart
+		}
+	}
+
+	if pEnd < pStart {
+		pEnd = pStart
+	}
+
+	if pStart == pEnd {
+		return fmt.Sprintf("%d. Stunde", pStart), pStart
+	}
+	return fmt.Sprintf("%d. - %d. Stunde", pStart, pEnd), pStart
 }
 
 // GermanDayName returns German weekday

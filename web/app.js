@@ -95,8 +95,9 @@
   function getDisplaySubject(item) {
     if (!item) return '';
     const code = typeof item === 'string' ? item : (item.subject || '');
-    if (state.subjectAliases && state.subjectAliases[code]) {
-      return state.subjectAliases[code];
+    if (state.subjectAliases && state.subjectAliases[code] && state.subjectAliases[code].trim()) {
+      const alias = state.subjectAliases[code].trim();
+      return `${alias} · ${code}`;
     }
     return code;
   }
@@ -288,27 +289,47 @@
 
     if (!textEl) return;
 
-    const curMin = now.getHours() * 60 + now.getMinutes();
-
     const data = state.dashboardData;
     if (!data) {
       textEl.textContent = 'Bereit';
       return;
     }
 
-    const lessons = data.todayLessons || [];
-    if (data.isUpcomingSchoolDay) {
+    if (data.isUpcomingSchoolDay && data.nextLesson) {
       if (dotEl) dotEl.className = 'dash-clock-dot free';
-      if (data.nextLesson) {
-        const nextSubj = getDisplaySubject(data.nextLesson);
-        const nextRoom = data.nextLesson.room ? ` in ${data.nextLesson.room}` : '';
-        textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} (${data.nextLesson.startTimeStr})`;
-      } else {
-        textEl.textContent = 'Unterrichtsfrei';
+      const nextSubj = getDisplaySubject(data.nextLesson);
+      const nextRoom = data.nextLesson.room ? ` in ${data.nextLesson.room}` : '';
+      const dStr = data.nextLesson.date || data.nextLesson.Date;
+      const tStr = data.nextLesson.startTimeStr || '07:30';
+
+      if (dStr) {
+        const [yr, mo, dy] = dStr.split('-').map(Number);
+        const [th, tm] = tStr.split(':').map(Number);
+        const target = new Date(yr, mo - 1, dy, th, tm, 0);
+        const diffMs = target - now;
+
+        if (diffMs > 0) {
+          const totSec = Math.floor(diffMs / 1000);
+          const days = Math.floor(totSec / 86400);
+          const hours = Math.floor((totSec % 86400) / 3600);
+          const mins = Math.floor((totSec % 3600) / 60);
+          const secs = totSec % 60;
+          const timePart = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+          if (days > 0) {
+            textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} in ${days}T ${timePart}`;
+          } else {
+            textEl.textContent = `${data.upcomingDayLabel || 'Nächste Std'}: ${nextSubj}${nextRoom} in ${timePart}`;
+          }
+          return;
+        }
       }
+      textEl.textContent = `${data.upcomingDayLabel || 'Nächster Schultag'}: ${nextSubj}${nextRoom} (${tStr})`;
       return;
     }
 
+    const lessons = data.todayLessons || [];
+    const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
     let activeLesson = null;
     let nextUpcoming = null;
 
@@ -316,15 +337,15 @@
       if (l.isCancelled) continue;
       const [sh, sm] = (l.startTimeStr || '00:00').split(':').map(Number);
       const [eh, em] = (l.endTimeStr || '00:00').split(':').map(Number);
-      const startMin = sh * 60 + sm;
-      const endMin = eh * 60 + em;
+      const startSec = sh * 3600 + sm * 60;
+      const endSec = eh * 3600 + em * 60;
 
-      if (curMin >= startMin && curMin < endMin) {
-        activeLesson = { lesson: l, remaining: endMin - curMin };
+      if (nowSec >= startSec && nowSec < endSec) {
+        activeLesson = { lesson: l, remainingSec: endSec - nowSec };
         break;
-      } else if (startMin > curMin) {
-        if (!nextUpcoming || startMin < nextUpcoming.startMin) {
-          nextUpcoming = { lesson: l, wait: startMin - curMin, startMin };
+      } else if (startSec > nowSec) {
+        if (!nextUpcoming || startSec < nextUpcoming.startSec) {
+          nextUpcoming = { lesson: l, waitSec: startSec - nowSec, startSec };
         }
       }
     }
@@ -333,12 +354,18 @@
       if (dotEl) dotEl.className = 'dash-clock-dot';
       const subj = getDisplaySubject(activeLesson.lesson);
       const room = activeLesson.lesson.room ? ` in ${activeLesson.lesson.room}` : '';
-      textEl.textContent = `Jetzt: ${activeLesson.lesson.period} [${subj}${room}] · Noch ${activeLesson.remaining} Min. verbleibend`;
+      const mins = Math.floor(activeLesson.remainingSec / 60);
+      const secs = activeLesson.remainingSec % 60;
+      const timePart = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      textEl.textContent = `Jetzt: ${subj}${room} · Noch ${timePart} bis Pause`;
     } else if (nextUpcoming) {
       if (dotEl) dotEl.className = 'dash-clock-dot in-break';
       const subj = getDisplaySubject(nextUpcoming.lesson);
       const room = nextUpcoming.lesson.room ? ` in ${nextUpcoming.lesson.room}` : '';
-      textEl.textContent = `Pause · Nächste Stunde: ${subj}${room} in ${nextUpcoming.wait} Min. (um ${nextUpcoming.lesson.startTimeStr})`;
+      const mins = Math.floor(nextUpcoming.waitSec / 60);
+      const secs = nextUpcoming.waitSec % 60;
+      const timePart = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      textEl.textContent = `Pause · Nächste Std: ${subj}${room} in ${timePart}`;
     } else {
       if (dotEl) dotEl.className = 'dash-clock-dot free';
       textEl.textContent = 'Schultag beendet · Schöne Freizeit!';
@@ -604,7 +631,7 @@
         <div class="lesson-card ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
           <div class="lesson-left-group">
             <div class="lesson-card-badge" style="background-color:${color}; color:${l.textColor || '#ffffff'};">
-              ${displaySubj.slice(0, 4)}
+              ${l.periodNum ? l.periodNum + '.' : (l.subject || '').slice(0, 3)}
             </div>
             <div class="lesson-info-group">
               <span class="lesson-card-title">${escapeHTML(displaySubj)}</span>
@@ -654,20 +681,17 @@
     const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
     const todayStr = formatDateISO(new Date());
 
-    // Header: Left column is "Std. / Zeit", followed by 5 days
-    headerEl.innerHTML = `
-      <div class="week-time-header-cell">Std. / Zeit</div>
-      ${weekDays.map((d, idx) => {
-        const iso = formatDateISO(d);
-        const isToday = iso === todayStr;
-        return `
-          <div class="week-day-header-cell ${isToday ? 'today' : ''}">
-            <div class="w-day-name">${dayNames[idx]}</div>
-            <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
-          </div>
-        `;
-      }).join('')}
-    `;
+    // Header: 5 equal day columns
+    headerEl.innerHTML = weekDays.map((d, idx) => {
+      const iso = formatDateISO(d);
+      const isToday = iso === todayStr;
+      return `
+        <div class="week-day-header-cell ${isToday ? 'today' : ''}">
+          <div class="w-day-name">${dayNames[idx]}</div>
+          <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
+        </div>
+      `;
+    }).join('');
 
     // Group lessons by date
     const lessonGroups = {};
@@ -679,103 +703,73 @@
       }
     });
 
-    // Extract unique periods from this week's lessons
-    const periodsMap = new Map();
-    uniqueLessons.forEach(l => {
-      if (l.startTimeStr && l.endTimeStr) {
-        const k = `${l.startTimeStr}-${l.endTimeStr}`;
-        if (!periodsMap.has(k)) {
-          periodsMap.set(k, {
-            start: l.startTimeStr,
-            end: l.endTimeStr,
-            periodNum: l.periodNum || 1,
-            period: l.period || `${l.startTimeStr} - ${l.endTimeStr}`,
-          });
-        }
-      }
-    });
-
-    let periods = Array.from(periodsMap.values());
-    periods.sort((a, b) => a.start.localeCompare(b.start));
-
-    // Fallback if no lessons: standard periods
-    if (periods.length === 0) {
-      periods = [
-        { periodNum: 1, period: "1. Stunde", start: "07:30", end: "08:15" },
-        { periodNum: 2, period: "2. Stunde", start: "08:15", end: "09:00" },
-        { periodNum: 3, period: "3. Stunde", start: "09:15", end: "10:00" },
-        { periodNum: 4, period: "4. Stunde", start: "10:00", end: "10:45" },
-        { periodNum: 5, period: "5. Stunde", start: "11:00", end: "11:45" },
-        { periodNum: 6, period: "6. Stunde", start: "11:45", end: "12:30" },
-        { periodNum: 7, period: "7. Stunde", start: "12:45", end: "13:30" },
-        { periodNum: 8, period: "8. Stunde", start: "13:30", end: "14:15" },
-      ];
-    }
-
-    // Left Time Column
-    const timeColHtml = `
-      <div class="week-time-col">
-        ${periods.map(p => `
-          <div class="week-time-slot">
-            <span class="slot-period-num">${escapeHTML(p.period)}</span>
-            <span class="slot-time-str">${p.start} - ${p.end}</span>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    // 5 Day Columns
-    const dayColsHtml = weekDays.map(d => {
+    // Body: 5 day columns, each listing its lessons chronologically
+    bodyEl.innerHTML = weekDays.map(d => {
       const iso = formatDateISO(d);
-      const dayLessons = lessonGroups[iso] || [];
+      const dayLessons = (lessonGroups[iso] || []).sort((a, b) => (a.startTimeStr || '').localeCompare(b.startTimeStr || ''));
 
-      const slotCellsHtml = periods.map(p => {
-        // Find lesson for this slot
-        const lesson = dayLessons.find(l => {
-          if (l.startTimeStr === p.start && l.endTimeStr === p.end) return true;
-          if (l.startTimeStr <= p.start && l.endTimeStr >= p.end) return true;
-          return false;
-        });
-
-        if (!lesson) {
-          // Empty slot (Freistunde)
-          return `<div class="week-slot-cell"><div class="week-slot-empty" title="Freistunde"></div></div>`;
-        }
-
-        const isSubst = lesson.isSubstitution || lesson.isRoomChange;
-        const isCanc = lesson.isCancelled;
-        const color = lesson.color || '#ff7a00';
-        const displaySubj = getDisplaySubject(lesson);
-        const roomText = lesson.room || '';
-        const teacherText = lesson.teacher || '';
-
+      if (dayLessons.length === 0) {
         return `
-          <div class="week-slot-cell">
-            <div class="week-lesson-box ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" 
-                 style="border-left: 4px solid ${color};"
-                 onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(lesson))})"
-                 title="${escapeHTML(lesson.subjectLong || displaySubj)}">
-              <span class="w-time">${lesson.startTimeStr} - ${lesson.endTimeStr}</span>
-              <div class="w-subj">${escapeHTML(displaySubj)}</div>
-              <div class="w-details">
-                ${roomText ? `<strong>${escapeHTML(roomText)}</strong>` : ''} 
-                ${teacherText ? `· ${escapeHTML(teacherText)}` : ''}
-                ${isSubst ? '<span style="color:#ef4444; font-weight:700;">(Änderung)</span>' : ''}
-                ${isCanc ? '<span style="color:var(--text-muted);">(Ausfall)</span>' : ''}
-              </div>
-            </div>
+          <div class="week-day-col">
+            <div class="empty-inline-state" style="padding:28px 0; text-align:center;">Frei</div>
           </div>
         `;
-      }).join('');
+      }
+
+      let lastEndMinutes = 0;
+      const boxesHtml = [];
+
+      dayLessons.forEach(l => {
+        const isSubst = l.isSubstitution || l.isRoomChange;
+        const isCanc = l.isCancelled;
+        const color = l.color || '#ff7a00';
+        const displaySubj = getDisplaySubject(l);
+        const roomText = l.room || '';
+        const teacherText = l.teacher || '';
+
+        // Check for Freistunde gap (gap > 25 min between lessons)
+        if (l.startTimeStr) {
+          const [sh, sm] = l.startTimeStr.split(':').map(Number);
+          const startMin = sh * 60 + sm;
+          if (lastEndMinutes > 0 && startMin - lastEndMinutes > 25) {
+            boxesHtml.push(`
+              <div class="week-free-slot" title="Freistunde">
+                <span>Freistunde</span>
+              </div>
+            `);
+          }
+          if (l.endTimeStr) {
+            const [eh, em] = l.endTimeStr.split(':').map(Number);
+            lastEndMinutes = eh * 60 + em;
+          }
+        }
+
+        boxesHtml.push(`
+          <div class="week-lesson-box ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" 
+               style="border-left: 4px solid ${color};"
+               onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})"
+               title="${escapeHTML(l.subjectLong || displaySubj)}">
+            <div class="w-time-row">
+              <span class="w-time">${l.startTimeStr} - ${l.endTimeStr}</span>
+              <span class="w-period">${l.period || ''}</span>
+            </div>
+            <div class="w-subj">${escapeHTML(displaySubj)}</div>
+            <div class="w-details">
+              ${roomText ? `<strong>${escapeHTML(roomText)}</strong>` : ''} 
+              ${teacherText ? `· ${escapeHTML(teacherText)}` : ''}
+              ${isSubst ? '<span class="status-subst-badge">(Änderung)</span>' : ''}
+              ${isCanc ? '<span class="status-canc-badge">(Ausfall)</span>' : ''}
+            </div>
+          </div>
+        `);
+      });
 
       return `
         <div class="week-day-col">
-          ${slotCellsHtml}
+          ${boxesHtml.join('')}
         </div>
       `;
     }).join('');
-
-    bodyEl.innerHTML = timeColHtml + dayColsHtml;
   }
 
   // ==================== WEITERE STUNDENPLÄNE MODULE ====================
@@ -1570,6 +1564,16 @@
 
     if (!orig || !custom) return;
 
+    const blockedTerms = ['hitler', 'nazi', 'hakenkreuz', 'swastika', 'vergasen', 'gasdusche', 'gasunterricht', 'gaskammer', 'auschwitz', 'holocaust', 'zyklon', 'arier', 'aryan', 'goebbels', 'himmler', 'eichmann', 'neger', 'kanake', 'judensau', 'siegheil', 'heilhitler'];
+    const lower = custom.toLowerCase();
+    const norm = lower.replace(/[^a-z0-9]/g, '').replace(/[1!]/g, 'i').replace(/0/g, 'o').replace(/3/g, 'e').replace(/[4@]/g, 'a').replace(/[$5]/g, 's').replace(/7/g, 't');
+    for (const b of blockedTerms) {
+      if (lower.includes(b) || norm.includes(b)) {
+        showToast('Dieser Name enthält unzulässige oder anstößige Begriffe. Bitte wähle eine respektvolle Bezeichnung.', 'error');
+        return;
+      }
+    }
+
     showLoading(true, 'Speichere Fachnamen...');
     const res = await apiFetch('/api/settings/aliases', {
       method: 'POST',
@@ -1648,8 +1652,8 @@
     const progWrap = document.getElementById('updateProgressWrap');
     const btn = document.getElementById('btnApplyUpdate');
 
-    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.2';
-    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.2';
+    if (currVerEl) currVerEl.textContent = availableUpdateInfo.currentVersion || 'v1.3';
+    if (newVerEl) newVerEl.textContent = availableUpdateInfo.latestVersion || 'v1.3';
     if (titleEl) titleEl.textContent = availableUpdateInfo.title || `Untis Desktop ${availableUpdateInfo.latestVersion}`;
     if (notesEl) notesEl.textContent = availableUpdateInfo.releaseNotes || 'Keine Versionshinweise verfügbar.';
 
