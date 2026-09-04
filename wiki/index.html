@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>untis-go Wiki &bull; Ausführliche Anleitung & Tutorial</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="icon" type="image/png" sizes="512x512" href="../icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="wiki-header">
+    <div class="wiki-header-container">
+      <a href="../index.html" class="wiki-brand-link">
+        <img src="../icon.png" alt="Untis Logo" class="wiki-logo">
+        <span class="wiki-brand-title">untis-go</span>
+        <span class="wiki-brand-badge">Wiki v1.4</span>
+      </a>
+
+      <div class="wiki-nav-tools">
+        <div class="wiki-search-box">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="wikiSearch" class="wiki-search-input" placeholder="In Anleitungen suchen..." oninput="filterWikiSections()">
+        </div>
+        <a href="../index.html" class="wiki-back-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          <span>Startseite</span>
+        </a>
+        <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer" class="wiki-gh-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Legal Disclaimer Banner -->
+  <div class="disclaimer-banner">
+    <div class="disclaimer-content">
+      <svg viewBox="0 0 24 24" fill="currentColor" class="disclaimer-icon"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      <div>
+        <strong>Rechtlicher Hinweis zu Produktabbildungen:</strong> Das tatsächliche Produkt kann aus technischen Gründen, durch regelmäßige Versionsaktualisierungen oder betriebssystemspezifische Darstellungen (z.B. GTK3-Windowmanager, Schriftarten) von den gezeigten Bildschirmfotos und UI-Mockups abweichen. Alle gezeigten Schul- und Lehrernamen dienen rein illustrativen Zwecken.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid Layout -->
+  <div class="wiki-container">
+
+    <!-- Sticky Table of Contents (Sidebar) -->
+    <aside class="wiki-sidebar">
+      <div class="wiki-sidebar-title">Themen & Kapitel</div>
+      <ul class="wiki-menu" id="wikiMenu">
+        <li class="wiki-menu-item"><a href="#intro" class="active">1. Einführung & Konzept</a></li>
+        <li class="wiki-menu-item"><a href="#install">2. Download & Installation</a></li>
+        <li class="wiki-menu-item"><a href="#onboarding">3. Onboarding & Schulsuche</a></li>
+        <li class="wiki-menu-item"><a href="#dashboard">4. Dashboard & Countdown</a></li>
+        <li class="wiki-menu-item"><a href="#timetable">5. Stundenplan (Tag & Woche)</a></li>
+        <li class="wiki-menu-item"><a href="#resources">6. Klassen, Lehrer & Räume</a></li>
+        <li class="wiki-menu-item"><a href="#homework-absences">7. Aufgaben & Fehlzeiten</a></li>
+        <li class="wiki-menu-item"><a href="#profiles">8. Multi-Profile Verwaltung</a></li>
+        <li class="wiki-menu-item"><a href="#security">9. Zero-Lag & Sicherheit</a></li>
+        <li class="wiki-menu-item"><a href="#shortcuts">10. Tastaturkürzel (Shortcuts)</a></li>
+        <li class="wiki-menu-item"><a href="#updates">11. Software-Updates</a></li>
+        <li class="wiki-menu-item"><a href="#faq">12. FAQ & Problembehebung</a></li>
+      </ul>
+    </aside>
+
+    <!-- Content Sections -->
+    <main class="wiki-content">
+
+      <!-- Hero Introduction Banner -->
+      <div class="wiki-hero-banner" id="intro">
+        <div class="wiki-hero-badge">Offizielles Handbuch & Tutorial</div>
+        <h1 class="wiki-hero-title">Untis GO – Schritt-für-Schritt Dokumentation</h1>
+        <p class="wiki-hero-desc">
+          Lerne, wie du <strong>untis-go</strong> installierst, deine Schule in Sekundenschnelle einrichtest, Stundenpläne blitzschnell abrufst und von modernsten Sicherheitsfeatures wie AES-256-GCM-Verschlüsselung und SQLite-Caching profitierst.
+        </p>
+      </div>
+
+      <!-- Kapitel 1: Einführung & Konzept -->
+      <section class="wiki-section">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">1</span>
+            Was ist Untis GO?
+          </h2>
+        </div>
+        <p class="wiki-p">
+          <strong>Untis GO</strong> ist ein nativer, freier und quelloffener Desktop-Client für das Schulstundenplan-System <em>WebUntis</em>. Entwickelt in Go und WebKitGTK/HTML5, kombiniert die Anwendung extreme Ausführungsgeschwindigkeit mit einem aufgeräumten, augenschonenden Dark Theme.
+        </p>
+        <p class="wiki-p">
+          Im Gegensatz zur offiziellen Web-Oberfläche, die oft langsam lädt und Sitzungs-Timeouts erzwingt, setzt Untis GO auf eine <strong>Local-First-Architektur</strong>: Einmal geladene Stundenpläne werden in einer lokalen SQLite-Datenbank verschlüsselt gespeichert und stehen beim nächsten Start in unter <strong>1 Millisekunde</strong> bereit – selbst bei instabiler Internetverbindung oder Offline-Betrieb.
+        </p>
+        
+        <div class="callout tip">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="callout-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <div class="callout-content">
+            <strong>Gelistet in Awesome Go:</strong> untis-go wurde offiziell in das weltweite Verzeichnis hochqualitativer Go-Projekte aufgenommen (Pull Request #6660 in <em>Other Software</em>).
+          </div>
+        </div>
+      </section>
+
+      <!-- Kapitel 2: Download & Installation -->
+      <section class="wiki-section" id="install">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">2</span>
+            Installation & Erste Schritte
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Untis GO steht für Linux und Windows als vorkompilierte Standalone-Binärdatei sowie als Go-Paket bereit.
+        </p>
+
+        <div class="step-list">
+          <!-- Step 1 -->
+          <div class="step-card">
+            <div class="step-badge">A</div>
+            <div class="step-body">
+              <h4>Linux Vorkompiliertes Paket (Empfohlen)</h4>
+              <p>Lade das Tarball von der Release-Seite herunter, entpacke es und verschiebe die Datei in deinen Systempfad:</p>
+              <div class="code-wrap">
+                <pre class="code-block" id="cmdLinux">tar -xzf untis-go-v1.4-linux.tar.gz
+chmod +x untis-go
+sudo cp untis-go /usr/local/bin/
+untis-go</pre>
+                <button class="copy-btn" onclick="copyCode('cmdLinux', this)">Kopieren</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-card">
+            <div class="step-badge">B</div>
+            <div class="step-body">
+              <h4>Windows Standalone ZIP</h4>
+              <p>Lade <code>untis-go-v1.4-windows.zip</code> herunter, entpacke das Archiv in einen Ordner deiner Wahl und starte <code>untis-go.exe</code>. Es ist keine Installation von Treibern oder Runtimes erforderlich.</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-card">
+            <div class="step-badge">C</div>
+            <div class="step-body">
+              <h4>Installation via Go CLI</h4>
+              <p>Falls du eine aktuelle Go-Entwicklungsumgebung besitzt (Go 1.21+):</p>
+              <div class="code-wrap">
+                <pre class="code-block" id="cmdGo">go install github.com/benzjeremy/untis-go@latest</pre>
+                <button class="copy-btn" onclick="copyCode('cmdGo', this)">Kopieren</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="callout-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <div class="callout-content">
+            <strong>Linux-Abhängigkeiten:</strong> Auf Arch Linux/CachyOS benötigst du <code>webkit2gtk-4.1</code> und <code>gtk3</code>. Auf Ubuntu/Debian installierst du <code>libwebkit2gtk-4.1-dev</code> und <code>libgtk-3-dev</code>.
+          </div>
+        </div>
+      </section>
+
+      <!-- Kapitel 3: Onboarding & Schulsuche -->
+      <section class="wiki-section" id="onboarding">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">3</span>
+            Onboarding & Schulsuche
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Beim allerersten Start begrüßt dich der interaktive Einrichtungsassistent. Es ist <strong>keine</strong> Schule vorkonfiguriert – du kannst jede beliebige WebUntis-Schule weltweit nutzen.
+        </p>
+
+        <!-- Illustration Image -->
+        <figure class="wiki-figure">
+          <img src="img/untis_login_mockup.jpg" alt="Schulsuche und Anmeldedialog in untis-go" class="wiki-img">
+          <figcaption class="wiki-figcaption">
+            <span><strong>Abbildung 1:</strong> Interaktive Live-Schulsuche und verschlüsselter Anmeldedialog.</span>
+            <span class="wiki-fig-disclaimer">* Hinweis: Produkt kann je nach Version und Theme leicht abweichen.</span>
+          </figcaption>
+        </figure>
+
+        <div class="step-list">
+          <div class="step-card">
+            <div class="step-badge">1</div>
+            <div class="step-body">
+              <h4>Schule suchen</h4>
+              <p>Tippe den Namen deiner Schule, deiner Stadt oder deiner Schulnummer in das Suchfeld ein. Das System fragt in Echtzeit die offizielle WebUntis-Schuldatenbank ab und listet passende Ergebnisse mit Anschrift auf.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">2</div>
+            <div class="step-body">
+              <h4>Schule auswählen</h4>
+              <p>Klicke auf deine Schule. Die Server-Adresse (z.B. <code>mese.webuntis.com</code>) und der schulspezifische Login-Name werden automatisch im Hintergrund konfiguriert.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">3</div>
+            <div class="step-body">
+              <h4>Zugangsdaten eingeben</h4>
+              <p>Gib deinen Benutzernamen und dein persönliches Passwort ein. Wenn deine Schule anonymen Lesezugriff erlaubt, kannst du die Felder auch leer lassen.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">4</div>
+            <div class="step-body">
+              <h4>Automatische Erkennung</h4>
+              <p>Untis GO testet die Verbindung sofort per JSON-RPC. Nach erfolgreicher Anmeldung wird deine Klasse automatisch ermittelt und dein Stundenplan sofort geladen.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Kapitel 4: Dashboard & Countdown -->
+      <section class="wiki-section" id="dashboard">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">4</span>
+            Das Dashboard & Live-Countdown
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Das Dashboard ist die Steuerzentrale deines Schultags. Es fasst alle relevanten Informationen auf einen Blick zusammen, ohne dass du suchen musst.
+        </p>
+
+        <!-- Illustration Image -->
+        <figure class="wiki-figure">
+          <img src="img/untis_dashboard_mockup.jpg" alt="Übersichtliches Dashboard von untis-go" class="wiki-img">
+          <figcaption class="wiki-figcaption">
+            <span><strong>Abbildung 2:</strong> Dashboard-Ansicht mit oranger Countdown-Karte und heutigem Tagesablauf.</span>
+            <span class="wiki-fig-disclaimer">* Hinweis: Produkt kann je nach Version und Theme leicht abweichen.</span>
+          </figcaption>
+        </figure>
+
+        <h3 style="margin: 20px 0 10px; font-size: 18px;">Die wichtigsten Dashboard-Bereiche:</h3>
+        <ul style="margin-left: 20px; color: var(--text-secondary); margin-bottom: 20px; display:flex; flex-direction:column; gap:8px;">
+          <li><strong>Live-Countdown-Banner:</strong> Zeigt dir sekundengenau an, wann die nächste Unterrichtsstunde beginnt, wie lange die aktuelle Pause noch dauert oder wann Schulschluss ist.</li>
+          <li><strong>Unterricht heute:</strong> Farbcodierte Unterrichtskarten mit Fachname, Fachlehrer, Raum und Glockenzeiten.</li>
+          <li><strong>Schnellzugriff Hausaufgaben:</strong> Deine anstehenden Hausaufgaben sortiert nach Fälligkeitsdatum mit Sofort-Erledigt-Checkbox.</li>
+          <li><strong>Schuldurchsagen & Mitteilungen:</strong> Wichtige Durchsagen der Schulleitung oder von Lehrkräften direkt im Blickfeld.</li>
+        </ul>
+      </section>
+
+      <!-- Kapitel 5: Stundenplan (Tag & Woche) -->
+      <section class="wiki-section" id="timetable">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">5</span>
+            Stundenplan: Tages- & Wochenraster
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Seit Version <strong>v1.4</strong> verfügt Untis GO über ein komplett überarbeitetes, synchrones <strong>6-Spalten-Wochenraster</strong>. Jede Schulstunde (1. bis 12. Stunde) wird als einzelne Zeile dargestellt.
+        </p>
+
+        <!-- Illustration Image -->
+        <figure class="wiki-figure">
+          <img src="img/untis_week_mockup.jpg" alt="Synchrones Wochenraster in untis-go v1.4" class="wiki-img">
+          <figcaption class="wiki-figcaption">
+            <span><strong>Abbildung 3:</strong> 6-Spalten-Wochenplan-Matrix mit Einzelstunden-Raster, Vertretungen und Ausfällen.</span>
+            <span class="wiki-fig-disclaimer">* Hinweis: Produkt kann je nach Version und Theme leicht abweichen.</span>
+          </figcaption>
+        </figure>
+
+        <div class="callout tip">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="callout-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <div class="callout-content">
+            <strong>Blockunterricht gelöst:</strong> Hast du 4 Stunden Sport oder 2 Stunden Mathematik hintereinander? Früher wurde dies oft unübersichtlich als einzelner Block angezeigt. In v1.4 erscheint jede Stunde separat und sauber ausgerichtet in ihrer jeweiligen Zeitzeile!
+          </div>
+        </div>
+
+        <h3 style="margin: 24px 0 12px; font-size: 18px;">Eigene Fachnamen (Fach-Aliase)</h3>
+        <p class="wiki-p">
+          Deine Schule vergibt kryptische Abkürzungen wie <code>LF09</code>, <code>WIR</code> oder <code>M-GK1</code>? Unter <em>Einstellungen & Profile</em> &rarr; <em>Fach-Aliase</em> kannst du für jede beliebige Abkürzung einen verständlichen Namen festlegen (z.B. <code>LF09 &rarr; Anwendungsentwicklung</code>). Dieser wird ab sofort überall in deinen Plänen angezeigt!
+        </p>
+      </section>
+
+      <!-- Kapitel 6: Klassen, Lehrer & Räume -->
+      <section class="wiki-section" id="resources">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">6</span>
+            Weitere Stundenpläne & Favoriten (❤️)
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Im Menüpunkt <em>Weitere Stundenpläne</em> kannst du beliebige Ressourcen deiner Schule abfragen:
+        </p>
+        <ul style="margin-left: 20px; color: var(--text-secondary); margin-bottom: 20px; display:flex; flex-direction:column; gap:8px;">
+          <li><strong>Klassenpläne:</strong> Sieh nach, wann andere Klassen Unterricht oder Ausfall haben.</li>
+          <li><strong>Lehrerpläne:</strong> Finde heraus, in welchem Raum eine Lehrkraft gerade unterrichtet oder wann ihre Sprechstunde ist.</li>
+          <li><strong>Raumpläne:</strong> Prüfe, ob Computerräume, Sporthallen oder Chemieräume zu einer bestimmten Zeit belegt oder frei sind.</li>
+        </ul>
+
+        <div class="callout info">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="callout-icon"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <div class="callout-content">
+            <strong>Favoritenfunktion:</strong> Klicke auf das Herz-Symbol (🤍 &rarr; ❤️) neben einer Klasse, um sie zu deinen Favoriten hinzuzufügen. Deine Favoriten bleiben auch nach einem Neustart des Programms oben in der Liste angeheftet!
+          </div>
+        </div>
+      </section>
+
+      <!-- Kapitel 7: Aufgaben & Fehlzeiten -->
+      <section class="wiki-section" id="homework-absences">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">7</span>
+            Aufgaben, Abwesenheiten & Mitteilungen
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Untis GO bietet eine vollständige lokale Verwaltung für deine schulischen Aufgaben und Abwesenheiten:
+        </p>
+
+        <div class="step-list">
+          <div class="step-card">
+            <div class="step-badge">📝</div>
+            <div class="step-body">
+              <h4>Hausaufgabenverwaltung</h4>
+              <p>Erstelle eigene Aufgaben mit Fach, Beschreibung und Fälligkeitsdatum oder synchronisiere von Lehrern eingetragene WebUntis-Hausaufgaben. Mit einem Klick auf die Checkbox markierst du sie als erledigt.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">🏥</div>
+            <div class="step-body">
+              <h4>Fehlzeiten & Krankmeldungen</h4>
+              <p>Erfasse Abwesenheiten mit Von-Bis-Datum, Begründung und Status (entschuldigt / unentschuldigt). Untis GO berechnet automatisch deine Fehlstunden für das laufende Schuljahr.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">📢</div>
+            <div class="step-body">
+              <h4>Schulmitteilungen & Durchsagen</h4>
+              <p>Lies Elternbriefe, Raumverlegungen und Durchsagen der Schulleitung in einem übersichtlichen Postfach mit Lesestatus und Detailansicht.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Kapitel 8: Multi-Profile -->
+      <section class="wiki-section" id="profiles">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">8</span>
+            Multi-Profile & Schulwechsel
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Besuchst du mehrere Bildungseinrichtungen, hast Geschwister an anderen Schulen oder betreust als Elternteil mehrere Schulkinder?
+        </p>
+        <p class="wiki-p">
+          Untis GO unterstützt <strong>unbegrenzt viele Profile</strong>:
+        </p>
+        <ul style="margin-left: 20px; color: var(--text-secondary); margin-bottom: 20px; display:flex; flex-direction:column; gap:8px;">
+          <li><strong>Nahtloses Umschalten:</strong> Klicke im Menü auf <em>Profile</em> und wähle die gewünschte Schule aus. Untis GO schaltet die aktive Verbindung sofort ohne Neustart um.</li>
+          <li><strong>Schule löschen:</strong> Nicht mehr benötigte Profile lassen sich mit einem Klick auf das rote Mülleimer-Icon restlos aus dem sicheren lokalen Speicher entfernen.</li>
+        </ul>
+      </section>
+
+      <!-- Kapitel 9: Zero-Lag & Sicherheit -->
+      <section class="wiki-section" id="security">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">9</span>
+            Zero-Lag-Architektur & Sicherheit
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Bei Untis GO hat Datenschutz höchste Priorität. Hier sind die technischen Schutzmaßnahmen im Überblick:
+        </p>
+
+        <table class="wiki-table">
+          <thead>
+            <tr>
+              <th>Sicherheitsmerkmal</th>
+              <th>Implementierung</th>
+              <th>Schutzwirkung</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>AES-256-GCM Verschlüsselung</strong></td>
+              <td>Passwörter werden mit hardwarebeschleunigtem AES-GCM (Authenticated Encryption) gespeichert.</td>
+              <td>Selbst bei Diebstahl der Festplattendatei können Zugangsdaten nicht im Klartext gelesen werden.</td>
+            </tr>
+            <tr>
+              <td><strong>PBKDF2 Key Stretching</strong></td>
+              <td>100.000 Runden PBKDF2 mit SHA256 und hardwarespezifischem Salt.</td>
+              <td>Verhindert Brute-Force- und Rainbow-Table-Angriffe auf den lokalen Key Vault.</td>
+            </tr>
+            <tr>
+              <td><strong>Dynamischer Zufallsport</strong></td>
+              <td>Der interne Go-Server bindet an einen zufälligen Port auf <code>127.0.0.1</code>.</td>
+              <td>Andere lokale Programme können den Dienst nicht auf Standardports abfangen.</td>
+            </tr>
+            <tr>
+              <td><strong>32-Zeichen Crypto-Token</strong></td>
+              <td>Alle internen API-Aufrufe verlangen einen kryptografischen Sitzungsschlüssel.</td>
+              <td>Verhindert unbefugte CSRF- und XSS-Zugriffe aus anderen Browser-Tabs.</td>
+            </tr>
+            <tr>
+              <td><strong>SQLite Cache-First</strong></td>
+              <td>Lokale SQLite-Datenbank mit WAL-Modus und Indizierung.</td>
+              <td>Ladezeiten unter 1 ms, kein Warten auf langsame Schulserver.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Kapitel 10: Tastaturkürzel -->
+      <section class="wiki-section" id="shortcuts">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">10</span>
+            Tastaturkürzel (Power-User Shortcuts)
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Mit diesen Tastenkombinationen navigierst du blitzschnell durch die App:
+        </p>
+
+        <table class="wiki-table">
+          <thead>
+            <tr>
+              <th>Taste</th>
+              <th>Funktion</th>
+              <th>Beschreibung</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="key-badge">&larr;</span></td>
+              <td>Vorheriger Tag / Woche</td>
+              <td>Blättert einen Tag (oder eine Schulwoche) zurück.</td>
+            </tr>
+            <tr>
+              <td><span class="key-badge">&rarr;</span></td>
+              <td>Nächster Tag / Woche</td>
+              <td>Blättert einen Tag (oder eine Schulwoche) vorwärts.</td>
+            </tr>
+            <tr>
+              <td><span class="key-badge">T</span></td>
+              <td>Heute (Today)</td>
+              <td>Springt sofort zum heutigen Tag zurück.</td>
+            </tr>
+            <tr>
+              <td><span class="key-badge">D</span></td>
+              <td>Tagesansicht (Day)</td>
+              <td>Wechselt in die detaillierte Tagesansicht.</td>
+            </tr>
+            <tr>
+              <td><span class="key-badge">W</span></td>
+              <td>Wochenansicht (Week)</td>
+              <td>Wechselt in das synchrone 6-Spalten-Wochenraster.</td>
+            </tr>
+            <tr>
+              <td><span class="key-badge">Esc</span></td>
+              <td>Schließen</td>
+              <td>Schließt alle offenen Dialogfenster, Modale und Menüs.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Kapitel 11: Software-Updates -->
+      <section class="wiki-section" id="updates">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">11</span>
+            Software-Updates & Releasemanagement
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Untis GO besitzt einen <strong>integrierten Release-Manager</strong>:
+        </p>
+        <p class="wiki-p">
+          Unter <em>Über & Info</em> kannst du mit einem Klick auf <em>„Nach Updates suchen“</em> prüfen, ob eine neuere Version auf GitHub bereitsteht. Ist ein Update vorhanden, lädt Untis GO das offizielle, signierte Binärpaket atomar herunter und tauscht die Programmdatei im laufenden Betrieb sicher aus – kein mühsames manuelles Entpacken mehr nötig!
+        </p>
+      </section>
+
+      <!-- Kapitel 12: FAQ -->
+      <section class="wiki-section" id="faq">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">12</span>
+            Häufig gestellte Fragen (FAQ)
+          </h2>
+        </div>
+
+        <div class="step-list">
+          <div class="step-card">
+            <div class="step-badge">?</div>
+            <div class="step-body">
+              <h4>Ist Untis GO offiziell von der Firma Untis GmbH?</h4>
+              <p>Nein. Untis GO ist ein unabhängiges Open-Source-Projekt unter der GNU GPL-3.0 Lizenz. Es nutzt die standardmäßige WebUntis JSON-RPC API, um Schülern, Eltern und Lehrkräften ein besseres Desktop-Erlebnis zu bieten.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">?</div>
+            <div class="step-body">
+              <h4>Werden meine Passwörter auf fremden Servern gespeichert?</h4>
+              <p><strong>Nein, niemals.</strong> Deine Zugangsdaten verlassen deinen Rechner nur verschlüsselt zur direkten Authentifizierung bei dem Server deiner eigenen Schule. Es gibt keine Zwischenserver, kein Tracking und keine Telemetrie.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">?</div>
+            <div class="step-body">
+              <h4>Was kann ich tun, wenn der Login fehlschlägt?</h4>
+              <p>Prüfe, ob du die richtige Schule ausgewählt hast und ob deine Zugangsdaten im normalen WebUntis-Browserportal funktionieren. Achte auf Groß- und Kleinschreibung beim Benutzernamen.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-badge">?</div>
+            <div class="step-body">
+              <h4>Wie kann ich einen Fehler melden oder ein Feature vorschlagen?</h4>
+              <p>Erstelle einfach ein Ticket auf der <a href="https://github.com/benzjeremy/untis-go/issues" target="_blank" rel="noopener noreferrer" style="color:var(--accent-orange);">GitHub Issues Seite</a>. Feedback aus der Community ist ausdrücklich willkommen!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Site Footer -->
+  <footer class="wiki-footer">
+    <div class="wiki-footer-container">
+      <div>
+        <span>&copy; 2026 Jeremy Benz &bull; untis-go lizenziert unter GPL-3.0</span>
+      </div>
+      <div class="wiki-footer-links">
+        <a href="../index.html">Startseite</a>
+        <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/benzjeremy/untis-go/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="https://github.com/benzjeremy/untis-go/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        <a href="https://github.com/benzjeremy/untis-go?tab=GPL-3.0-1-ov-file" target="_blank" rel="noopener noreferrer">Lizenz</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Copy code helper
+    function copyCode(id, btn) {
+      const code = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.textContent;
+        btn.textContent = 'Kopiert!';
+        setTimeout(() => { btn.textContent = origText; }, 2000);
+      });
+    }
+
+    // Interactive Sidebar Highlight on Scroll
+    window.addEventListener('DOMContentLoaded', () => {
+      const sections = document.querySelectorAll('.wiki-section, .wiki-hero-banner');
+      const navLinks = document.querySelectorAll('.wiki-menu-item a');
+
+      window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop - 140;
+          if (pageYOffset >= sectionTop) {
+            current = section.getAttribute('id');
+          }
+        });
+
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+      });
+    });
+
+    // Real-time filter
+    function filterWikiSections() {
+      const query = document.getElementById('wikiSearch').value.toLowerCase();
+      const sections = document.querySelectorAll('.wiki-section');
+
+      sections.forEach(sec => {
+        const text = sec.textContent.toLowerCase();
+        if (text.includes(query)) {
+          sec.style.display = 'block';
+        } else {
+          sec.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
