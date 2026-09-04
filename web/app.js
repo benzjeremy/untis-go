@@ -78,6 +78,22 @@
     }
   }
 
+  // Global lesson registry to avoid inline JSON attribute escaping bugs
+  window.__lessonStore = new Map();
+  function registerLesson(l) {
+    if (!l) return '';
+    const id = 'les_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    window.__lessonStore.set(id, l);
+    return id;
+  }
+  function openLessonById(id) {
+    const lesson = window.__lessonStore.get(id);
+    if (lesson) {
+      openLessonDetailModal(lesson);
+    }
+  }
+  window.openLessonById = openLessonById;
+
   // Formatting Helpers
   function formatDateISO(d) {
     const year = d.getFullYear();
@@ -157,6 +173,7 @@
       'absences': 'viewPaneAbsences',
       'messages': 'viewPaneMessages',
       'profiles': 'viewPaneProfiles',
+      'about': 'viewPaneAbout',
     };
 
     const targetPaneId = targetMap[viewName];
@@ -178,6 +195,7 @@
       'absences': { title: 'Abwesenheiten', desc: 'Fehlzeiten & Krankmeldungen' },
       'messages': { title: 'Mitteilungen', desc: 'Schulposteingang & Durchsagen' },
       'profiles': { title: 'Profile & Schulen', desc: 'Schulzugänge verwalten und hinzufügen' },
+      'about': { title: 'Über & Info', desc: 'Versionsinformationen, Neuigkeiten & Mitwirkende' },
     };
 
     if (metaMap[viewName]) {
@@ -212,6 +230,9 @@
         break;
       case 'profiles':
         loadProfiles();
+        break;
+      case 'about':
+        loadAboutView();
         break;
     }
   }
@@ -497,8 +518,10 @@
         ? '<span class="status-pill cancelled">Ausfall</span>' 
         : (isSubst ? '<span class="status-pill substitution">Änderung</span>' : '');
 
+      const storeId = registerLesson(l);
+
       return `
-        <div class="dash-lesson-item ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+        <div class="dash-lesson-item ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonById('${storeId}')">
           <div class="lesson-time-col">
             <span class="l-time-range">${l.timeRange}</span>
             <span class="l-period">${l.period}</span>
@@ -627,8 +650,10 @@
         ? '<span class="status-pill cancelled">Ausfall</span>' 
         : (isSubst ? '<span class="status-pill substitution">Änderung</span>' : '');
 
+      const storeId = registerLesson(l);
+
       return `
-        <div class="lesson-card ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})">
+        <div class="lesson-card ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" onclick="openLessonById('${storeId}')">
           <div class="lesson-left-group">
             <div class="lesson-card-badge" style="background-color:${color}; color:${l.textColor || '#ffffff'};">
               ${l.periodNum ? l.periodNum + '.' : (l.subject || '').slice(0, 3)}
@@ -649,6 +674,79 @@
         </div>
       `;
     }).join('');
+  }
+
+  // Default Period Definitions (Vocational & Regular School Standard)
+  const DEFAULT_PERIODS = [
+    { num: 1, start: '07:30', end: '08:15', label: '1. Std.', range: '07:30 - 08:15' },
+    { num: 2, start: '08:15', end: '09:00', label: '2. Std.', range: '08:15 - 09:00' },
+    { num: 3, start: '09:15', end: '10:00', label: '3. Std.', range: '09:15 - 10:00' },
+    { num: 4, start: '10:00', end: '10:45', label: '4. Std.', range: '10:00 - 10:45' },
+    { num: 5, start: '11:00', end: '11:45', label: '5. Std.', range: '11:00 - 11:45' },
+    { num: 6, start: '11:45', end: '12:30', label: '6. Std.', range: '11:45 - 12:30' },
+    { num: 7, start: '12:45', end: '13:30', label: '7. Std.', range: '12:45 - 13:30' },
+    { num: 8, start: '13:30', end: '14:15', label: '8. Std.', range: '13:30 - 14:15' },
+    { num: 9, start: '14:30', end: '15:15', label: '9. Std.', range: '14:30 - 15:15' },
+    { num: 10, start: '15:15', end: '16:00', label: '10. Std.', range: '15:15 - 16:00' },
+    { num: 11, start: '16:15', end: '17:00', label: '11. Std.', range: '16:15 - 17:00' },
+    { num: 12, start: '17:00', end: '17:45', label: '12. Std.', range: '17:00 - 17:45' }
+  ];
+
+  function getLessonPeriodNumbers(l) {
+    let pStart = null;
+    let pEnd = null;
+
+    if (l.period) {
+      const rangeMatch = l.period.match(/(\d+)\s*\.?\s*-\s*(\d+)\.?/);
+      if (rangeMatch) {
+        pStart = parseInt(rangeMatch[1], 10);
+        pEnd = parseInt(rangeMatch[2], 10);
+      } else {
+        const singleMatch = l.period.match(/(\d+)\.?/);
+        if (singleMatch) {
+          pStart = parseInt(singleMatch[1], 10);
+          pEnd = pStart;
+        }
+      }
+    }
+
+    if (!pStart && l.periodNum) {
+      pStart = l.periodNum;
+      pEnd = l.periodNum;
+    }
+
+    if (!pStart && l.startTimeStr) {
+      const [sh, sm] = l.startTimeStr.split(':').map(Number);
+      const sMin = sh * 60 + sm;
+      for (const p of DEFAULT_PERIODS) {
+        const [psh, psm] = p.start.split(':').map(Number);
+        if (Math.abs(sMin - (psh * 60 + psm)) <= 25) {
+          pStart = p.num;
+          break;
+        }
+      }
+    }
+
+    if (pStart && !pEnd && l.endTimeStr) {
+      const [eh, em] = l.endTimeStr.split(':').map(Number);
+      const eMin = eh * 60 + em;
+      for (const p of DEFAULT_PERIODS) {
+        const [peh, pem] = p.end.split(':').map(Number);
+        if (Math.abs(eMin - (peh * 60 + pem)) <= 25) {
+          pEnd = p.num;
+          break;
+        }
+      }
+    }
+
+    if (!pStart) pStart = 1;
+    if (!pEnd || pEnd < pStart) pEnd = pStart;
+
+    const res = [];
+    for (let i = pStart; i <= pEnd; i++) {
+      res.push(i);
+    }
+    return res;
   }
 
   function renderWeekTimetable(lessons, headerId, bodyId) {
@@ -681,95 +779,124 @@
     const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
     const todayStr = formatDateISO(new Date());
 
-    // Header: 5 equal day columns
-    headerEl.innerHTML = weekDays.map((d, idx) => {
-      const iso = formatDateISO(d);
-      const isToday = iso === todayStr;
-      return `
-        <div class="week-day-header-cell ${isToday ? 'today' : ''}">
-          <div class="w-day-name">${dayNames[idx]}</div>
-          <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
-        </div>
-      `;
-    }).join('');
-
-    // Group lessons by date
-    const lessonGroups = {};
-    weekDays.forEach(d => lessonGroups[formatDateISO(d)] = []);
-    uniqueLessons.forEach(l => {
-      const d = l.date || l.Date;
-      if (lessonGroups[d]) {
-        lessonGroups[d].push(l);
-      }
-    });
-
-    // Body: 5 day columns, each listing its lessons chronologically
-    bodyEl.innerHTML = weekDays.map(d => {
-      const iso = formatDateISO(d);
-      const dayLessons = (lessonGroups[iso] || []).sort((a, b) => (a.startTimeStr || '').localeCompare(b.startTimeStr || ''));
-
-      if (dayLessons.length === 0) {
+    // 1. Header: 6 columns: "Std. / Zeit" + 5 Days
+    headerEl.innerHTML = `
+      <div class="week-time-header-cell">Std. / Zeit</div>
+      ${weekDays.map((d, idx) => {
+        const iso = formatDateISO(d);
+        const isToday = iso === todayStr;
         return `
-          <div class="week-day-col">
-            <div class="empty-inline-state" style="padding:28px 0; text-align:center;">Frei</div>
+          <div class="week-day-header-cell ${isToday ? 'today' : ''}">
+            <div class="w-day-name">${dayNames[idx]}</div>
+            <div class="w-day-date">${d.getDate()}.${d.getMonth() + 1}.</div>
           </div>
         `;
-      }
+      }).join('')}
+    `;
 
-      let lastEndMinutes = 0;
-      const boxesHtml = [];
-
-      dayLessons.forEach(l => {
-        const isSubst = l.isSubstitution || l.isRoomChange;
-        const isCanc = l.isCancelled;
-        const color = l.color || '#ff7a00';
-        const displaySubj = getDisplaySubject(l);
-        const roomText = l.room || '';
-        const teacherText = l.teacher || '';
-
-        // Check for Freistunde gap (gap > 25 min between lessons)
-        if (l.startTimeStr) {
-          const [sh, sm] = l.startTimeStr.split(':').map(Number);
-          const startMin = sh * 60 + sm;
-          if (lastEndMinutes > 0 && startMin - lastEndMinutes > 25) {
-            boxesHtml.push(`
-              <div class="week-free-slot" title="Freistunde">
-                <span>Freistunde</span>
-              </div>
-            `);
-          }
-          if (l.endTimeStr) {
-            const [eh, em] = l.endTimeStr.split(':').map(Number);
-            lastEndMinutes = eh * 60 + em;
-          }
-        }
-
-        boxesHtml.push(`
-          <div class="week-lesson-box ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" 
-               style="border-left: 4px solid ${color};"
-               onclick="openLessonDetailModal(${escapeHTML(JSON.stringify(l))})"
-               title="${escapeHTML(l.subjectLong || displaySubj)}">
-            <div class="w-time-row">
-              <span class="w-time">${l.startTimeStr} - ${l.endTimeStr}</span>
-              <span class="w-period">${l.period || ''}</span>
-            </div>
-            <div class="w-subj">${escapeHTML(displaySubj)}</div>
-            <div class="w-details">
-              ${roomText ? `<strong>${escapeHTML(roomText)}</strong>` : ''} 
-              ${teacherText ? `· ${escapeHTML(teacherText)}` : ''}
-              ${isSubst ? '<span class="status-subst-badge">(Änderung)</span>' : ''}
-              ${isCanc ? '<span class="status-canc-badge">(Ausfall)</span>' : ''}
-            </div>
-          </div>
-        `);
-      });
-
-      return `
-        <div class="week-day-col">
-          ${boxesHtml.join('')}
+    // If completely empty week
+    if (uniqueLessons.length === 0) {
+      bodyEl.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: var(--text-muted); background: var(--bg-card); border: 1px dashed var(--border-subtle); border-radius: var(--radius-sm);">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 44px; height: 44px; opacity: 0.4; margin-bottom: 10px;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 4H7v2h2v-2zm0-4h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+          <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">Keine Unterrichtsstunden in dieser Woche</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Für den ausgewählten Zeitraum liegt kein Stundenplan vor (z. B. Ferien oder schulfrei).</div>
         </div>
       `;
-    }).join('');
+      return;
+    }
+
+    // Determine max period present (at least 8, max 12)
+    let maxPeriod = 8;
+    uniqueLessons.forEach(l => {
+      const pList = getLessonPeriodNumbers(l);
+      pList.forEach(p => {
+        if (p > maxPeriod && p <= 12) maxPeriod = p;
+      });
+    });
+
+    // Map lessons by date and period
+    const slotMap = new Map();
+    uniqueLessons.forEach(l => {
+      const d = l.date || l.Date;
+      const periods = getLessonPeriodNumbers(l);
+      periods.forEach(p => {
+        const slotKey = `${d}_${p}`;
+        if (!slotMap.has(slotKey)) {
+          slotMap.set(slotKey, []);
+        }
+        slotMap.get(slotKey).push(l);
+      });
+    });
+
+    // Render 6-column matrix row-by-row
+    const rowsHtml = [];
+    for (let p = 1; p <= maxPeriod; p++) {
+      const pDef = DEFAULT_PERIODS.find(item => item.num === p) || {
+        num: p,
+        range: ''
+      };
+
+      // Col 1: Time column cell
+      rowsHtml.push(`
+        <div class="week-time-slot-cell">
+          <div class="w-time-num">${p}. Stunde</div>
+          <div class="w-time-range">${pDef.range}</div>
+        </div>
+      `);
+
+      // Col 2..6: 5 Days
+      for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+        const iso = formatDateISO(weekDays[dayIdx]);
+        const slotKey = `${iso}_${p}`;
+        const slotLessons = slotMap.get(slotKey) || [];
+
+        if (slotLessons.length === 0) {
+          rowsHtml.push(`
+            <div class="week-empty-slot">
+              <span>—</span>
+            </div>
+          `);
+        } else {
+          const cardsHtml = slotLessons.map(l => {
+            const isSubst = l.isSubstitution || l.isRoomChange;
+            const isCanc = l.isCancelled;
+            const color = l.color || '#ff7a00';
+            const displaySubj = getDisplaySubject(l);
+            const roomText = l.room || '';
+            const teacherText = l.teacher || '';
+            const storeId = registerLesson(l);
+
+            return `
+              <div class="week-lesson-box ${isSubst ? 'substitution' : ''} ${isCanc ? 'cancelled' : ''}" 
+                   style="border-left: 4px solid ${color};"
+                   onclick="openLessonById('${storeId}')"
+                   title="${escapeHTML(l.subjectLong || displaySubj)}">
+                <div class="w-time-row">
+                  <span class="w-time">${l.startTimeStr} - ${l.endTimeStr}</span>
+                  <span class="w-period">${p}. Std.</span>
+                </div>
+                <div class="w-subj">${escapeHTML(displaySubj)}</div>
+                <div class="w-details">
+                  ${roomText ? `<strong>${escapeHTML(roomText)}</strong>` : ''} 
+                  ${teacherText ? `· ${escapeHTML(teacherText)}` : ''}
+                  ${isSubst ? '<span class="status-subst-badge">(Änderung)</span>' : ''}
+                  ${isCanc ? '<span class="status-canc-badge">(Ausfall)</span>' : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          if (slotLessons.length > 1) {
+            rowsHtml.push(`<div style="display:flex; flex-direction:column; gap:6px;">${cardsHtml}</div>`);
+          } else {
+            rowsHtml.push(cardsHtml);
+          }
+        }
+      }
+    }
+
+    bodyEl.innerHTML = rowsHtml.join('');
   }
 
   // ==================== WEITERE STUNDENPLÄNE MODULE ====================
@@ -1716,6 +1843,233 @@
     }
   }
 
+  // ==================== ÜBER & INFO MODULE ====================
+  const APP_RELEASES = [
+    {
+      version: 'v1.4',
+      title: 'Offizieller Release v1.4',
+      type: 'release',
+      date: '04.09.2026',
+      badge: 'Offizieller Release',
+      description: 'Erster offizieller Haupt-Release von untis-go! Einführung der interaktiven Info- & Release-Zentrale, Einbindung des offiziellen Marken-Icons, Wiederherstellung des Einzelstunden-Zeitrasters und Aufnahme in Awesome Go.',
+      sections: [
+        {
+          title: '🚀 Features & Neuerungen',
+          items: [
+            { type: 'feat', text: '<strong>Dedizierte Info- & Release-Seite:</strong> Neuer Navigationsbereich "Über & Info" mit detaillierten Versionsangaben, exakter GitHub-Release-Historie, One-Click Update-Prüfung & Sofortinstallation, Nennung der Mitwirkenden (Jeremy Benz und KI-Pair-Programming-Assistenten Claude Code & Google Antigravity) sowie GNU General Public License v3 Lizenzhinweis.' },
+            { type: 'feat', text: '<strong>Aufnahme in Awesome Go (#6660):</strong> untis-go wurde offiziell in das renommierte Verzeichnis <a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener">Awesome Go</a> unter <em>Other Software</em> aufgenommen.' },
+            { type: 'feat', text: '<strong>Offizielles Untis Marken-Icon:</strong> Einbindung des originalen transparenten Untis-Logos aus dem offiziellen Media-Kit für das native GTK-Desktop-Fenster, Web-App-Favicons (ICO & PNG 512x512) und App-Header.' },
+            { type: 'feat', text: '<strong>Synchrone Stundenplan-Matrix & Einzelstunden-Raster:</strong> Wiederherstellung der linken Zeit- & Stundenleiste ("Std. / Zeit"). Mehrstündige Blockstunden (z.B. 4 Stunden am Stück) werden nun sauber und transparent auf jede einzelne Schulstunde aufgeteilt (1. Std., 2. Std., 3. Std., 4. Std.) statt unübersichtlicher Mischbezeichnungen wie "1/2" oder "2/3".' },
+          ]
+        },
+        {
+          title: '🐛 Bugfixes & Optimierungen',
+          items: [
+            { type: 'fix', text: '<strong>Perfekte Zeilenausrichtung im Wochenplan:</strong> Durch die tabellarische CSS-Grid-Matrix sind alle Tage von Montag bis Freitag zeilengenau synchron zu den Schulstunden der Zeitleiste ausgerichtet.' },
+            { type: 'fix', text: '<strong>Sicherheits- & Datenschutz-Audit:</strong> Strengere Validierung des 32-Zeichen-Session-Tokens auf allen API-Routen, XSS-Prävention durch strukturierte Objekt-Registrierung und vollständige Anonymisierung sämtlicher Crypto-Salts.' },
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v1.3.1',
+      title: 'Hotfix Release v1.3.1',
+      type: 'hotfix',
+      date: '04.09.2026',
+      badge: 'Hotfix',
+      description: 'Dringendes Hotfix-Update zur Behebung von Login-Fehlern durch URL-Verunreinigungen und Bereinigung der Crypto-Salts.',
+      sections: [
+        {
+          title: '🐛 Bugfixes',
+          items: [
+            { type: 'fix', text: '<strong>WebUntis Server-URL Normalisierung:</strong> URLs aus der WebUntis-Schulsuche (mit Pfaden wie /WebUntis/?school=...) werden automatisch zur reinen Basis-Origin-Domain bereinigt. Behebt "NO_MANDANT" Login-Verweigerung.' },
+            { type: 'fix', text: '<strong>Aussagekräftige Login-Fehlermeldungen:</strong> Exakte Unterscheidung zwischen ungültigem Schul-Mandant und falschem Passwort.' },
+            { type: 'fix', text: '<strong>Vollständige Neutralisierung:</strong> Alle verbliebenen Personenbezüge in Crypto-Salts wurden vollständig entfernt.' },
+            { type: 'fix', text: '<strong>Cache-Busting für Go-Proxy:</strong> Version v1.3.1 stellt sicher, dass go install den fehlerbereinigten Stand lädt.' },
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v1.3',
+      title: 'Release v1.3 (BETA)',
+      type: 'beta',
+      date: '04.09.2026',
+      badge: 'BETA',
+      description: 'Zweites großes Feature-Update mit Profanity-Filter für Aliase, sekundengenauem Countdown-Timer und optimierter Stundenberechnung.',
+      sections: [
+        {
+          title: '🚀 Features',
+          items: [
+            { type: 'feat', text: '<strong>Filter für respektvolle Fachbezeichnungen:</strong> Automatischer Schutzfilter bei benutzerdefinierten Fach-Aliassen (Profanity & Hate-Speech Filter).' },
+            { type: 'feat', text: '<strong>Live-Countdown-Timer mit Sekundenanzeige:</strong> Der Unterrichts- und Pausen-Countdown aktualisiert sich sekundengenau live.' },
+            { type: 'feat', text: '<strong>Benutzerdefinierte Fachanzeige:</strong> Bei hinterlegtem Alias wird das Fach übersichtlich als "Wunschname · Kürzel" angezeigt.' },
+          ]
+        },
+        {
+          title: '🐛 Bugfixes',
+          items: [
+            { type: 'fix', text: '<strong>Wochenplan-Layout & Duplikat-Behebung:</strong> Sauberes 5-Tage-Layout ohne überlappende Zeilenraster.' },
+            { type: 'fix', text: '<strong>Exakte Mehrstunden-Berechnung:</strong> Blockunterricht wird präzise als vollständige Stundenspanne erkannt (z.B. 3. - 6. Stunde).' },
+            { type: 'fix', text: '<strong>Doppelte Fachtitel in Tageskarten behoben:</strong> Anzeige der Stundennummer im Badge verhindert redundante Fachkürzel.' },
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v1.2',
+      title: 'Release v1.2 (BETA)',
+      type: 'beta',
+      date: '04.09.2026',
+      badge: 'BETA',
+      description: 'Einführung von benutzerdefinierten Fachnamen, übersichtlichen Schulkürzeln und Vertretungs-Hervorhebungen.',
+      sections: [
+        {
+          title: '🚀 Features',
+          items: [
+            { type: 'feat', text: '<strong>Benutzerdefinierte Fachnamen & Kürzel:</strong> Individuelle Bezeichnungen für Fächer dauerhaft in SQLite sichern.' },
+            { type: 'feat', text: '<strong>Standardmäßig Schulkürzel:</strong> Kompakte Originalkürzel der Schule (FB02, E, LF01, FP, WBL).' },
+            { type: 'feat', text: '<strong>Reine Raumnummern:</strong> Glatte Raumnummern wie F108, H119, J103 ohne Textballast.' },
+            { type: 'feat', text: '<strong>Vertretungs- & Ausfall-Hervorhebung:</strong> Vertretungen mit Akzent, Ausfälle durchgestrichen.' },
+          ]
+        },
+        {
+          title: '🐛 Bugfixes',
+          items: [
+            { type: 'fix', text: '<strong>Deduplizierung im Stundenplan:</strong> Filterung von Mehrfacheinträgen bei Koppelkursen.' },
+            { type: 'fix', text: '<strong>Dashboard-Metriken bereinigt:</strong> Redundante Metrik-Karten zusammengeführt.' },
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v1.1',
+      title: 'Release v1.1 (BETA)',
+      type: 'beta',
+      date: '04.09.2026',
+      badge: 'BETA',
+      description: 'Integrierte Auto-Update Engine, Raum-Stundenplan-Berechnung, Klassen-Favoriten und Gelesen-Status für Mitteilungen.',
+      sections: [
+        {
+          title: '🚀 Features',
+          items: [
+            { type: 'feat', text: '<strong>In-App Auto-Update-System:</strong> Hintergrundprüfung auf GitHub-Releases mit One-Click-Aktualisierung.' },
+            { type: 'feat', text: '<strong>Raum-Stundenpläne berechnen:</strong> Freie und belegte Räume intelligent aus Stundenplandaten ermitteln.' },
+            { type: 'feat', text: '<strong>Klassen-Favoriten (❤️):</strong> Klassen in "Weitere Stundenpläne" oben anpinnen.' },
+            { type: 'feat', text: '<strong>Gelesen-Status bei Mitteilungen:</strong> Lokale Speicherung und Button "Alle als gelesen markieren".' },
+          ]
+        },
+        {
+          title: '🐛 Bugfixes',
+          items: [
+            { type: 'fix', text: '<strong>Parser-Korrektur:</strong> Dynamische Zuordnung von Fach, Lehrer, Raum und Klasse repariert.' },
+            { type: 'fix', text: '<strong>Wochenansicht-Korrektur:</strong> Problem mit fälschlichem "Frei"-Zustand gelöst.' },
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v1.0',
+      title: 'Release v1.0 (BETA)',
+      type: 'beta',
+      date: '03.09.2026',
+      badge: 'BETA',
+      description: 'Erster öffentlicher BETA-Release von untis-go als blitzschneller nativer WebUntis Desktop-Client.',
+      sections: [
+        {
+          title: '✨ Kernfunktionen & Module',
+          items: [
+            { type: 'feat', text: '<strong>Dashboard:</strong> Tagesbegrüßung, Stundenplan-Übersicht, offene Hausaufgaben & ungelesene Mitteilungen.' },
+            { type: 'feat', text: '<strong>Mein Stundenplan:</strong> Schnelle Tages- und Wochenansicht mit Live-Marker.' },
+            { type: 'feat', text: '<strong>Hausaufgaben & Abwesenheiten:</strong> Aufgaben abhaken und Krankmeldungen eintragen.' },
+            { type: 'feat', text: '<strong>Sicherheit & SQLite Cache:</strong> AES-256-GCM Verschlüsselung, dynamischer Port und Offline-Cache.' },
+          ]
+        }
+      ]
+    }
+  ];
+
+  function loadAboutView() {
+    renderAboutReleases();
+  }
+
+  function renderAboutReleases() {
+    const listEl = document.getElementById('aboutReleasesList');
+    if (!listEl) return;
+
+    listEl.innerHTML = APP_RELEASES.map((rel, idx) => {
+      const isLatest = idx === 0;
+      const pillClass = rel.type === 'release' ? 'release' : (rel.type === 'hotfix' ? 'hotfix' : 'beta');
+
+      const sectionsHtml = (rel.sections || []).map(sec => `
+        <div class="about-rel-section-title">${sec.title}</div>
+        <ul class="about-rel-list">
+          ${sec.items.map(item => `
+            <li>
+              <span class="about-tag-${item.type}">${item.type === 'feat' ? '[FEATURE]' : '[BUGFIX]'}</span>
+              <span>${item.text}</span>
+            </li>
+          `).join('')}
+        </ul>
+      `).join('');
+
+      return `
+        <div class="about-release-item ${isLatest ? 'latest' : ''}">
+          <div class="about-release-header">
+            <div class="about-release-tag-group">
+              <span class="about-rel-version">${escapeHTML(rel.version)}</span>
+              <span class="about-rel-pill ${pillClass}">${escapeHTML(rel.badge)}</span>
+            </div>
+            <span class="about-rel-date">${escapeHTML(rel.date)}</span>
+          </div>
+          <div class="about-rel-body">
+            <p style="margin: 0 0 10px; font-weight: 500; color: var(--text-primary);">${escapeHTML(rel.description)}</p>
+            ${sectionsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function checkForUpdatesFromAbout() {
+    const btn = document.getElementById('btnAboutCheckUpdate');
+    const installBtn = document.getElementById('btnAboutInstallUpdate');
+    const msgEl = document.getElementById('aboutUpdateStatusMsg');
+
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('loading');
+    }
+    if (msgEl) msgEl.textContent = 'Suche nach Updates auf GitHub...';
+
+    try {
+      const res = await apiFetch('/api/updates/check');
+      if (res && res.hasUpdate) {
+        availableUpdateInfo = res;
+        if (installBtn) installBtn.style.display = 'inline-flex';
+        if (msgEl) {
+          msgEl.innerHTML = `Neue Version verfügbar: <strong style="color: var(--accent-primary);">${escapeHTML(res.latestVersion)}</strong>!`;
+        }
+        showToast(`Update ${res.latestVersion} verfügbar!`, 'success');
+        openUpdateModal();
+      } else {
+        if (installBtn) installBtn.style.display = 'none';
+        if (msgEl) {
+          msgEl.innerHTML = `untis-go ist auf dem neuesten Stand (<strong>${escapeHTML(res?.currentVersion || 'v1.4')}</strong>).`;
+        }
+        showToast(`untis-go ist auf dem neuesten Stand (${res?.currentVersion || 'v1.4'}).`);
+      }
+    } catch (e) {
+      if (msgEl) msgEl.textContent = 'Fehler bei der Update-Prüfung.';
+      showToast('Fehler beim Prüfen auf Updates', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    }
+  }
+
   // ==================== LESSON DETAIL MODAL ====================
   function openLessonDetailModal(lesson) {
     const modal = document.getElementById('lessonDetailBackdrop');
@@ -1888,6 +2242,7 @@
     document.getElementById('navAbsences')?.addEventListener('click', () => switchView('absences'));
     document.getElementById('navMessages')?.addEventListener('click', () => switchView('messages'));
     document.getElementById('navProfiles')?.addEventListener('click', () => switchView('profiles'));
+    document.getElementById('navAbout')?.addEventListener('click', () => switchView('about'));
 
     // Sidebar footer
     document.getElementById('sidebarThemeBtn')?.addEventListener('click', toggleTheme);
@@ -2023,6 +2378,9 @@
   window.openUpdateModal = openUpdateModal;
   window.closeUpdateModal = closeUpdateModal;
   window.applySoftwareUpdate = applySoftwareUpdate;
+  window.openLessonById = openLessonById;
+  window.loadAboutView = loadAboutView;
+  window.checkForUpdatesFromAbout = checkForUpdatesFromAbout;
 
   // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {

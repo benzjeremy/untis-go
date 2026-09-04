@@ -21,7 +21,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.3.1"
+const AppVersion = "1.4"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -133,6 +133,36 @@ func (s *Server) Start(port int) (string, error) {
 
 	// Static frontend routes (accessible locally)
 	mux.HandleFunc("/static/", s.handleStatic)
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		data, err := web.Assets.ReadFile("favicon.ico")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_, _ = w.Write(data)
+	})
+	mux.HandleFunc("/icon.png", func(w http.ResponseWriter, r *http.Request) {
+		data, err := web.Assets.ReadFile("icon.png")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_, _ = w.Write(data)
+	})
+	mux.HandleFunc("/icon.svg", func(w http.ResponseWriter, r *http.Request) {
+		data, err := web.Assets.ReadFile("icon.svg")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_, _ = w.Write(data)
+	})
 	mux.HandleFunc("/", s.handleIndex)
 
 	// Bind to dynamic random port on 127.0.0.1 (or specific port if provided)
@@ -1736,6 +1766,10 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 	case strings.HasSuffix(filename, ".html"):
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	case strings.HasSuffix(filename, ".png"):
+		w.Header().Set("Content-Type", "image/png")
+	case strings.HasSuffix(filename, ".ico"):
+		w.Header().Set("Content-Type", "image/x-icon")
 	}
 
 	w.Header().Set("Cache-Control", "no-cache")

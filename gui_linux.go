@@ -25,7 +25,23 @@ static void on_title_changed(WebKitWebView *web_view, GParamSpec *pspec, GtkWind
     }
 }
 
-static void run_gtk_window(const char *title, const char *url, int width, int height) {
+static void set_window_icon_from_memory(GtkWindow *window, const void *buf, gsize len) {
+    if (!buf || len == 0) return;
+    GError *err = NULL;
+    GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
+    if (loader) {
+        if (gdk_pixbuf_loader_write(loader, (const guint8 *)buf, len, &err)) {
+            gdk_pixbuf_loader_close(loader, &err);
+            GdkPixbuf *pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+            if (pixbuf) {
+                gtk_window_set_icon(window, pixbuf);
+            }
+        }
+        g_object_unref(loader);
+    }
+}
+
+static void run_gtk_window(const char *title, const char *url, int width, int height, const void *icon_buf, int icon_len) {
     int argc = 0;
     char **argv = NULL;
     if (!gtk_init_check(&argc, &argv)) {
@@ -36,6 +52,10 @@ static void run_gtk_window(const char *title, const char *url, int width, int he
     gtk_window_set_title(GTK_WINDOW(window), title);
     gtk_window_set_default_size(GTK_WINDOW(window), width, height);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+
+    if (icon_buf && icon_len > 0) {
+        set_window_icon_from_memory(GTK_WINDOW(window), icon_buf, (gsize)icon_len);
+    }
 
     g_signal_connect(window, "destroy", G_CALLBACK(on_window_destroy), NULL);
 
@@ -62,6 +82,8 @@ import (
 	"os"
 	"os/exec"
 	"unsafe"
+
+	"github.com/benzjeremy/untis-go/web"
 )
 
 func init() {
@@ -92,8 +114,14 @@ func LaunchGUI(title, url string, width, height int, forceBrowser bool) {
 	defer C.free(unsafe.Pointer(cTitle))
 	defer C.free(unsafe.Pointer(cURL))
 
+	iconBytes, _ := web.Assets.ReadFile("icon.png")
+	var iconPtr unsafe.Pointer
+	if len(iconBytes) > 0 {
+		iconPtr = unsafe.Pointer(&iconBytes[0])
+	}
+
 	log.Println("[GUI] Starte natives WebKitGTK/GTK3-Fenster (60 FPS Hardware-Compositing)...")
-	C.run_gtk_window(cTitle, cURL, C.int(width), C.int(height))
+	C.run_gtk_window(cTitle, cURL, C.int(width), C.int(height), iconPtr, C.int(len(iconBytes)))
 }
 
 // OpenBrowser opens the URL in the system browser in application mode if possible
