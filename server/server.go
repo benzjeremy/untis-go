@@ -1751,6 +1751,26 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 // Handler: static files
 func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimPrefix(r.URL.Path, "/static/")
+
+	// Security: Prevent path traversal attacks
+	if filename == "" || strings.Contains(filename, "..") || strings.Contains(filename, "//") {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Additional security: Only allow files from the root of the embedded filesystem
+	if strings.Contains(filename, "/") {
+		// Check if it's trying to access subdirectories (which we don't have in embed.FS)
+		// But just in case, we'll be restrictive
+		parts := strings.Split(filename, "/")
+		for _, part := range parts {
+			if part == "" || part == "." || part == ".." {
+				http.NotFound(w, r)
+				return
+			}
+		}
+	}
+
 	data, err := web.Assets.ReadFile(filename)
 	if err != nil {
 		http.NotFound(w, r)
@@ -1839,6 +1859,15 @@ func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 		downloadURL = info.DownloadURL
 	}
 
+	// Validate download URL for security - only allow GitHub releases
+	if !isValidGitHubReleaseURL(downloadURL) {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"message": "Ungültige Download-URL: Nur GitHub-Releases sind erlaubt",
+		})
+		return
+	}
+
 	if err := updater.ApplyUpdate(downloadURL); err != nil {
 		log.Printf("[Update] Fehler beim Aktualisieren: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
@@ -1852,5 +1881,44 @@ func (s *Server) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Update erfolgreich installiert! Bitte starte die Anwendung neu.",
 	})
+}
+
+// isValidGitHubReleaseURL validates that the URL is a GitHub release download URL
+func isValidGitHubReleaseURL(url string) bool {
+	if url == "" {
+		return false
+	}
+
+	// Parse URL to validate format
+	u, err := url.Parse(url)
+	if err != nil {
+		return false
+	}
+
+	// Must be HTTPS
+	if u.Scheme != "https" {
+		return false
+	}
+
+	// Must be github.com domain
+	if u.Host != "github.com" {
+		return false
+	}
+
+	// Must be in the benzjeremy/untis-go repository
+	if !strings.HasPrefix(u.Path, "/benzjeremy/untis-go/releases/download/") {
+		return false
+	}
+
+	// Must have a file extension that indicates a release asset
+	pathLower := strings.ToLower(u.Path)
+	if !strings.HasSuffix(pathLower, ".tar.gz") &&
+	   !strings.HasSuffix(pathLower, ".tgz") &&
+	   !strings.HasSuffix(pathLower, ".zip") &&
+	   !strings.HasSuffix(pathLower, ".exe") {
+		return false
+	}
+
+	return true
 }
 

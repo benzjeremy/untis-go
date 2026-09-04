@@ -556,8 +556,8 @@
         </div>
         <div class="hw-info">
           <div class="hw-header-line">
-            <span class="hw-subject-badge">${h.subject}</span>
-            <span class="hw-due-pill">${h.dueDate ? `Fällig: ${h.dueDate}` : ''}</span>
+            <span class="hw-subject-badge">${escapeHTML(h.subject)}</span>
+            <span class="hw-due-pill">${h.dueDate ? `Fällig: ${escapeHTML(h.dueDate)}` : ''}</span>
           </div>
           <div class="hw-desc">${escapeHTML(h.description)}</div>
         </div>
@@ -577,7 +577,7 @@
     list.innerHTML = messages.map(m => `
       <div class="message-card" style="padding:12px 14px; margin-bottom:6px;" onclick="openMessageDetailModal(${m.id})">
         <div class="msg-header-row">
-          <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
+          <span class="msg-sender-chip">${escapeHTML(m.senderName || 'Schule')}</span>
           <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
         </div>
         <div class="msg-subject-line" style="font-size:13px;">${escapeHTML(m.subject)}</div>
@@ -1397,7 +1397,7 @@
           <div class="msg-header-row">
             <div style="display:flex; align-items:center;">
               ${isUnread ? '<span class="msg-unread-tag" title="Ungelesen"></span>' : ''}
-              <span class="msg-sender-chip">${m.senderName || 'Schule'}</span>
+              <span class="msg-sender-chip">${escapeHTML(m.senderName || 'Schule')}</span>
             </div>
             <span class="msg-date-str">${formatDateTime(m.sentDateTime)}</span>
           </div>
@@ -1560,7 +1560,11 @@
     `).join('');
   }
 
-  function selectSearchSchool(school) {
+  function selectSearchSchool(element) {
+    const schoolData = element.getAttribute('data-school');
+    if (!schoolData) return;
+
+    const school = JSON.parse(schoolData);
     selectedSearchSchool = school;
     const form = document.getElementById('addSchoolForm');
     const preview = document.getElementById('selectedSchoolPreview');

@@ -8,10 +8,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"os/user"
 	"strings"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 var (
@@ -43,7 +46,7 @@ func getMachineID() string {
 	return "untis-go-default-machine-key"
 }
 
-// deriveKeyWithSalt generates a 32-byte key for AES-256 using the specified salt
+// deriveKeyWithSalt generates a 32-byte key for AES-256 using PBKDF2 with the specified salt
 func deriveKeyWithSalt(salt []byte) ([]byte, error) {
 	machID := getMachineID()
 
@@ -58,13 +61,16 @@ func deriveKeyWithSalt(salt []byte) ([]byte, error) {
 
 	homeDir, _ := os.UserHomeDir()
 
-	h := sha256.New()
-	h.Write(salt)
-	h.Write([]byte(machID))
-	h.Write([]byte(username))
-	h.Write([]byte(homeDir))
+	// Use PBKDF2 with SHA256, 100000 iterations, and 32-byte key length
+	// This is much more resistant to brute-force attacks than plain SHA256
+	var data []byte
+	data = append(data, salt...)
+	data = append(data, []byte(machID)...)
+	data = append(data, []byte(username)...)
+	data = append(data, []byte(homeDir)...)
 
-	return h.Sum(nil), nil
+	key := pbkdf2.Key(data, salt, 100000, 32, sha256.New)
+	return key, nil
 }
 
 // DeriveKey generates a 32-byte key for AES-256 from machine ID and user environment
