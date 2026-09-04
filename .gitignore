@@ -1,0 +1,5 @@
+dist/
+untis-go
+untis-go.exe
+*.log
+.DS_Store
