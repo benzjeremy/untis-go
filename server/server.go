@@ -22,7 +22,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.5.1"
+const AppVersion = "1.5.2"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -48,6 +48,11 @@ func NewServer(database *db.Database) *Server {
 	if activeProf, err := database.GetActiveProfile(); err == nil && activeProf != nil {
 		pwd, _ := database.GetDecryptedPassword(activeProf)
 		client := api.NewClient(activeProf.Server, activeProf.School, activeProf.Username, pwd, "password")
+		cID := database.GetIntSetting("selected_class_id", 0)
+		cName := database.GetSetting("selected_class_name", "")
+		if cID > 0 {
+			client.SetSelectedClass(cID, cName)
+		}
 		s.activeClient = client
 
 		// Background authenticate so token is fresh
@@ -314,6 +319,8 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 			Username  string `json:"username"`
 			Password  string `json:"password"`
 			SetActive bool   `json:"setActive"`
+			ClassID   int    `json:"classId,omitempty"`
+			ClassName string `json:"className,omitempty"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -340,6 +347,12 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if req.ClassID > 0 {
+			testClient.SetSelectedClass(req.ClassID, req.ClassName)
+			_ = s.database.SetIntSetting("selected_class_id", req.ClassID)
+			_ = s.database.SetSetting("selected_class_name", req.ClassName)
+		}
+
 		profID := req.ID
 		if profID == "" {
 			profID = fmt.Sprintf("%d", time.Now().Unix())
@@ -351,8 +364,10 @@ func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
 				profName = fmt.Sprintf("%s (%s)", testClient.UserInfo.DisplayName, req.School)
 			} else if req.Username != "" {
 				profName = fmt.Sprintf("%s (%s)", req.Username, req.School)
+			} else if req.ClassName != "" {
+				profName = fmt.Sprintf("%s (%s)", req.School, req.ClassName)
 			} else {
-				profName = fmt.Sprintf("%s (Anonym)", req.School)
+				profName = fmt.Sprintf("%s (Gast)", req.School)
 			}
 		}
 
@@ -535,6 +550,34 @@ func (s *Server) handleSchoolSearch(w http.ResponseWriter, r *http.Request) {
 
 // Handler: /api/classes
 func (s *Server) handleClasses(w http.ResponseWriter, r *http.Request) {
+	targetSchool := strings.TrimSpace(r.URL.Query().Get("school"))
+	targetServer := strings.TrimSpace(r.URL.Query().Get("server"))
+	if targetSchool != "" && targetServer != "" {
+		cachedClasses, err := s.database.GetClasses(targetSchool)
+		if err == nil && len(cachedClasses) > 0 && r.URL.Query().Get("force") != "true" {
+			writeJSON(w, http.StatusOK, cachedClasses)
+			return
+		}
+		tempClient := api.NewClient(targetServer, targetSchool, "#anonymous#", "", "anonymous")
+		if err := tempClient.Authenticate(); err == nil {
+			if apiClasses, errK := tempClient.GetKlassen(); errK == nil && len(apiClasses) > 0 {
+				var dbClasses []db.Class
+				for _, ac := range apiClasses {
+					dbClasses = append(dbClasses, db.Class{
+						ID:       ac.ID,
+						School:   targetSchool,
+						Name:     ac.Name,
+						LongName: ac.LongName,
+						Active:   ac.Active,
+					})
+				}
+				_ = s.database.SaveClasses(targetSchool, dbClasses)
+				writeJSON(w, http.StatusOK, dbClasses)
+				return
+			}
+		}
+	}
+
 	s.mu.RLock()
 	client := s.activeClient
 	s.mu.RUnlock()
@@ -777,6 +820,12 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		wg                  sync.WaitGroup
 	)
 
+	classID := s.database.GetIntSetting("selected_class_id", 0)
+	className := s.database.GetSetting("selected_class_name", "")
+	if classID == 0 && client != nil {
+		classID, className = client.GetSelectedClass()
+	}
+
 	// 1. Timetable (Concurrent)
 	wg.Add(1)
 	go func() {
@@ -785,7 +834,6 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var lessons []api.EnrichedLesson
-		classID := s.database.GetIntSetting("selected_class_id", 0)
 		if classID == 0 {
 			classes, _ := s.database.GetClasses(client.School)
 			if len(classes) == 0 {
@@ -806,16 +854,26 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			}
 			if len(classes) > 0 {
 				classID = classes[0].ID
+				className = classes[0].Name
 				_ = s.database.SetIntSetting("selected_class_id", classID)
-				_ = s.database.SetSetting("selected_class_name", classes[0].Name)
+				_ = s.database.SetSetting("selected_class_name", className)
+				client.SetSelectedClass(classID, className)
 			}
 		}
 
-		if l, err := client.GetOwnTimetable(now, now); err == nil && len(l) > 0 {
-			lessons = l
-		} else if classID != 0 {
-			if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
-				lessons = clLessons
+		if client.IsAnonymous() {
+			if classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+					lessons = clLessons
+				}
+			}
+		} else {
+			if l, err := client.GetOwnTimetable(now, now); err == nil && len(l) > 0 {
+				lessons = l
+			} else if classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+					lessons = clLessons
+				}
 			}
 		}
 
@@ -840,20 +898,33 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			for nextDay.Weekday() == time.Saturday || nextDay.Weekday() == time.Sunday {
 				nextDay = nextDay.AddDate(0, 0, 1)
 			}
-			if nl, err := client.GetOwnTimetable(nextDay, nextDay); err == nil && len(nl) > 0 {
-				lessons = nl
-				isNextDay = true
-				nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
-				if nextL == nil && len(nl) > 0 {
-					nextL = &nl[0]
+			if client.IsAnonymous() {
+				if classID != 0 {
+					if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
+						lessons = clLessons
+						isNextDay = true
+						nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
+						if nextL == nil && len(clLessons) > 0 {
+							nextL = &clLessons[0]
+						}
+					}
 				}
-			} else if classID != 0 {
-				if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
-					lessons = clLessons
+			} else {
+				if nl, err := client.GetOwnTimetable(nextDay, nextDay); err == nil && len(nl) > 0 {
+					lessons = nl
 					isNextDay = true
 					nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
-					if nextL == nil && len(clLessons) > 0 {
-						nextL = &clLessons[0]
+					if nextL == nil && len(nl) > 0 {
+						nextL = &nl[0]
+					}
+				} else if classID != 0 {
+					if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
+						lessons = clLessons
+						isNextDay = true
+						nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
+						if nextL == nil && len(clLessons) > 0 {
+							nextL = &clLessons[0]
+						}
 					}
 				}
 			}
@@ -999,6 +1070,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			"excused":   excAbs,
 			"unexcused": unexcAbs,
 		},
+		"selectedClassId":   classID,
+		"selectedClassName": className,
 	})
 }
 
@@ -1043,12 +1116,21 @@ func (s *Server) handleOwnTimetable(w http.ResponseWriter, r *http.Request) {
 		endDate = time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 23, 59, 59, 0, targetDate.Location())
 	}
 
+	cacheClassID := -100
+	if client.IsAnonymous() {
+		selID, _ := client.GetSelectedClass()
+		cacheClassID = selID
+		if cacheClassID == 0 {
+			cacheClassID = s.database.GetIntSetting("selected_class_id", 0)
+		}
+	}
+
 	dateKey := startDate.Format("2006-01-02")
-	cacheKey := fmt.Sprintf("own_%s_%s", view, dateKey)
+	cacheKey := fmt.Sprintf("own_%d_%s_%s", cacheClassID, view, dateKey)
 	forceRefresh := q.Get("force") == "true"
 
 	// Zero-Lag SQLite Cache Lookup (< 1ms)
-	cachedJSON, updatedAt, found, err := s.database.GetTimetableCache(-100, cacheKey)
+	cachedJSON, updatedAt, found, err := s.database.GetTimetableCache(cacheClassID, cacheKey)
 	if err == nil && found && !forceRefresh && cachedJSON != "" {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("X-Cache-Lookup", "HIT")
@@ -1059,7 +1141,7 @@ func (s *Server) handleOwnTimetable(w http.ResponseWriter, r *http.Request) {
 			go func() {
 				if l, err := client.GetOwnTimetable(startDate, endDate); err == nil && len(l) > 0 {
 					if b, errM := json.Marshal(l); errM == nil {
-						_ = s.database.SaveTimetableCache(-100, cacheKey, string(b))
+						_ = s.database.SaveTimetableCache(cacheClassID, cacheKey, string(b))
 					}
 				}
 			}()
@@ -1084,7 +1166,7 @@ func (s *Server) handleOwnTimetable(w http.ResponseWriter, r *http.Request) {
 
 	if len(lessons) > 0 {
 		if b, errM := json.Marshal(lessons); errM == nil {
-			_ = s.database.SaveTimetableCache(-100, cacheKey, string(b))
+			_ = s.database.SaveTimetableCache(cacheClassID, cacheKey, string(b))
 		}
 	}
 
@@ -1714,6 +1796,15 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			case bool:
 				_ = s.database.SetSetting(k, strconv.FormatBool(val))
 			}
+		}
+
+		s.mu.RLock()
+		client := s.activeClient
+		s.mu.RUnlock()
+		if client != nil {
+			cID := s.database.GetIntSetting("selected_class_id", 0)
+			cName := s.database.GetSetting("selected_class_name", "")
+			client.SetSelectedClass(cID, cName)
 		}
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})

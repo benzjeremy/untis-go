@@ -153,6 +153,10 @@ type Client struct {
 	// In-memory cache
 	klassenCache map[int]Klasse
 	detailCache  map[string]map[string]interface{}
+
+	// Selected class for anonymous/guest sessions
+	SelectedClassID   int
+	SelectedClassName string
 }
 
 // NormalizeServerURL cleans and extracts the base origin (e.g. "https://bk-technik-siegen.webuntis.com")
@@ -206,6 +210,21 @@ func NewClient(server, school, username, password, authType string) *Client {
 func (c *Client) IsAnonymous() bool {
 	u := strings.TrimSpace(c.Username)
 	return u == "" || u == "#anonymous#" || strings.EqualFold(c.AuthType, "anonymous")
+}
+
+// SetSelectedClass updates the designated class ID and name for the client
+func (c *Client) SetSelectedClass(classID int, className string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.SelectedClassID = classID
+	c.SelectedClassName = className
+}
+
+// GetSelectedClass returns the selected class ID and name in a thread-safe manner
+func (c *Client) GetSelectedClass() (int, string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.SelectedClassID, c.SelectedClassName
 }
 
 // SearchSchool queries schoolquery2 for schools matching query
@@ -1052,19 +1071,18 @@ func (c *Client) GetAbsences(startDate, endDate time.Time) ([]WebUntisAbsence, e
 // GetOwnTimetable retrieves the personal student timetable
 func (c *Client) GetOwnTimetable(startDate, endDate time.Time) ([]EnrichedLesson, error) {
 	if c.IsAnonymous() {
-		var classID int
 		c.mu.Lock()
-		for id := range c.klassenCache {
-			classID = id
-			break
-		}
+		classID := c.SelectedClassID
 		c.mu.Unlock()
-		if classID == 0 {
-			if klassen, errK := c.GetKlassen(); errK == nil && len(klassen) > 0 {
-				classID = klassen[0].ID
-			}
+		if classID > 0 {
+			return c.GetTimetable(classID, startDate, endDate)
 		}
-		if classID != 0 {
+		if klassen, errK := c.GetKlassen(); errK == nil && len(klassen) > 0 {
+			c.mu.Lock()
+			c.SelectedClassID = klassen[0].ID
+			c.SelectedClassName = klassen[0].Name
+			classID = klassen[0].ID
+			c.mu.Unlock()
 			return c.GetTimetable(classID, startDate, endDate)
 		}
 		return []EnrichedLesson{}, nil
@@ -1678,7 +1696,7 @@ func (c *Client) fetchPublicTimetable(resourceType string, resourceID int, start
 
 	keyStr := strconv.Itoa(resourceID)
 	rawPeriods := pubResp.Data.Result.Data.ElementPeriods[keyStr]
-	if len(rawPeriods) == 0 {
+	if resourceID <= 0 && len(rawPeriods) == 0 {
 		for _, v := range pubResp.Data.Result.Data.ElementPeriods {
 			rawPeriods = v
 			break
@@ -1758,6 +1776,15 @@ func (c *Client) fetchPublicTimetable(resourceType string, resourceID int, start
 		roomStr := strings.Join(rooms, ", ")
 		roomLongStr := strings.Join(roomsLong, ", ")
 		classStr := strings.Join(classes, ", ")
+		if classStr == "" {
+			c.mu.Lock()
+			if k, ok := c.klassenCache[resourceID]; ok {
+				classStr = k.Name
+			} else if c.SelectedClassName != "" {
+				classStr = c.SelectedClassName
+			}
+			c.mu.Unlock()
+		}
 
 		isCancelled := p.CellState == "CANCELLED"
 		isSubst := p.CellState == "SUBSTITUTION" || p.CellState == "CHANGED" || p.SubstText != ""

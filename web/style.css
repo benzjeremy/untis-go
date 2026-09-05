@@ -3407,4 +3407,117 @@ input, textarea, select {
   flex-shrink: 0;
 }
 
+.hero-class-chip {
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-xl);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.hero-class-chip:hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.onboard-class-picker-wrap {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboard-class-header {
+  margin-bottom: 4px;
+}
+
+.onboard-class-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.onboard-classes-container {
+  max-height: 280px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.onboard-class-pill {
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboard-class-pill:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.onboard-class-pill.active {
+  background: rgba(255, 96, 51, 0.12);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(255, 96, 51, 0.2);
+}
+
+.onboard-class-pill-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.onboard-class-pill-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.class-picker-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.class-picker-list-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.class-picker-list-item.active {
+  background: rgba(255, 96, 51, 0.12);
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
 

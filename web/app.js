@@ -339,6 +339,14 @@
       }
     }
 
+    // Save active class into state
+    state.selectedClassId = status.selectedClassId || 0;
+    state.selectedClassName = status.selectedClassName || '';
+    const heroClassEl = document.getElementById('dashHeroClassName');
+    if (heroClassEl) {
+      heroClassEl.textContent = state.selectedClassName || 'Auswählen';
+    }
+
     // Load initial dashboard
     updateDateDisplay();
     switchView('dashboard');
@@ -527,6 +535,16 @@
       if (absUnexcEl) absUnexcEl.textContent = `${data.absencesSummary.unexcused} Unentschuldigt`;
     }
 
+    // Class indicator update
+    if (data.selectedClassName) {
+      state.selectedClassName = data.selectedClassName;
+      state.selectedClassId = data.selectedClassId;
+    }
+    const heroClassEl = document.getElementById('dashHeroClassName');
+    if (heroClassEl) {
+      heroClassEl.textContent = state.selectedClassName || 'Auswählen';
+    }
+
     // Today's Lessons List (or upcoming day)
     renderDashboardLessons(data.todayLessons || [], data.isUpcomingSchoolDay, data.upcomingDayLabel);
 
@@ -544,7 +562,8 @@
     const list = document.getElementById('dashTodayLessonsList');
     const subtitleEl = document.getElementById('dashScheduleSubtitle');
     if (subtitleEl) {
-      subtitleEl.textContent = isUpcomingDay && upcomingLabel ? upcomingLabel : 'Heute';
+      const baseLabel = isUpcomingDay && upcomingLabel ? upcomingLabel : 'Heute';
+      subtitleEl.textContent = state.selectedClassName ? `${baseLabel} · Klasse ${state.selectedClassName}` : baseLabel;
     }
     if (!list) return;
 
@@ -1098,6 +1117,22 @@
       type === 'CLASS' ? state.classes : state.rooms,
       type
     );
+
+    const btnSetDash = document.getElementById('btnSetAsDashboardClass');
+    if (btnSetDash) {
+      if (type === 'CLASS') {
+        btnSetDash.style.display = 'inline-block';
+        if (id === state.selectedClassId) {
+          btnSetDash.textContent = '✓ Aktuelle Dashboard-Klasse';
+          btnSetDash.disabled = true;
+        } else {
+          btnSetDash.textContent = '⭐ Als Dashboard-Klasse festlegen';
+          btnSetDash.disabled = false;
+        }
+      } else {
+        btnSetDash.style.display = 'none';
+      }
+    }
 
     loadResourceTimetable();
   }
@@ -1865,6 +1900,9 @@
     }
   }
 
+  let onboardClasses = [];
+  let onboardSelectedClass = null;
+
   async function handleOnboardAnonymousSubmit() {
     if (!onboardSelectedSchool) return;
 
@@ -1878,26 +1916,259 @@
       serverHost = 'https://' + serverHost.split('/')[0];
     }
 
-    showLoading(true, 'Verbinde anonym mit WebUntis...');
+    const schoolName = onboardSelectedSchool.loginName || onboardSelectedSchool.displayName;
+
+    // Transition to Class Picker inside Step 2
+    const optionsGrid = document.getElementById('onboardLoginOptionsGrid');
+    const classPickerWrap = document.getElementById('onboardClassPickerWrap');
+    if (optionsGrid) optionsGrid.style.display = 'none';
+    if (classPickerWrap) classPickerWrap.style.display = 'block';
+
+    const descEl = document.getElementById('onboardClassPickerDesc');
+    if (descEl) descEl.textContent = `Wähle deine Klasse an der ${onboardSelectedSchool.displayName}:`;
+
+    const listEl = document.getElementById('onboardClassesList');
+    if (listEl) listEl.innerHTML = '<div class="desktop-spinner" style="margin:24px auto;"></div>';
+
+    // 1. Try querying classes for this school
+    let classes = await apiFetch(`/api/classes?school=${encodeURIComponent(schoolName)}&server=${encodeURIComponent(serverHost)}`);
+    if (!classes || !Array.isArray(classes) || classes.length === 0) {
+      // Connect first anonymously
+      showLoading(true, 'Verbinde mit WebUntis...');
+      const res = await apiFetch('/api/profiles', {
+        method: 'POST',
+        body: JSON.stringify({
+          school: schoolName,
+          server: serverHost,
+          name: `${onboardSelectedSchool.displayName} (Gast)`,
+          username: '#anonymous#',
+          password: '',
+          setActive: true,
+        }),
+      });
+      showLoading(false);
+
+      if (res && res.success) {
+        classes = await apiFetch('/api/classes');
+      } else {
+        showToast(res?.message || 'Verbindung fehlgeschlagen', 'error');
+        cancelOnboardClassPicker();
+        return;
+      }
+    }
+
+    onboardClasses = Array.isArray(classes) ? classes : [];
+    if (onboardClasses.length === 0) {
+      if (listEl) listEl.innerHTML = '<div class="empty-inline-state">Keine Klassen gefunden. Du kannst trotzdem fortfahren.</div>';
+      const btn = document.getElementById('btnConfirmOnboardClass');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Als Gast fortfahren \u2192';
+      }
+      return;
+    }
+
+    renderOnboardClassesList();
+  }
+
+  function cancelOnboardClassPicker() {
+    const optionsGrid = document.getElementById('onboardLoginOptionsGrid');
+    const classPickerWrap = document.getElementById('onboardClassPickerWrap');
+    if (optionsGrid) optionsGrid.style.display = 'grid';
+    if (classPickerWrap) classPickerWrap.style.display = 'none';
+    onboardSelectedClass = null;
+  }
+
+  function filterOnboardClasses() {
+    renderOnboardClassesList();
+  }
+
+  function renderOnboardClassesList() {
+    const listEl = document.getElementById('onboardClassesList');
+    if (!listEl) return;
+    const query = (document.getElementById('onboardClassSearchInput')?.value || '').toLowerCase().trim();
+
+    let filtered = onboardClasses.filter(c => {
+      const n = (c.name || '').toLowerCase();
+      const l = (c.longName || '').toLowerCase();
+      return n.includes(query) || l.includes(query);
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-inline-state" style="grid-column: 1 / -1;">Keine Klasse gefunden.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(c => {
+      const isSel = onboardSelectedClass && onboardSelectedClass.id === c.id;
+      return `
+        <div class="onboard-class-pill ${isSel ? 'active' : ''}" onclick="selectOnboardClass(${c.id})">
+          <div class="onboard-class-pill-name">${escapeHTML(c.name)}</div>
+          ${c.longName && c.longName !== c.name ? `<div class="onboard-class-pill-sub">${escapeHTML(c.longName)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function selectOnboardClass(id) {
+    const cls = onboardClasses.find(c => c.id === id);
+    if (!cls) return;
+    onboardSelectedClass = cls;
+    renderOnboardClassesList();
+
+    const btn = document.getElementById('btnConfirmOnboardClass');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = `Mit Klasse "${cls.name}" starten 🚀`;
+    }
+  }
+
+  async function confirmOnboardClassSelection() {
+    if (!onboardSelectedSchool) return;
+
+    let serverHost = onboardSelectedSchool.server || onboardSelectedSchool.serverUrl || '';
+    if (serverHost.startsWith('http://') || serverHost.startsWith('https://')) {
+      try {
+        const u = new URL(serverHost);
+        serverHost = u.origin;
+      } catch (err) {}
+    } else if (serverHost) {
+      serverHost = 'https://' + serverHost.split('/')[0];
+    }
+
+    const schoolName = onboardSelectedSchool.loginName || onboardSelectedSchool.displayName;
+    const className = onboardSelectedClass ? onboardSelectedClass.name : '';
+    const classId = onboardSelectedClass ? onboardSelectedClass.id : 0;
+    const profName = className ? `${onboardSelectedSchool.displayName} (${className})` : `${onboardSelectedSchool.displayName} (Gast)`;
+
+    showLoading(true, 'Richte Gastzugang für Klasse ein...');
     const res = await apiFetch('/api/profiles', {
       method: 'POST',
       body: JSON.stringify({
-        school: onboardSelectedSchool.loginName || onboardSelectedSchool.displayName,
+        school: schoolName,
         server: serverHost,
-        name: onboardSelectedSchool.displayName + ' (Gast)',
+        name: profName,
         username: '#anonymous#',
         password: '',
         setActive: true,
+        classId: classId,
+        className: className,
       }),
     });
+
+    if (classId > 0) {
+      await apiFetch('/api/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          selected_class_id: classId,
+          selected_class_name: className,
+        }),
+      });
+    }
+
     showLoading(false);
 
     if (res && res.success) {
       const subEl = document.getElementById('onboardSuccessSubtitle');
-      if (subEl) subEl.textContent = `Verbunden mit ${onboardSelectedSchool.displayName} als Gast.`;
+      if (subEl) {
+        subEl.textContent = className
+          ? `Dein Stundenplan für Klasse ${className} an der ${onboardSelectedSchool.displayName} ist startklar.`
+          : `Verbunden mit ${onboardSelectedSchool.displayName} als Gast.`;
+      }
       goToOnboardStep(3);
     } else {
-      showToast(res?.message || 'Verbindung fehlgeschlagen', 'error');
+      showToast(res?.message || 'Einrichtung fehlgeschlagen', 'error');
+    }
+  }
+
+  // ==================== GLOBAL CLASS PICKER MODAL ====================
+  async function openClassPickerModal() {
+    const modal = document.getElementById('classPickerModalBackdrop');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    const searchInput = document.getElementById('classPickerSearch');
+    if (searchInput) {
+      searchInput.value = '';
+      setTimeout(() => searchInput.focus(), 80);
+    }
+
+    const listEl = document.getElementById('classPickerList');
+    if (listEl) listEl.innerHTML = '<div class="desktop-spinner" style="margin:24px auto;"></div>';
+
+    if (!state.classes || state.classes.length === 0) {
+      const classes = await apiFetch('/api/classes');
+      state.classes = Array.isArray(classes) ? classes : [];
+    }
+
+    renderClassPickerModalList();
+  }
+
+  function closeClassPickerModal() {
+    const modal = document.getElementById('classPickerModalBackdrop');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function filterClassPickerModal() {
+    renderClassPickerModalList();
+  }
+
+  function renderClassPickerModalList() {
+    const listEl = document.getElementById('classPickerList');
+    if (!listEl) return;
+
+    const query = (document.getElementById('classPickerSearch')?.value || '').toLowerCase().trim();
+    const filtered = (state.classes || []).filter(c => {
+      const n = (c.name || '').toLowerCase();
+      const l = (c.longName || '').toLowerCase();
+      return n.includes(query) || l.includes(query);
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-inline-state">Keine passende Klasse gefunden.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(c => {
+      const isCurr = c.id === state.selectedClassId;
+      return `
+        <div class="class-picker-list-item ${isCurr ? 'active' : ''}" onclick="selectClassForDashboard(${c.id}, '${escapeHTML(c.name)}')">
+          <div>
+            <strong>${escapeHTML(c.name)}</strong>
+            ${c.longName && c.longName !== c.name ? `<span style="font-size:12px; color:var(--text-secondary); margin-left:6px;">${escapeHTML(c.longName)}</span>` : ''}
+          </div>
+          ${isCurr ? '<span style="font-size:12px; font-weight:700; color:var(--accent-primary);">✓ Aktiv</span>' : '<span style="font-size:12px; color:var(--text-secondary);">Auswählen &rarr;</span>'}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function selectClassForDashboard(classId, className) {
+    state.selectedClassId = classId;
+    state.selectedClassName = className;
+
+    showLoading(true, `Wechsle zu Klasse ${className}...`);
+    await apiFetch('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        selected_class_id: classId,
+        selected_class_name: className,
+      }),
+    });
+
+    closeClassPickerModal();
+    await loadDashboard();
+    showLoading(false);
+    showToast(`Dashboard auf Klasse ${className} umgestellt!`);
+  }
+
+  async function setCurrentClassAsDashboardClass() {
+    if (!state.otherSelectedId || state.otherTab !== 'CLASS') return;
+    await selectClassForDashboard(state.otherSelectedId, state.otherSelectedName);
+    const btn = document.getElementById('btnSetAsDashboardClass');
+    if (btn) {
+      btn.textContent = '✓ Aktuelle Dashboard-Klasse';
+      btn.disabled = true;
     }
   }
 
@@ -2132,6 +2403,25 @@
 
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
+    {
+      version: 'v1.5.2',
+      title: 'Hotfix Release v1.5.2',
+      type: 'hotfix',
+      date: '05.09.2026',
+      badge: 'Hotfix',
+      description: 'Klassenauswahl im Gast-Modus & Dashboard-Präzision: Schüler können nun direkt bei der Gast-Anmeldung ihre Klasse auswählen. Das Dashboard und der Stundenplan zeigen verlässlich ausschließlich die Daten der gewählten Klasse an, inklusive getrenntem SQLite-Cache.',
+      sections: [
+        {
+          title: '🛠️ Hotfixes & Neuerungen',
+          items: [
+            { type: 'feat', text: '<strong>Klassenauswahl bei Gast-Login:</strong> Im Einrichtungs-Assistenten (Onboarding) und bei der Gast-Anmeldung kann direkt die gewünschte Schulklasse gesucht und ausgewählt werden.' },
+            { type: 'fix', text: '<strong>Klassen-spezifisches Dashboard:</strong> Das Dashboard und der Live-Countdown laden nun exakt den Stundenplan der gewählten Klasse statt zufälliger oder aller Klassen.' },
+            { type: 'fix', text: '<strong>Isolierte Cache-Speicherung:</strong> Stundenpläne verschiedener Klassen werden in SQLite sauber getrennt gespeichert und kollidieren nicht mehr miteinander.' },
+            { type: 'feat', text: '<strong>Schnellwechsler im Dashboard:</strong> Ein neuer Klassen-Chip im Dashboard sowie der Button "Als Dashboard-Klasse festlegen" in "Weitere Stundenpläne" erlauben das sekundenschnelle Wechseln der aktiven Klasse.' },
+          ]
+        }
+      ]
+    },
     {
       version: 'v1.5.1',
       title: 'Hotfix Release v1.5.1',
@@ -2723,6 +3013,15 @@
   window.handleOnboardAnonymousSubmit = handleOnboardAnonymousSubmit;
   window.finishOnboarding = finishOnboarding;
   window.saveSchoolAnonymous = saveSchoolAnonymous;
+  window.openClassPickerModal = openClassPickerModal;
+  window.closeClassPickerModal = closeClassPickerModal;
+  window.filterClassPickerModal = filterClassPickerModal;
+  window.selectClassForDashboard = selectClassForDashboard;
+  window.setCurrentClassAsDashboardClass = setCurrentClassAsDashboardClass;
+  window.cancelOnboardClassPicker = cancelOnboardClassPicker;
+  window.filterOnboardClasses = filterOnboardClasses;
+  window.selectOnboardClass = selectOnboardClass;
+  window.confirmOnboardClassSelection = confirmOnboardClassSelection;
 
   // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {
