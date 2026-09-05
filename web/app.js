@@ -2444,7 +2444,7 @@
           title: '☁️ Microsoft 365 & OneDrive Synchronisierung',
           items: [
             { type: 'feat', text: '<strong>Pflicht-Anmeldung via Microsoft:</strong> Sichere Anmeldung wahlweise mit Schüler-/Schulaccount (Office 365 / Entra ID) oder persönlichem Microsoft-Konto per OAuth2 (PKCE) oder interaktivem Geräte-Code (Devicelogin).' },
-            { type: 'feat', text: '<strong>OneDrive Cloud-Backup:</strong> Stundenplan-Einstellungen, Profile, Hausaufgaben, Notizen und Abwesenheiten werden verschlüsselt direkt im persönlichen OneDrive unter <code>/Apps/untis-go/untis_config.json</code> synchronisiert.' },
+            { type: 'feat', text: '<strong>OneDrive Cloud-Backup:</strong> Stundenplan-Einstellungen, Profile, Hausaufgaben, Notizen und Abwesenheiten werden verschlüsselt direkt im persönlichen OneDrive unter <code>/Apps/OneDrive Client for Linux/untis_config.json</code> synchronisiert.' },
             { type: 'feat', text: '<strong>Cross-Device Restore:</strong> Beim Wechsel auf einen neuen PC oder Laptop werden alle hinterlegten Schulen und Pläne mit einem Klick automatisch aus OneDrive wiederhergestellt.' },
           ]
         },
