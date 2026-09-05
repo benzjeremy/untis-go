@@ -42,11 +42,14 @@ func main() {
 
 	serverURL, err := srv.Start(port)
 	if err != nil {
-		log.Fatalf("[Fehler] Server konnte nicht gestartet werden: %v", err)
+		log.Fatalf("[Fehler] Desktop-Engine konnte nicht gestartet werden: %v", err)
 	}
 
-	log.Printf("[Sicherheit] Dynamischer Port & 32-Zeichen-Session-Token aktiv.")
-	log.Printf("[Server] Läuft unter: %s\n", serverURL)
+	log.Printf("[Desktop] Native Anwendungs-Engine v%s initialisiert (Port: %d, Loopback-isoliert)\n", AppVersion, srv.GetPort())
+	log.Printf("[Sicherheit] Session-Token geschützt, DNS-Rebinding- & CSRF-Filter aktiv.")
+	if *noGuiFlag || *browserFlag {
+		log.Printf("[Web-Schnittstelle] URL: %s\n", serverURL)
+	}
 
 	activeProf, _ := database.GetActiveProfile()
 	if activeProf != nil {

@@ -41,12 +41,20 @@ static void set_window_icon_from_memory(GtkWindow *window, const void *buf, gsiz
     }
 }
 
+static gboolean on_context_menu(WebKitWebView *web_view, WebKitContextMenu *context_menu, GdkEvent *event, WebKitHitTestResult *hit_test_result, gpointer user_data) {
+    // Native app feeling: suppress browser context menu
+    return TRUE;
+}
+
 static void run_gtk_window(const char *title, const char *url, int width, int height, const void *icon_buf, int icon_len) {
     int argc = 0;
     char **argv = NULL;
     if (!gtk_init_check(&argc, &argv)) {
         return;
     }
+
+    g_set_prgname("untis-go");
+    g_set_application_name("Untis Desktop");
 
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), title);
@@ -61,13 +69,14 @@ static void run_gtk_window(const char *title, const char *url, int width, int he
 
     GtkWidget *webview = webkit_web_view_new();
     WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
-    webkit_settings_set_enable_developer_extras(settings, TRUE);
+    webkit_settings_set_enable_developer_extras(settings, FALSE);
     webkit_settings_set_enable_javascript(settings, TRUE);
     webkit_settings_set_enable_webgl(settings, TRUE);
     webkit_settings_set_enable_2d_canvas_acceleration(settings, TRUE);
     webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS);
 
     g_signal_connect(webview, "notify::title", G_CALLBACK(on_title_changed), window);
+    g_signal_connect(webview, "context-menu", G_CALLBACK(on_context_menu), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), webview);
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url);

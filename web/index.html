@@ -167,8 +167,8 @@
               <div class="hero-sub-row">
                 <p class="hero-subtitle" id="dashHeroDate">Lade Datum...</p>
                 <div class="hero-school-chip" id="dashHeroSchool">WebUntis</div>
-                <button type="button" class="hero-class-chip" id="dashHeroClassChip" onclick="openClassPickerModal()" title="Klasse für Dashboard wechseln">
-                  Klasse: <strong id="dashHeroClassName">--</strong> <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align:middle;margin-left:2px;"><path d="M7 10l5 5 5-5z"/></svg>
+                <button type="button" class="hero-class-chip" id="dashHeroClassChip" onclick="openClassPickerModal()" title="Stundenplan oder Klasse für Dashboard wechseln">
+                  <span id="dashHeroClassPrefix">Plan:</span> <strong id="dashHeroClassName">--</strong> <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" style="vertical-align:middle;margin-left:2px;"><path d="M7 10l5 5 5-5z"/></svg>
                 </button>
               </div>
             </div>
@@ -445,7 +445,7 @@
                   <img src="/icon.png" alt="Untis Logo" width="64" height="64" style="border-radius:16px; display:block; box-shadow:0 4px 14px rgba(0, 0, 0, 0.25);">
                 </div>
                 <div class="about-hero-text">
-                  <h2>untis-go <span class="about-version-chip">v1.6.0</span></h2>
+                  <h2>untis-go <span class="about-version-chip">v2.0.0</span></h2>
                   <p class="about-hero-sub">Schneller, nativer WebUntis PC-Desktop Client für Schüler und Lehrkräfte</p>
                   <div class="about-badges-row">
                     <a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener" class="about-badge awesome-go-badge" title="Öffne Awesome-Go auf GitHub">
@@ -466,7 +466,7 @@
                   <svg viewBox="0 0 24 24" fill="currentColor" class="btn-svg"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-9.11 4-6.6 5.64-5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                   <span>Update installieren</span>
                 </button>
-                <div id="aboutUpdateStatusMsg" class="about-update-status">Aktuell installierte Version: <strong>v1.6.0</strong></div>
+                <div id="aboutUpdateStatusMsg" class="about-update-status">Aktuell installierte Version: <strong>v2.0.0</strong></div>
               </div>
             </div>
 
@@ -804,9 +804,9 @@
       </div>
       <div class="update-modal-body">
         <div class="update-version-row">
-          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v1.6.0</span></div>
+          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v2.0.0</span></div>
           <div class="ver-arrow">&rarr;</div>
-          <div class="ver-badge next">Neu: <span id="updateNewVer">v1.6.0</span></div>
+          <div class="ver-badge next">Neu: <span id="updateNewVer">v2.0.0</span></div>
         </div>
         <h4 id="updateReleaseTitle" style="margin: 12px 0 6px;">Untis Desktop</h4>
         <div class="update-release-notes" id="updateReleaseNotes">Lade Versionshinweise...</div>
@@ -1016,7 +1016,7 @@
           <span class="ms-logo-divider">+</span>
           <svg class="onedrive-svg-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
         </div>
-        <span class="ms-badge-pill">Release v1.6 Pflicht</span>
+        <span class="ms-badge-pill">Release v2.0 Pflicht</span>
         <h2>Microsoft-Konto erforderlich</h2>
         <p class="ms-modal-desc">
           Für die Nutzung von <strong>untis-go</strong> ist die Anmeldung mit einem Microsoft-Konto erforderlich.

@@ -196,6 +196,56 @@ func TestServerSecurityAndEndpoints(t *testing.T) {
 	if isAnon, _ := statusAfter["isAnonymous"].(bool); !isAnon {
 		t.Fatalf("expected isAnonymous=true for anonymous profile, got false")
 	}
+	if dashMode, _ := statusAfter["dashboardTimetableMode"].(string); dashMode != "class" {
+		t.Fatalf("expected default dashboardTimetableMode='class' for anonymous profile, got %s", dashMode)
+	}
+
+	// 7. Test Security Middleware: Anti-DNS-Rebinding (Invalid Host header)
+	reqBadHost, _ := http.NewRequest("GET", baseURL+"/api/status", nil)
+	reqBadHost.Header.Set("X-Session-Token", token)
+	reqBadHost.Host = "evil.attacker.com"
+	respBadHost, err := http.DefaultClient.Do(reqBadHost)
+	if err == nil {
+		defer respBadHost.Body.Close()
+		if respBadHost.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden for evil Host header, got %d", respBadHost.StatusCode)
+		}
+	}
+
+	// 8. Test Security Middleware: Anti-CSRF (External Origin header)
+	reqBadOrigin, _ := http.NewRequest("GET", baseURL+"/api/status", nil)
+	reqBadOrigin.Header.Set("X-Session-Token", token)
+	reqBadOrigin.Header.Set("Origin", "https://malicious-website.com")
+	respBadOrigin, err := http.DefaultClient.Do(reqBadOrigin)
+	if err == nil {
+		defer respBadOrigin.Body.Close()
+		if respBadOrigin.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden for external Origin header, got %d", respBadOrigin.StatusCode)
+		}
+	}
+
+	// 9. Test Setting and Switching dashboard_timetable_mode
+	settingBody := strings.NewReader(`{"dashboard_timetable_mode":"own"}`)
+	reqSetMode, _ := http.NewRequest("POST", baseURL+"/api/settings", settingBody)
+	reqSetMode.Header.Set("X-Session-Token", token)
+	respSetMode, err := http.DefaultClient.Do(reqSetMode)
+	if err != nil || respSetMode.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for POST /api/settings, got %v", respSetMode.StatusCode)
+	}
+	respSetMode.Body.Close()
+
+	reqStatusMode, _ := http.NewRequest("GET", baseURL+"/api/status", nil)
+	reqStatusMode.Header.Set("X-Session-Token", token)
+	respStatusMode, err := http.DefaultClient.Do(reqStatusMode)
+	if err != nil || respStatusMode.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK for GET /api/status, got %v", respStatusMode.StatusCode)
+	}
+	var statusMode map[string]interface{}
+	_ = json.NewDecoder(respStatusMode.Body).Decode(&statusMode)
+	respStatusMode.Body.Close()
+	if mode, _ := statusMode["dashboardTimetableMode"].(string); mode != "own" {
+		t.Fatalf("expected dashboardTimetableMode='own' after setting, got %s", mode)
+	}
 }
 
 func fmtBaseURL(port int) string {

@@ -23,7 +23,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.6.0"
+const AppVersion = "2.0.0"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -84,6 +84,11 @@ func generateCryptoToken(bytesCount int) string {
 // GetSessionToken returns the active session token
 func (s *Server) GetSessionToken() string {
 	return s.sessionToken
+}
+
+// GetPort returns the active TCP port
+func (s *Server) GetPort() int {
+	return s.port
 }
 
 // Start launches the HTTP server and returns the active URL with token
@@ -208,8 +213,38 @@ func (s *Server) Start(port int) (string, error) {
 	s.listener = ln
 	s.port = ln.Addr().(*net.TCPAddr).Port
 	s.msClient.SetRedirectURI(fmt.Sprintf("http://127.0.0.1:%d/api/auth/microsoft/callback", s.port))
+
+	secureHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Strict Anti-DNS-Rebinding: verify Host is loopback
+		host := r.Host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		if host != "127.0.0.1" && host != "localhost" {
+			http.Error(w, "Forbidden: Ungültiger Host-Header", http.StatusForbidden)
+			return
+		}
+
+		// Strict Anti-CSRF: block cross-origin requests from external web pages
+		origin := r.Header.Get("Origin")
+		if origin != "" && origin != "null" {
+			if !strings.HasPrefix(origin, "http://127.0.0.1:") && !strings.HasPrefix(origin, "http://localhost:") {
+				http.Error(w, "Forbidden: Cross-Origin Request Blockiert", http.StatusForbidden)
+				return
+			}
+		}
+
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:;")
+
+		mux.ServeHTTP(w, r)
+	})
+
 	s.httpServer = &http.Server{
-		Handler:      mux,
+		Handler:      secureHandler,
 		ReadTimeout:  25 * time.Second,
 		WriteTimeout: 25 * time.Second,
 	}
@@ -282,26 +317,36 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	isAnonymous := activeProf.Username == "" || activeProf.Username == "#anonymous#" || strings.Contains(strings.ToLower(activeProf.Name), "gast") || strings.Contains(strings.ToLower(activeProf.Name), "anonym")
 
+	dashMode := s.database.GetSetting("dashboard_timetable_mode", "")
+	if dashMode == "" {
+		if isAnonymous {
+			dashMode = "class"
+		} else {
+			dashMode = "own"
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"needsOnboarding":   false,
-		"msRequired":        true,
-		"msLoggedIn":        msAuth,
-		"msUser":            msUser,
-		"msLastSync":        s.database.GetSetting("ms_last_sync", ""),
-		"activeProfileId":   activeProf.ID,
-		"profileName":       activeProf.Name,
-		"school":            activeProf.School,
-		"server":            activeProf.Server,
-		"username":          activeProf.Username,
-		"displayName":       displayName,
-		"email":             email,
-		"detectedClass":     detectedClass,
-		"selectedClassId":   selectedClassID,
-		"selectedClassName": selectedClassName,
-		"theme":             s.database.GetSetting("theme", "dark"),
-		"defaultView":       s.database.GetSetting("default_view", "day"),
-		"authenticated":     authenticated,
-		"isAnonymous":       isAnonymous,
+		"needsOnboarding":        false,
+		"msRequired":             true,
+		"msLoggedIn":             msAuth,
+		"msUser":                 msUser,
+		"msLastSync":             s.database.GetSetting("ms_last_sync", ""),
+		"activeProfileId":        activeProf.ID,
+		"profileName":            activeProf.Name,
+		"school":                 activeProf.School,
+		"server":                 activeProf.Server,
+		"username":               activeProf.Username,
+		"displayName":            displayName,
+		"email":                  email,
+		"detectedClass":          detectedClass,
+		"selectedClassId":        selectedClassID,
+		"selectedClassName":      selectedClassName,
+		"dashboardTimetableMode": dashMode,
+		"theme":                  s.database.GetSetting("theme", "dark"),
+		"defaultView":            s.database.GetSetting("default_view", "day"),
+		"authenticated":          authenticated,
+		"isAnonymous":            isAnonymous,
 	})
 }
 
@@ -865,6 +910,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		classID, className = client.GetSelectedClass()
 	}
 
+	dashMode := s.database.GetSetting("dashboard_timetable_mode", "")
+	if dashMode == "" {
+		if client != nil && client.IsAnonymous() {
+			dashMode = "class"
+		} else {
+			dashMode = "own"
+		}
+	}
+
 	// 1. Timetable (Concurrent)
 	wg.Add(1)
 	go func() {
@@ -900,19 +954,21 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if client.IsAnonymous() {
-			if classID != 0 {
-				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
-					lessons = clLessons
-				}
+		if dashMode == "class" && classID != 0 {
+			if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+				lessons = clLessons
 			}
-		} else {
+		} else if !client.IsAnonymous() {
 			if l, err := client.GetOwnTimetable(now, now); err == nil && len(l) > 0 {
 				lessons = l
 			} else if classID != 0 {
 				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
 					lessons = clLessons
 				}
+			}
+		} else if classID != 0 {
+			if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+				lessons = clLessons
 			}
 		}
 
@@ -937,34 +993,32 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			for nextDay.Weekday() == time.Saturday || nextDay.Weekday() == time.Sunday {
 				nextDay = nextDay.AddDate(0, 0, 1)
 			}
-			if client.IsAnonymous() {
-				if classID != 0 {
-					if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
-						lessons = clLessons
-						isNextDay = true
-						nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
-						if nextL == nil && len(clLessons) > 0 {
-							nextL = &clLessons[0]
-						}
+
+			var nextLessons []api.EnrichedLesson
+			if dashMode == "class" && classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil {
+					nextLessons = clLessons
+				}
+			} else if !client.IsAnonymous() {
+				if nl, err := client.GetOwnTimetable(nextDay, nextDay); err == nil && len(nl) > 0 {
+					nextLessons = nl
+				} else if classID != 0 {
+					if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil {
+						nextLessons = clLessons
 					}
 				}
-			} else {
-				if nl, err := client.GetOwnTimetable(nextDay, nextDay); err == nil && len(nl) > 0 {
-					lessons = nl
-					isNextDay = true
-					nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
-					if nextL == nil && len(nl) > 0 {
-						nextL = &nl[0]
-					}
-				} else if classID != 0 {
-					if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
-						lessons = clLessons
-						isNextDay = true
-						nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
-						if nextL == nil && len(clLessons) > 0 {
-							nextL = &clLessons[0]
-						}
-					}
+			} else if classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil {
+					nextLessons = clLessons
+				}
+			}
+
+			if len(nextLessons) > 0 {
+				lessons = nextLessons
+				isNextDay = true
+				nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
+				if nextL == nil {
+					nextL = &nextLessons[0]
 				}
 			}
 		}
@@ -1109,8 +1163,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			"excused":   excAbs,
 			"unexcused": unexcAbs,
 		},
-		"selectedClassId":   classID,
-		"selectedClassName": className,
+		"selectedClassId":        classID,
+		"selectedClassName":      className,
+		"dashboardTimetableMode": dashMode,
 	})
 }
 

@@ -366,12 +366,19 @@
       }
     }
 
-    // Save active class into state
+    // Save active class and timetable mode into state
     state.selectedClassId = status.selectedClassId || 0;
     state.selectedClassName = status.selectedClassName || '';
+    state.dashboardTimetableMode = status.dashboardTimetableMode || (status.isAnonymous ? 'class' : 'own');
+
+    const heroPrefixEl = document.getElementById('dashHeroClassPrefix');
     const heroClassEl = document.getElementById('dashHeroClassName');
-    if (heroClassEl) {
-      heroClassEl.textContent = state.selectedClassName || 'Auswählen';
+    if (state.dashboardTimetableMode === 'own' && !status.isAnonymous) {
+      if (heroPrefixEl) heroPrefixEl.textContent = 'Plan:';
+      if (heroClassEl) heroClassEl.textContent = 'Mein Stundenplan';
+    } else {
+      if (heroPrefixEl) heroPrefixEl.textContent = 'Klasse:';
+      if (heroClassEl) heroClassEl.textContent = state.selectedClassName || 'Auswählen';
     }
 
     // Load initial dashboard
@@ -564,14 +571,25 @@
       if (absUnexcEl) absUnexcEl.textContent = `${data.absencesSummary.unexcused} Unentschuldigt`;
     }
 
-    // Class indicator update
+    // Class indicator & timetable mode update
     if (data.selectedClassName) {
       state.selectedClassName = data.selectedClassName;
       state.selectedClassId = data.selectedClassId;
     }
+    if (data.dashboardTimetableMode) {
+      state.dashboardTimetableMode = data.dashboardTimetableMode;
+    } else if (!state.dashboardTimetableMode) {
+      state.dashboardTimetableMode = (state.activeProfile?.isAnonymous ? 'class' : 'own');
+    }
+
+    const heroPrefixEl = document.getElementById('dashHeroClassPrefix');
     const heroClassEl = document.getElementById('dashHeroClassName');
-    if (heroClassEl) {
-      heroClassEl.textContent = state.selectedClassName || 'Auswählen';
+    if (state.dashboardTimetableMode === 'own' && !state.activeProfile?.isAnonymous) {
+      if (heroPrefixEl) heroPrefixEl.textContent = 'Plan:';
+      if (heroClassEl) heroClassEl.textContent = 'Mein Stundenplan';
+    } else {
+      if (heroPrefixEl) heroPrefixEl.textContent = 'Klasse:';
+      if (heroClassEl) heroClassEl.textContent = state.selectedClassName || 'Auswählen';
     }
 
     // Today's Lessons List (or upcoming day)
@@ -592,7 +610,11 @@
     const subtitleEl = document.getElementById('dashScheduleSubtitle');
     if (subtitleEl) {
       const baseLabel = isUpcomingDay && upcomingLabel ? upcomingLabel : 'Heute';
-      subtitleEl.textContent = state.selectedClassName ? `${baseLabel} · Klasse ${state.selectedClassName}` : baseLabel;
+      if (state.dashboardTimetableMode === 'own' && !state.activeProfile?.isAnonymous) {
+        subtitleEl.textContent = `${baseLabel} · Mein persönlicher Stundenplan`;
+      } else {
+        subtitleEl.textContent = state.selectedClassName ? `${baseLabel} · Klasse ${state.selectedClassName}` : baseLabel;
+      }
     }
     if (!list) return;
 
@@ -2147,19 +2169,39 @@
     if (!listEl) return;
 
     const query = (document.getElementById('classPickerSearch')?.value || '').toLowerCase().trim();
+    const isAnon = state.activeProfile?.isAnonymous;
+    const isOwnActive = state.dashboardTimetableMode === 'own' && !isAnon;
+
+    let ownHtml = '';
+    if (!isAnon && (!query || 'mein persönlicher stundenplan'.includes(query))) {
+      ownHtml = `
+        <div class="class-picker-list-item ${isOwnActive ? 'active' : ''}" onclick="selectOwnTimetableForDashboard()">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px;">⭐</span>
+            <div>
+              <strong>Mein persönlicher Stundenplan</strong>
+              <div style="font-size:12px; color:var(--text-secondary);">Persönlicher Plan mit allen deinen belegten Kursen</div>
+            </div>
+          </div>
+          ${isOwnActive ? '<span style="font-size:12px; font-weight:700; color:var(--accent-primary);">✓ Aktiv</span>' : '<span style="font-size:12px; color:var(--text-secondary);">Auswählen &rarr;</span>'}
+        </div>
+        <div style="border-top:1px solid var(--border-color); margin: 8px 0; opacity:0.4;"></div>
+      `;
+    }
+
     const filtered = (state.classes || []).filter(c => {
       const n = (c.name || '').toLowerCase();
       const l = (c.longName || '').toLowerCase();
       return n.includes(query) || l.includes(query);
     });
 
-    if (filtered.length === 0) {
+    if (filtered.length === 0 && !ownHtml) {
       listEl.innerHTML = '<div class="empty-inline-state">Keine passende Klasse gefunden.</div>';
       return;
     }
 
-    listEl.innerHTML = filtered.map(c => {
-      const isCurr = c.id === state.selectedClassId;
+    const classesHtml = filtered.map(c => {
+      const isCurr = !isOwnActive && c.id === state.selectedClassId;
       return `
         <div class="class-picker-list-item ${isCurr ? 'active' : ''}" onclick="selectClassForDashboard(${c.id}, '${escapeHTML(c.name)}')">
           <div>
@@ -2170,9 +2212,28 @@
         </div>
       `;
     }).join('');
+
+    listEl.innerHTML = ownHtml + classesHtml;
+  }
+
+  async function selectOwnTimetableForDashboard() {
+    state.dashboardTimetableMode = 'own';
+    showLoading(true, 'Wechsle zu deinem persönlichen Stundenplan...');
+    await apiFetch('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        dashboard_timetable_mode: 'own',
+      }),
+    });
+
+    closeClassPickerModal();
+    await loadDashboard();
+    showLoading(false);
+    showToast('Dashboard auf persönlichen Stundenplan umgestellt!');
   }
 
   async function selectClassForDashboard(classId, className) {
+    state.dashboardTimetableMode = 'class';
     state.selectedClassId = classId;
     state.selectedClassName = className;
 
@@ -2180,6 +2241,7 @@
     await apiFetch('/api/settings', {
       method: 'POST',
       body: JSON.stringify({
+        dashboard_timetable_mode: 'class',
         selected_class_id: classId,
         selected_class_name: className,
       }),
@@ -2432,6 +2494,38 @@
 
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
+    {
+      version: 'v2.0.0',
+      title: 'Major Release v2.0.0 – Native Go Desktop-Anwendung & Dashboard-Upgrade',
+      type: 'major',
+      date: '05.09.2026',
+      badge: 'Release v2.0.0',
+      description: 'Großer Meilenstein v2.0: Vollständiger Umstieg von einer einfachen Web-Schnittstelle auf eine gehärtete native Go-Desktop-Anwendung. Universelle Stundenplan-Auswahl im Dashboard für alle Nutzer (persönlicher Plan oder beliebige Klasse), AES-256-GCM verschlüsselte OneDrive-Backups und umfassendes Sicherheits-Hardening.',
+      sections: [
+        {
+          title: '🖥️ Native Go Desktop-Anwendung & Security-Hardening',
+          items: [
+            { type: 'feat', text: '<strong>Umstieg von Inbound-Website auf echte Desktop-App:</strong> Beseitigung aller Website-Spuren und offener Browser-Kontexte. Das Anwendungsfenster läuft als gehärtetes, eigenständiges Desktop-Programm ohne Browser-Menüs oder versehentliche Web-Shortcuts.' },
+            { type: 'security', text: '<strong>Strikte Loopback-Isolation & CSRF-Schutz:</strong> Schutz vor DNS-Rebinding durch Host-Validierung, automatisches Blockieren fremder Cross-Origin-Aufrufe aus regulären Browsern sowie Content-Security-Policy (CSP) und Frameschutz (DENY).' },
+            { type: 'feat', text: '<strong>Native Fensterintegration:</strong> Vollständige Desktop-Integration unter Linux (WebKitGTK/GTK3 mit Hardwarebeschleunigung) und Windows (Standalone-Fenstermodus).' },
+          ]
+        },
+        {
+          title: '⭐ Flexibler Dashboard-Stundenplan für alle Accounts',
+          items: [
+            { type: 'feat', text: '<strong>Freie Plan-Auswahl im Dashboard:</strong> Nicht mehr auf Gast-Accounts beschränkt! Angemeldete Schüler können im Dashboard jederzeit zwischen ihrem persönlichen Stundenplan („⭐ Mein persönlicher Stundenplan“) und beliebigen Klassen der Schule wechseln.' },
+            { type: 'feat', text: '<strong>Schnellwähler im Hero-Bereich:</strong> Direkter Wechsel über den Klassen- und Plan-Chip im Dashboard mit sofortiger Aktualisierung des Live-Countdowns und der Tagesansicht.' },
+          ]
+        },
+        {
+          title: '🔐 Cloud-Sicherheit: Verschlüsseltes OneDrive-Backup',
+          items: [
+            { type: 'security', text: '<strong>AES-256-GCM Passwort-Verschlüsselung:</strong> Passwörter und Zugangsdaten werden vor der OneDrive-Sicherung mit 100.000 PBKDF2-Iterationen und hardware-unterstütztem AES-GCM verschlüsselt. Niemals Klartext-Passwörter in der Cloud-Datei (<code>untis_config.json</code>).' },
+            { type: 'security', text: '<strong>Isolierter App-Speicher:</strong> Verwendung des isolierten Microsoft Graph <code>AppFolder</code> (<code>/Apps/OneDrive Client for Linux/untis_config.json</code>) ohne Zugriff auf andere Dateien deines OneDrive-Speichers.' },
+          ]
+        }
+      ]
+    },
     {
       version: 'v1.6.0',
       title: 'Major Release v1.6.0 – Microsoft 365 & OneDrive Cloud-Sync',
@@ -2912,6 +3006,27 @@
   }
 
   function setupEventListeners() {
+    // Native Desktop App behavior: suppress browser context menu on non-inputs
+    window.addEventListener('contextmenu', (e) => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+      }
+    });
+
+    // Native Desktop App behavior: prevent browser reload / view source keys
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F5' || (e.ctrlKey && (e.key === 'r' || e.key === 'R' || e.key === 'u' || e.key === 'U'))) {
+        e.preventDefault();
+      }
+    });
+
+    // Native Desktop App behavior: prevent web drag-drop of elements
+    document.addEventListener('dragstart', (e) => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+      }
+    });
+
     // Nav Buttons
     document.getElementById('navDashboard')?.addEventListener('click', () => switchView('dashboard'));
     document.getElementById('navOwnTimetable')?.addEventListener('click', () => switchView('own-timetable'));
@@ -3270,6 +3385,7 @@
   window.closeClassPickerModal = closeClassPickerModal;
   window.filterClassPickerModal = filterClassPickerModal;
   window.selectClassForDashboard = selectClassForDashboard;
+  window.selectOwnTimetableForDashboard = selectOwnTimetableForDashboard;
   window.setCurrentClassAsDashboardClass = setCurrentClassAsDashboardClass;
   window.cancelOnboardClassPicker = cancelOnboardClassPicker;
   window.filterOnboardClasses = filterOnboardClasses;
