@@ -22,7 +22,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.4"
+const AppVersion = "1.5"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {

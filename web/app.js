@@ -2084,6 +2084,34 @@
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
     {
+      version: 'v1.5',
+      title: 'Offizieller Release v1.5',
+      type: 'release',
+      date: '05.09.2026',
+      badge: 'Offizieller Release',
+      description: 'Großer Meilenstein-Release: 3-stufiger Ersteinrichtungs-Wizard (Onboarding), 1-Klick anonymer Gast-Login ohne Zugangsdaten, modernes Hero-Countdown-Design, umfassende Sicherheits-Härtung (PBKDF2 mit 100.000 Iterationen, URL-Whitelisting, XSS-Schutz) und interaktives Web-Wiki.',
+      sections: [
+        {
+          title: '🚀 Features & Neuerungen',
+          items: [
+            { type: 'feat', text: '<strong>3-stufiger Onboarding Setup-Wizard:</strong> Beim allerersten Start führt ein eleganter Wizard Schritt für Schritt durch die Einrichtung: Schulsuche mit Live-Filterung, Login-Auswahl (Konto oder Gast) und Feature-Einführung.' },
+            { type: 'feat', text: '<strong>1-Klick Anonymer Gast-Login:</strong> Wie in der offiziellen WebUntis Mobile-App oder im Webbrowser kann der Stundenplan einer Schule komplett ohne Benutzername und Passwort eingesehen werden – ideal für Vertretungspläne und öffentliche Klassen.' },
+            { type: 'feat', text: '<strong>Modernisiertes Dashboard & Hero-Countdown:</strong> Markanter oranger Countdown-Hero-Header mit Live-Zeitanzeige bis zum Schulbeginn/Unterrichtsende, hervorgehobene nächste Unterrichtsstunde ("Next Up") und stylische Lehrer- & Raumpillen.' },
+            { type: 'feat', text: '<strong>Interaktives Web-Wiki & Dokumentation:</strong> Umfassende Schritt-für-Schritt-Anleitung unter <a href="https://benzjeremy.github.io/untis-go/wiki/" target="_blank" rel="noopener">benzjeremy.github.io/untis-go/wiki</a> mit 12 Kapiteln und visuellen App-Mockups.' },
+          ]
+        },
+        {
+          title: '🔒 Sicherheit & Härtung',
+          items: [
+            { type: 'fix', text: '<strong>PBKDF2 Key-Derivation:</strong> Upgrade auf 100.000 SHA-256 Iterationen für unknackbare lokale Tresor-Verschlüsselung der Schulanmeldedaten.' },
+            { type: 'fix', text: '<strong>Auto-Updater Whitelist:</strong> Strenges Domain- und Pfad-Whitelisting (nur offizielle GitHub-Releases von benzjeremy/untis-go erlaubt) und Pfad-Traversal-Schutz.' },
+            { type: 'fix', text: '<strong>XSS-Prävention:</strong> Sichere DOM-Attribut-Übergabe in der Schulsuche verhindert Code-Injection.' },
+            { type: 'fix', text: '<strong>Settings-Key Whitelist:</strong> Schutz vor unautorisiertem Überschreiben beliebiger lokaler Einstellungen.' },
+          ]
+        }
+      ]
+    },
+    {
       version: 'v1.4',
       title: 'Offizieller Release v1.4',
       type: 'release',

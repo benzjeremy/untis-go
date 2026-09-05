@@ -5,7 +5,7 @@
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
 [![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v1.4](https://img.shields.io/badge/Release-v1.4-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
+[![Release: v1.5](https://img.shields.io/badge/Release-v1.5-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
 [![Status: Release](https://img.shields.io/badge/Status-RELEASE-green.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
@@ -125,12 +125,12 @@ Download the matching file for your operating system from the [**Releases**](htt
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-linux-amd64.tar.gz
+  tar -xzf untis-go-v1.5-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Unzip `untis-go-windows-amd64.zip` and start `untis-go.exe`.
+  - Unzip `untis-go-v1.5-windows.zip` and start `untis-go.exe`.
 
 #### 2. Installation via Go (`go install`)
 
@@ -172,12 +172,12 @@ Lade die passende Datei für dein Betriebssystem unter [**Releases**](https://gi
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-linux-amd64.tar.gz
+  tar -xzf untis-go-v1.5-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Entpacke `untis-go-windows-amd64.zip` und starte `untis-go.exe`.
+  - Entpacke `untis-go-v1.5-windows.zip` und starte `untis-go.exe`.
 
 #### 2. Installation über Go (`go install`)
 
@@ -269,11 +269,12 @@ Select your preferred language in the app settings or via the language selector 
 
 **More languages coming soon** – Weitere Sprachen folgen
 
-## 📚 Wiki
-
-Detailed documentation is available in the project wiki:
-
-- **Home**: https://github.com/benzjeremy/untis-go.wiki/wiki/Home
+## 📚 Wiki & Dokumentation
+ 
+Ausführliche Dokumentation, Schritt-für-Schritt-Anleitungen und Bildmaterial:
+ 
+- 🌐 **Interaktives Web-Wiki**: [https://benzjeremy.github.io/untis-go/wiki/](https://benzjeremy.github.io/untis-go/wiki/)
+- **GitHub Wiki Home**: https://github.com/benzjeremy/untis-go.wiki/wiki/Home
 - **Getting Started**: https://github.com/benzjeremy/untis-go.wiki/wiki/Getting-Started
 - **Features**: https://github.com/benzjeremy/untis-go.wiki/wiki/Features
 - **Installation**: https://github.com/benzjeremy/untis-go.wiki/wiki/Installation
