@@ -35,14 +35,22 @@ static void set_window_icon_from_memory(GtkWindow *window, const void *buf, gsiz
             GdkPixbuf *pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
             if (pixbuf) {
                 gtk_window_set_icon(window, pixbuf);
+                gtk_window_set_default_icon(pixbuf);
             }
         }
         g_object_unref(loader);
     }
+    gtk_window_set_default_icon_name("untis-go");
+    gtk_window_set_icon_name(window, "untis-go");
 }
 
 static gboolean on_context_menu(WebKitWebView *web_view, WebKitContextMenu *context_menu, GdkEvent *event, WebKitHitTestResult *hit_test_result, gpointer user_data) {
     // Native app feeling: suppress browser context menu
+    return TRUE;
+}
+
+static gboolean on_script_dialog(WebKitWebView *web_view, WebKitScriptDialog *dialog, gpointer user_data) {
+    // Suppress WebKit default alert/confirm/prompt browser dialogs
     return TRUE;
 }
 
@@ -77,6 +85,7 @@ static void run_gtk_window(const char *title, const char *url, int width, int he
 
     g_signal_connect(webview, "notify::title", G_CALLBACK(on_title_changed), window);
     g_signal_connect(webview, "context-menu", G_CALLBACK(on_context_menu), NULL);
+    g_signal_connect(webview, "script-dialog", G_CALLBACK(on_script_dialog), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), webview);
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url);
@@ -87,9 +96,11 @@ static void run_gtk_window(const char *title, const char *url, int width, int he
 */
 import "C"
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"unsafe"
 
 	"github.com/benzjeremy/untis-go/web"
@@ -100,8 +111,53 @@ func init() {
 	_ = os.Setenv("WEBKIT_FORCE_COMPOSITING_MODE", "1")
 }
 
+// installDesktopIntegration automatically installs icons and desktop file into user's XDG directories
+func installDesktopIntegration() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	iconDir := filepath.Join(home, ".local", "share", "icons", "hicolor", "512x512", "apps")
+	pixmapDir := filepath.Join(home, ".local", "share", "pixmaps")
+	appDir := filepath.Join(home, ".local", "share", "applications")
+	_ = os.MkdirAll(iconDir, 0755)
+	_ = os.MkdirAll(pixmapDir, 0755)
+	_ = os.MkdirAll(appDir, 0755)
+
+	iconPng, _ := web.Assets.ReadFile("icon.png")
+	if len(iconPng) > 0 {
+		_ = os.WriteFile(filepath.Join(iconDir, "untis-go.png"), iconPng, 0644)
+		_ = os.WriteFile(filepath.Join(pixmapDir, "untis-go.png"), iconPng, 0644)
+	}
+	iconSvg, _ := web.Assets.ReadFile("icon.svg")
+	if len(iconSvg) > 0 {
+		svgDir := filepath.Join(home, ".local", "share", "icons", "hicolor", "scalable", "apps")
+		_ = os.MkdirAll(svgDir, 0755)
+		_ = os.WriteFile(filepath.Join(svgDir, "untis-go.svg"), iconSvg, 0644)
+	}
+
+	desktopPath := filepath.Join(appDir, "untis-go.desktop")
+	execPath, _ := os.Executable()
+	if execPath == "" {
+		execPath = "untis-go"
+	}
+	content := fmt.Sprintf(`[Desktop Entry]
+Name=Untis Stundenplan
+Comment=Untis Stundenplan Desktop-Anwendung
+Exec=%s
+Icon=untis-go
+Terminal=false
+Type=Application
+Categories=Education;Office;
+StartupWMClass=untis-go
+X-Wayland-AppID=untis-go
+`, execPath)
+	_ = os.WriteFile(desktopPath, []byte(content), 0644)
+}
+
 // LaunchGUI attempts to open a native WebKitGTK window, falling back to a browser in app mode
 func LaunchGUI(title, url string, width, height int, forceBrowser bool) {
+	installDesktopIntegration()
 	hasDisplay := os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
 
 	if forceBrowser || !hasDisplay {

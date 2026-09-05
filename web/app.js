@@ -150,6 +150,88 @@
     }, 3200);
   }
 
+  // Native In-App Confirmation Dialog
+  function showConfirmDialog({ title = 'Bestätigung', message = '', confirmText = 'OK', cancelText = 'Abbrechen', isDanger = false }) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('customConfirmModalBackdrop');
+      const titleEl = document.getElementById('confirmModalTitle');
+      const msgEl = document.getElementById('confirmModalMessage');
+      const okBtn = document.getElementById('confirmModalOkBtn');
+      const cancelBtn = document.getElementById('confirmModalCancelBtn');
+      const closeBtn = document.getElementById('confirmModalCloseBtn');
+      const iconWrap = document.getElementById('confirmModalIconWrap');
+
+      if (!modal || !okBtn || !cancelBtn) {
+        resolve(false);
+        return;
+      }
+
+      if (titleEl) titleEl.textContent = title;
+      if (msgEl) msgEl.textContent = message;
+      if (okBtn) {
+        okBtn.textContent = confirmText;
+        if (isDanger) {
+          okBtn.style.background = 'var(--danger, #ef4444)';
+          okBtn.style.color = '#fff';
+          if (iconWrap) {
+            iconWrap.style.background = 'rgba(239,68,68,0.12)';
+            iconWrap.style.color = 'var(--danger, #ef4444)';
+          }
+        } else {
+          okBtn.style.background = '';
+          okBtn.style.color = '';
+          if (iconWrap) {
+            iconWrap.style.background = 'rgba(249,115,22,0.12)';
+            iconWrap.style.color = 'var(--accent-primary, #f97316)';
+          }
+        }
+      }
+      if (cancelBtn) cancelBtn.textContent = cancelText;
+
+      const cleanup = () => {
+        modal.style.display = 'none';
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+      };
+
+      const onOk = () => {
+        cleanup();
+        resolve(true);
+      };
+
+      const onCancel = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      const onBackdrop = (e) => {
+        if (e.target === modal) {
+          onCancel();
+        }
+      };
+
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      if (closeBtn) closeBtn.addEventListener('click', onCancel);
+      modal.addEventListener('click', onBackdrop);
+
+      modal.style.display = 'flex';
+      setTimeout(() => {
+        if (isDanger && cancelBtn) cancelBtn.focus();
+        else if (okBtn) okBtn.focus();
+      }, 50);
+    });
+  }
+
+  // Override browser dialogs globally so zero browser popups can ever leak
+  window.alert = (msg) => showToast(String(msg || ''), 'info');
+  window.confirm = (msg) => {
+    console.warn('Native window.confirm is disabled. Please use showConfirmDialog instead.');
+    return false;
+  };
+
   // ==================== VIEW SWITCHING ====================
   function switchView(viewName) {
     if (viewName === 'profiles') {
@@ -1295,7 +1377,14 @@
   }
 
   async function deleteHomeworkItem(id) {
-    if (!confirm('Möchtest du diese Hausaufgabe wirklich löschen?')) return;
+    const ok = await showConfirmDialog({
+      title: 'Hausaufgabe löschen',
+      message: 'Möchtest du diese Hausaufgabe wirklich löschen?',
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      isDanger: true,
+    });
+    if (!ok) return;
 
     const res = await apiFetch(`/api/homework?id=${id}`, { method: 'DELETE' });
     if (res && res.success) {
@@ -1427,7 +1516,14 @@
   }
 
   async function deleteAbsenceItem(id) {
-    if (!confirm('Möchtest du diese Abwesenheitsmeldung wirklich löschen?')) return;
+    const ok = await showConfirmDialog({
+      title: 'Abwesenheitsmeldung löschen',
+      message: 'Möchtest du diese Abwesenheitsmeldung wirklich löschen?',
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      isDanger: true,
+    });
+    if (!ok) return;
 
     const res = await apiFetch(`/api/absences?id=${id}`, { method: 'DELETE' });
     if (res && res.success) {
@@ -1660,8 +1756,14 @@
 
   // PROFIL LÖSCHEN (ROTER PAPIERKORB)
   async function deleteProfile(profileId, profileName) {
-    const confirmDelete = confirm(`Möchtest du das Profil '${profileName}' wirklich löschen?\n\nAlle lokalen Hausaufgaben und Abwesenheiten für dieses Profil werden entfernt.`);
-    if (!confirmDelete) return;
+    const ok = await showConfirmDialog({
+      title: 'Profil löschen',
+      message: `Möchtest du das Profil '${profileName}' wirklich löschen?\n\nAlle lokalen Hausaufgaben und Abwesenheiten für dieses Profil werden entfernt.`,
+      confirmText: 'Löschen',
+      cancelText: 'Abbrechen',
+      isDanger: true,
+    });
+    if (!ok) return;
 
     showLoading(true, 'Lösche Profil...');
     const res = await apiFetch(`/api/profiles/delete?id=${encodeURIComponent(profileId)}`, {
@@ -3309,9 +3411,15 @@
   }
 
   async function logoutMicrosoft() {
-    if (!confirm('Möchtest du dich wirklich von Microsoft abmelden? Ohne Microsoft-Konto kann untis-go v1.6 nicht genutzt werden.')) {
-      return;
-    }
+    const ok = await showConfirmDialog({
+      title: 'Microsoft-Konto abmelden',
+      message: 'Möchtest du dich wirklich von Microsoft abmelden?\n\nOhne Microsoft-Konto kann untis-go nicht genutzt werden.',
+      confirmText: 'Abmelden',
+      cancelText: 'Abbrechen',
+      isDanger: true,
+    });
+    if (!ok) return;
+
     showLoading(true, 'Melde Microsoft-Konto ab...');
     await apiFetch('/api/auth/microsoft/logout', { method: 'POST' });
     showLoading(false);

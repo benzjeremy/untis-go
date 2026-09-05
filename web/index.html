@@ -795,6 +795,28 @@
     </div>
   </div>
 
+  <!-- Modal: Custom Native In-App Confirmation Dialog (Eliminiert alle Web-Alerts/Confirms) -->
+  <div class="desktop-modal-backdrop" id="customConfirmModalBackdrop" style="display:none; z-index:99999;">
+    <div class="desktop-modal-dialog" style="max-width: 440px; padding: 20px;">
+      <div class="modal-title-bar">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div id="confirmModalIconWrap" style="display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(239,68,68,0.12); color:var(--danger, #ef4444);">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          </div>
+          <h3 id="confirmModalTitle" style="font-size:16px; font-weight:700; margin:0;">Bestätigung</h3>
+        </div>
+        <button type="button" class="modal-close-icon" id="confirmModalCloseBtn">&times;</button>
+      </div>
+      <div style="padding: 10px 0 6px;">
+        <p id="confirmModalMessage" style="font-size: 14px; line-height: 1.5; color: var(--text-secondary); white-space: pre-line; margin: 0;"></p>
+      </div>
+      <div class="modal-button-row" style="margin-top: 10px; display:flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-outlined" id="confirmModalCancelBtn">Abbrechen</button>
+        <button type="button" class="btn-filled" id="confirmModalOkBtn">Fortfahren</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Software-Update verfügbar -->
   <div class="desktop-modal-backdrop" id="updateModalBackdrop" style="display:none;">
     <div class="desktop-modal-dialog update-dialog">
