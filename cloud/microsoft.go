@@ -20,13 +20,15 @@ import (
 )
 
 // Default Client ID for Microsoft Entra ID / Microsoft Identity Platform.
-// The default uses the standard multi-tenant public client ID, but users/admins
-// can also configure their own custom Azure App Registration Client ID in settings.
+// The default uses the official Microsoft multi-tenant public client ID for OneDrive apps,
+// which works out-of-the-box for personal MSA and organizational school accounts without
+// requiring any custom Azure tenant registration.
 const (
-	DefaultClientID = "de8bc8b5-d9f9-48b1-a8ad-b8c8da743074"
-	DefaultTenant   = "common"
-	DefaultScope    = "openid profile email offline_access User.Read Files.ReadWrite"
-	OneDrivePath    = "https://graph.microsoft.com/v1.0/me/drive/root:/Apps/untis-go/untis_config.json:/content"
+	DefaultClientID        = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+	DefaultTenant          = "common"
+	DefaultScope           = "openid profile email offline_access User.Read Files.ReadWrite.AppFolder"
+	OneDriveAppFolderPath  = "https://graph.microsoft.com/v1.0/me/drive/special/approot:/untis_config.json:/content"
+	OneDriveFallbackPath   = "https://graph.microsoft.com/v1.0/me/drive/root:/Apps/untis-go/untis_config.json:/content"
 )
 
 // DeviceCodeResponse represents the payload from Microsoft Device Code endpoint
@@ -453,29 +455,42 @@ func (m *MicrosoftClient) Logout() error {
 	return nil
 }
 
-// UploadConfigToOneDrive uploads user's configuration JSON to their OneDrive
+// UploadConfigToOneDrive uploads user's configuration JSON to their OneDrive App Folder
 func (m *MicrosoftClient) UploadConfigToOneDrive(data []byte) error {
 	accessToken, err := m.GetValidAccessToken()
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("PUT", OneDrivePath, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
+	uploadToURL := func(targetURL string) (int, []byte, error) {
+		req, err := http.NewRequest("PUT", targetURL, bytes.NewReader(data))
+		if err != nil {
+			return 0, nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+		req.Header.Set("Content-Type", "application/json")
 
-	resp, err := m.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("onedrive upload fehler: %w", err)
-	}
-	defer resp.Body.Close()
+		resp, err := m.httpClient.Do(req)
+		if err != nil {
+			return 0, nil, err
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("onedrive upload fehlgeschlagen (HTTP %d): %s", resp.StatusCode, string(body))
+		return resp.StatusCode, body, nil
+	}
+
+	// Try App Folder first (isolated to /Apps/<app>/)
+	status, body, err := uploadToURL(OneDriveAppFolderPath)
+	if err != nil || (status != http.StatusOK && status != http.StatusCreated) {
+		// Try root Apps folder fallback
+		status2, body2, err2 := uploadToURL(OneDriveFallbackPath)
+		if err2 != nil || (status2 != http.StatusOK && status2 != http.StatusCreated) {
+			if err != nil {
+				return fmt.Errorf("onedrive upload fehler: %w", err)
+			}
+			return fmt.Errorf("onedrive upload fehlgeschlagen (HTTP %d): %s (fallback HTTP %d: %s)", status, string(body), status2, string(body2))
+		}
 	}
 
 	nowISO := time.Now().Format(time.RFC3339)
@@ -484,41 +499,52 @@ func (m *MicrosoftClient) UploadConfigToOneDrive(data []byte) error {
 	return nil
 }
 
-// DownloadConfigFromOneDrive downloads user's configuration JSON from their OneDrive
+// DownloadConfigFromOneDrive downloads user's configuration JSON from their OneDrive App Folder
 func (m *MicrosoftClient) DownloadConfigFromOneDrive() ([]byte, error) {
 	accessToken, err := m.GetValidAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("GET", OneDrivePath, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	downloadFromURL := func(targetURL string) (int, []byte, error) {
+		req, err := http.NewRequest("GET", targetURL, nil)
+		if err != nil {
+			return 0, nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := m.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("onedrive download fehler: %w", err)
-	}
-	defer resp.Body.Close()
+		resp, err := m.httpClient.Do(req)
+		if err != nil {
+			return 0, nil, err
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
+		body, err := io.ReadAll(resp.Body)
+		return resp.StatusCode, body, err
+	}
+
+	// Try App Folder first
+	status, body, err := downloadFromURL(OneDriveAppFolderPath)
+	if status == http.StatusOK && err == nil {
+		nowISO := time.Now().Format(time.RFC3339)
+		_ = m.database.SetSetting("ms_last_sync", nowISO)
+		return body, nil
+	}
+
+	// Try root Apps fallback
+	statusFallback, bodyFallback, errFallback := downloadFromURL(OneDriveFallbackPath)
+	if statusFallback == http.StatusOK && errFallback == nil {
+		nowISO := time.Now().Format(time.RFC3339)
+		_ = m.database.SetSetting("ms_last_sync", nowISO)
+		return bodyFallback, nil
+	}
+
+	if status == http.StatusNotFound || statusFallback == http.StatusNotFound {
 		return nil, errors.New("keine gesicherten Konfigurationen in OneDrive gefunden")
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("onedrive download fehlgeschlagen (HTTP %d): %s", resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("onedrive download fehler: %w", err)
 	}
-
-	nowISO := time.Now().Format(time.RFC3339)
-	_ = m.database.SetSetting("ms_last_sync", nowISO)
-
-	return body, nil
+	return nil, fmt.Errorf("onedrive download fehlgeschlagen (HTTP %d): %s", status, string(body))
 }
