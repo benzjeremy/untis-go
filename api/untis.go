@@ -202,6 +202,12 @@ func NewClient(server, school, username, password, authType string) *Client {
 	}
 }
 
+// IsAnonymous returns true if the client is configured for guest/anonymous access
+func (c *Client) IsAnonymous() bool {
+	u := strings.TrimSpace(c.Username)
+	return u == "" || u == "#anonymous#" || strings.EqualFold(c.AuthType, "anonymous")
+}
+
 // SearchSchool queries schoolquery2 for schools matching query
 func SearchSchool(query string) ([]SchoolSearchResult, error) {
 	if strings.TrimSpace(query) == "" {
@@ -262,20 +268,101 @@ func (c *Client) Authenticate() error {
 		return fmt.Errorf("server oder schule nicht konfiguriert")
 	}
 
-	// Anonymous / Guest access: No credentials required
-	if strings.TrimSpace(c.Username) == "" && c.Password == "" {
+	// Anonymous / Guest access: WebUntis protocol with #anonymous#
+	if c.IsAnonymous() {
 		c.UserInfo.DisplayName = "Gast"
 		c.UserInfo.DetectedClass = ""
-		initURL := fmt.Sprintf("%s/WebUntis/index.do?school=%s", c.Server, url.QueryEscape(c.School))
-		req, err := http.NewRequest("GET", initURL, nil)
+		c.Username = "#anonymous#"
+
+		// Step 1: getAppSharedSecret
+		url1 := fmt.Sprintf("%s/WebUntis/jsonrpc_intern.do?m=getAppSharedSecret&school=%s&v=i3.5", c.Server, url.QueryEscape(c.School))
+		body1 := map[string]interface{}{
+			"id":      "1",
+			"method":  "getAppSharedSecret",
+			"params":  []interface{}{map[string]string{"userName": "#anonymous#", "password": ""}},
+			"jsonrpc": "2.0",
+		}
+		b1, err := json.Marshal(body1)
+		if err != nil {
+			return err
+		}
+		req1, err := http.NewRequest("POST", url1, bytes.NewReader(b1))
+		if err != nil {
+			return err
+		}
+		req1.Header.Set("Content-Type", "application/json")
+		req1.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
+		resp1, err := c.httpClient.Do(req1)
+		if err != nil {
+			return fmt.Errorf("verbindung zum WebUntis Server fehlgeschlagen: %w", err)
+		}
+		defer resp1.Body.Close()
+
+		var res1 struct {
+			Error *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		resp1Bytes, _ := io.ReadAll(resp1.Body)
+		_ = json.Unmarshal(resp1Bytes, &res1)
+		if res1.Error != nil {
+			if res1.Error.Code == -8523 || strings.Contains(strings.ToLower(res1.Error.Message), "no public access") {
+				return fmt.Errorf("diese Schule hat den anonymen Gastzugang nicht freigeschaltet (no public access). Bitte melde dich mit deinen Zugangsdaten an.")
+			}
+			return fmt.Errorf("anonymer Gastzugang fehlgeschlagen: %s", res1.Error.Message)
+		}
+
+		// Step 2: getUserData2017 with OTP 100170
+		url2 := fmt.Sprintf("%s/WebUntis/jsonrpc_intern.do?m=getUserData2017&school=%s&v=i2.2", c.Server, url.QueryEscape(c.School))
+		clientTime := time.Now().UnixMilli()
+		body2 := map[string]interface{}{
+			"id":     "2",
+			"method": "getUserData2017",
+			"params": []interface{}{
+				map[string]interface{}{
+					"auth": map[string]interface{}{
+						"clientTime": clientTime,
+						"user":       "#anonymous#",
+						"otp":        100170,
+					},
+				},
+			},
+			"jsonrpc": "2.0",
+		}
+		b2, err := json.Marshal(body2)
+		if err != nil {
+			return err
+		}
+		req2, err := http.NewRequest("POST", url2, bytes.NewReader(b2))
+		if err != nil {
+			return err
+		}
+		req2.Header.Set("Content-Type", "application/json")
+		req2.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
+		resp2, err := c.httpClient.Do(req2)
+		if err != nil {
+			return fmt.Errorf("sitzungsaufbau fehlgeschlagen: %w", err)
+		}
+		defer resp2.Body.Close()
+
+		// Step 3: Try getting token
+		c.Token = "ANONYMOUS"
+		tokenURL := fmt.Sprintf("%s/WebUntis/api/token/new", c.Server)
+		tokenReq, err := http.NewRequest("GET", tokenURL, nil)
 		if err == nil {
-			req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
-			resp, errDo := c.httpClient.Do(req)
-			if errDo == nil {
-				_ = resp.Body.Close()
+			tokenReq.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
+			if tokenResp, err := c.httpClient.Do(tokenReq); err == nil {
+				defer tokenResp.Body.Close()
+				if tokenBytes, err := io.ReadAll(tokenResp.Body); err == nil {
+					tokStr := strings.TrimSpace(string(tokenBytes))
+					if strings.HasPrefix(tokStr, "ey") {
+						c.Token = tokStr
+					}
+				}
 			}
 		}
-		c.Token = "ANONYMOUS"
+
 		return nil
 	}
 
@@ -358,7 +445,7 @@ func (c *Client) Authenticate() error {
 }
 
 func (c *Client) setAuthHeader(req *http.Request) {
-	if c.Token != "" && c.Token != "ANONYMOUS" {
+	if c.Token != "" && c.Token != "ANONYMOUS" && !c.IsAnonymous() {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 }
@@ -422,7 +509,7 @@ func (c *Client) GetKlassen() ([]Klasse, error) {
 		}
 	}
 
-	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do", c.Server)
+	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do?school=%s", c.Server, url.QueryEscape(c.School))
 	payload := map[string]interface{}{
 		"id":      "getKlassen",
 		"method":  "getKlassen",
@@ -507,7 +594,7 @@ func (c *Client) GetTeachers() ([]Teacher, error) {
 		}
 	}
 
-	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do", c.Server)
+	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do?school=%s", c.Server, url.QueryEscape(c.School))
 	payload := map[string]interface{}{
 		"id":      "getTeachers",
 		"method":  "getTeachers",
@@ -585,7 +672,7 @@ func (c *Client) GetRooms() ([]Room, error) {
 		}
 	}
 
-	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do", c.Server)
+	rpcURL := fmt.Sprintf("%s/WebUntis/jsonrpc.do?school=%s", c.Server, url.QueryEscape(c.School))
 	payload := map[string]interface{}{
 		"id":      "getRooms",
 		"method":  "getRooms",
@@ -676,6 +763,9 @@ func (c *Client) GetRooms() ([]Room, error) {
 
 // GetMessages retrieves incoming school messages
 func (c *Client) GetMessages() ([]Message, error) {
+	if c.IsAnonymous() {
+		return []Message{}, nil
+	}
 	if c.Token == "" {
 		if err := c.Authenticate(); err != nil {
 			return nil, err
@@ -760,6 +850,9 @@ func (c *Client) GetMessageById(id int) (*Message, error) {
 
 // GetHomeworks retrieves homework lessons for the given date range
 func (c *Client) GetHomeworks(startDate, endDate time.Time) ([]WebUntisHomework, error) {
+	if c.IsAnonymous() {
+		return []WebUntisHomework{}, nil
+	}
 	if c.Token == "" {
 		if err := c.Authenticate(); err != nil {
 			return nil, err
@@ -859,6 +952,9 @@ func (c *Client) GetHomeworks(startDate, endDate time.Time) ([]WebUntisHomework,
 
 // GetAbsences retrieves student absences for the given date range
 func (c *Client) GetAbsences(startDate, endDate time.Time) ([]WebUntisAbsence, error) {
+	if c.IsAnonymous() {
+		return []WebUntisAbsence{}, nil
+	}
 	if c.Token == "" {
 		if err := c.Authenticate(); err != nil {
 			return nil, err
@@ -955,6 +1051,25 @@ func (c *Client) GetAbsences(startDate, endDate time.Time) ([]WebUntisAbsence, e
 
 // GetOwnTimetable retrieves the personal student timetable
 func (c *Client) GetOwnTimetable(startDate, endDate time.Time) ([]EnrichedLesson, error) {
+	if c.IsAnonymous() {
+		var classID int
+		c.mu.Lock()
+		for id := range c.klassenCache {
+			classID = id
+			break
+		}
+		c.mu.Unlock()
+		if classID == 0 {
+			if klassen, errK := c.GetKlassen(); errK == nil && len(klassen) > 0 {
+				classID = klassen[0].ID
+			}
+		}
+		if classID != 0 {
+			return c.GetTimetable(classID, startDate, endDate)
+		}
+		return []EnrichedLesson{}, nil
+	}
+
 	var lessons []EnrichedLesson
 	var err error
 
@@ -1018,6 +1133,10 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 		}
 	}
 
+	if c.IsAnonymous() {
+		return c.fetchPublicTimetable(resourceType, resourceID, startDate, endDate)
+	}
+
 	if timetableType == "" {
 		timetableType = "STANDARD"
 	}
@@ -1054,20 +1173,19 @@ func (c *Client) GetTimetableForResource(resourceType string, resourceID int, st
 	}
 
 	resp, err := doFetch()
-	if err != nil {
-		return nil, fmt.Errorf("stundenplan-abfrage fehlgeschlagen: %w", err)
+	if err != nil || (resp != nil && resp.StatusCode != http.StatusOK) {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		if pubLessons, pubErr := c.fetchPublicTimetable(resourceType, resourceID, startDate, endDate); pubErr == nil && len(pubLessons) > 0 {
+			return pubLessons, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("stundenplan-abfrage fehlgeschlagen: %w", err)
+		}
+		return nil, fmt.Errorf("stundenplan-abfrage fehlgeschlagen (status %d)", resp.StatusCode)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		if authErr := c.Authenticate(); authErr == nil {
-			resp, err = doFetch()
-			if err != nil {
-				return nil, err
-			}
-			defer resp.Body.Close()
-		}
-	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1475,6 +1593,221 @@ func (c *Client) fetchLessonDetail(resourceType string, resourceID int, startDat
 	return res.CalendarEntries[0]
 }
 
+func (c *Client) fetchPublicTimetable(resourceType string, resourceID int, startDate, endDate time.Time) ([]EnrichedLesson, error) {
+	elemType := 1
+	switch resourceType {
+	case "CLASS":
+		elemType = 1
+	case "TEACHER":
+		elemType = 2
+	case "SUBJECT":
+		elemType = 3
+	case "ROOM":
+		elemType = 4
+	}
+
+	dateStr := startDate.Format("2006-01-02")
+	publicURL := fmt.Sprintf("%s/WebUntis/api/public/timetable/weekly/data?elementType=%d&elementId=%d&date=%s", c.Server, elemType, resourceID, dateStr)
+
+	req, err := http.NewRequest("GET", publicURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "page.codeberg.ostfriese4.Untis 4.3.0")
+	req.Header.Set("Accept", "application/json")
+	c.setAuthHeader(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("public timetable status %d", resp.StatusCode)
+	}
+
+	var pubResp struct {
+		Data struct {
+			Result struct {
+				Data struct {
+					ElementPeriods map[string][]struct {
+						ID         int    `json:"id"`
+						LessonID   int    `json:"lessonId"`
+						Date       int    `json:"date"`
+						StartTime  int    `json:"startTime"`
+						EndTime    int    `json:"endTime"`
+						SubstText  string `json:"substText"`
+						PeriodText string `json:"periodText"`
+						LessonText string `json:"lessonText"`
+						PeriodInfo string `json:"periodInfo"`
+						CellState  string `json:"cellState"`
+						Elements   []struct {
+							Type  int  `json:"type"`
+							ID    int  `json:"id"`
+							OrgID int  `json:"orgId"`
+						} `json:"elements"`
+					} `json:"elementPeriods"`
+					Elements []struct {
+						Type     int    `json:"type"`
+						ID       int    `json:"id"`
+						Name     string `json:"name"`
+						LongName string `json:"longName"`
+					} `json:"elements"`
+				} `json:"data"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(body, &pubResp); err != nil {
+		return nil, err
+	}
+
+	elemNameMap := make(map[int]string)
+	elemLongMap := make(map[int]string)
+	for _, el := range pubResp.Data.Result.Data.Elements {
+		key := el.Type*1000000 + el.ID
+		elemNameMap[key] = el.Name
+		elemLongMap[key] = el.LongName
+	}
+
+	keyStr := strconv.Itoa(resourceID)
+	rawPeriods := pubResp.Data.Result.Data.ElementPeriods[keyStr]
+	if len(rawPeriods) == 0 {
+		for _, v := range pubResp.Data.Result.Data.ElementPeriods {
+			rawPeriods = v
+			break
+		}
+	}
+
+	var lessons []EnrichedLesson
+	seenLessons := make(map[string]bool)
+
+	for _, p := range rawPeriods {
+		dStr := strconv.Itoa(p.Date)
+		if len(dStr) != 8 {
+			continue
+		}
+		formattedDate := fmt.Sprintf("%s-%s-%s", dStr[:4], dStr[4:6], dStr[6:])
+		dateParsed, errP := time.Parse("2006-01-02", formattedDate)
+		if errP != nil {
+			continue
+		}
+
+		dayOfWeek := GermanDayName(dateParsed.Weekday())
+		sHour := p.StartTime / 100
+		sMin := p.StartTime % 100
+		eHour := p.EndTime / 100
+		eMin := p.EndTime % 100
+		startTimeStr := fmt.Sprintf("%02d:%02d", sHour, sMin)
+		endTimeStr := fmt.Sprintf("%02d:%02d", eHour, eMin)
+		periodStr, pNum := computePeriod(startTimeStr, endTimeStr)
+
+		var subjShort, subjLong string
+		var teachers, teachersLong []string
+		var rooms, roomsLong []string
+		var classes []string
+
+		for _, el := range p.Elements {
+			key := el.Type*1000000 + el.ID
+			name := elemNameMap[key]
+			longName := elemLongMap[key]
+			switch el.Type {
+			case 1:
+				if name != "" {
+					classes = append(classes, name)
+				}
+			case 2:
+				if name != "" {
+					teachers = append(teachers, name)
+				}
+				if longName != "" {
+					teachersLong = append(teachersLong, longName)
+				}
+			case 3:
+				if subjShort == "" {
+					subjShort = name
+					subjLong = longName
+				}
+			case 4:
+				if name != "" {
+					rooms = append(rooms, name)
+				}
+				if longName != "" {
+					roomsLong = append(roomsLong, longName)
+				}
+			}
+		}
+
+		if subjShort == "" {
+			subjShort = "Unterricht"
+			subjLong = "Unterricht"
+		}
+		if subjLong == "" {
+			subjLong = subjShort
+		}
+
+		colorHex, textHex := GetSubjectColors(subjShort, "")
+		teacherShort := strings.Join(teachers, ", ")
+		teacherLongStr := strings.Join(teachersLong, ", ")
+		roomStr := strings.Join(rooms, ", ")
+		roomLongStr := strings.Join(roomsLong, ", ")
+		classStr := strings.Join(classes, ", ")
+
+		isCancelled := p.CellState == "CANCELLED"
+		isSubst := p.CellState == "SUBSTITUTION" || p.CellState == "CHANGED" || p.SubstText != ""
+
+		dedupKey := fmt.Sprintf("%s_%s_%s_%s_%s_%s", formattedDate, startTimeStr, endTimeStr, subjShort, roomStr, teacherShort)
+		if seenLessons[dedupKey] {
+			continue
+		}
+		seenLessons[dedupKey] = true
+
+		notes := p.PeriodText
+		if notes == "" {
+			notes = p.LessonText
+		}
+
+		lessons = append(lessons, EnrichedLesson{
+			ID:             p.LessonID,
+			Date:           formattedDate,
+			DateInt:        p.Date,
+			DayOfWeek:      dayOfWeek,
+			Period:         periodStr,
+			PeriodNum:      pNum,
+			StartTimeStr:   startTimeStr,
+			EndTimeStr:     endTimeStr,
+			TimeRange:      fmt.Sprintf("%s - %s", startTimeStr, endTimeStr),
+			Subject:        subjShort,
+			SubjectLong:    subjLong,
+			Teacher:        teacherShort,
+			TeacherLong:    teacherLongStr,
+			Room:           roomStr,
+			RoomLong:       roomLongStr,
+			Class:          classStr,
+			IsCancelled:    isCancelled,
+			IsSubstitution: isSubst,
+			SubstText:      p.SubstText,
+			Notes:          notes,
+			Color:          colorHex,
+			TextColor:      textHex,
+		})
+	}
+
+	sort.Slice(lessons, func(i, j int) bool {
+		if lessons[i].DateInt != lessons[j].DateInt {
+			return lessons[i].DateInt < lessons[j].DateInt
+		}
+		return lessons[i].StartTimeStr < lessons[j].StartTimeStr
+	})
+
+	return lessons, nil
+}
 
 func extractTime(dt string) string {
 	if len(dt) >= 16 {

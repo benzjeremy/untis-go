@@ -193,6 +193,9 @@ func TestServerSecurityAndEndpoints(t *testing.T) {
 	if needsOnboard, _ := statusAfter["needsOnboarding"].(bool); needsOnboard {
 		t.Fatalf("expected needsOnboarding=false after profile configured, got true")
 	}
+	if isAnon, _ := statusAfter["isAnonymous"].(bool); !isAnon {
+		t.Fatalf("expected isAnonymous=true for anonymous profile, got false")
+	}
 }
 
 func fmtBaseURL(port int) string {

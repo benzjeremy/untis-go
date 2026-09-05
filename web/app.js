@@ -149,7 +149,27 @@
       openProfilesModal();
       return;
     }
+
+    // If guest / anonymous access, redirect personal views
+    if (state.status && state.status.isAnonymous) {
+      if (viewName === 'own-timetable') {
+        viewName = 'other-timetables';
+      } else if (viewName === 'homework' || viewName === 'absences') {
+        viewName = 'dashboard';
+      }
+    }
+
     state.currentView = viewName;
+
+    // Reset scroll position on viewport and document so switching views always starts cleanly at the top!
+    const viewport = document.getElementById('viewViewport');
+    if (viewport) {
+      viewport.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+    document.querySelectorAll('.view-viewport, .desktop-view-pane, .desktop-main').forEach((el) => {
+      el.scrollTop = 0;
+    });
 
     // Update Nav buttons
     document.querySelectorAll('.sidebar-nav .nav-item').forEach((item) => {
@@ -288,6 +308,35 @@
     if (status.needsOnboarding) {
       openOnboardingWizard();
       return;
+    }
+
+    // Configure anonymous / guest view mode
+    const isAnon = !!(status.isAnonymous || !status.username || status.username === '#anonymous#');
+    const navOwn = document.getElementById('navOwnTimetable');
+    const navHw = document.getElementById('navHomework');
+    const navAbs = document.getElementById('navAbsences');
+    const dashHw = document.getElementById('dashHwCard');
+    const dashAbs = document.getElementById('dashAbsCard');
+    const btnFull = document.getElementById('btnDashFullSchedule');
+
+    if (isAnon) {
+      if (navOwn) navOwn.style.display = 'none';
+      if (navHw) navHw.style.display = 'none';
+      if (navAbs) navAbs.style.display = 'none';
+      if (dashHw) dashHw.style.display = 'none';
+      if (dashAbs) dashAbs.style.display = 'none';
+      if (btnFull) {
+        btnFull.onclick = () => switchView('other-timetables');
+      }
+    } else {
+      if (navOwn) navOwn.style.display = '';
+      if (navHw) navHw.style.display = '';
+      if (navAbs) navAbs.style.display = '';
+      if (dashHw) dashHw.style.display = '';
+      if (dashAbs) dashAbs.style.display = '';
+      if (btnFull) {
+        btnFull.onclick = () => switchView('own-timetable');
+      }
     }
 
     // Load initial dashboard
@@ -1659,7 +1708,7 @@
       serverHost = 'https://' + serverHost.split('/')[0];
     }
 
-    const profileName = document.getElementById('newProfileName')?.value.trim() || (selectedSearchSchool.displayName + ' (Anonym)');
+    const profileName = document.getElementById('newProfileName')?.value.trim() || (selectedSearchSchool.displayName + ' (Gast)');
 
     showLoading(true, 'Verbinde anonym mit WebUntis...');
     const res = await apiFetch('/api/profiles', {
@@ -1668,7 +1717,7 @@
         school: selectedSearchSchool.loginName || selectedSearchSchool.displayName,
         server: serverHost,
         name: profileName,
-        username: '',
+        username: '#anonymous#',
         password: '',
         setActive: true,
       }),
@@ -1835,8 +1884,8 @@
       body: JSON.stringify({
         school: onboardSelectedSchool.loginName || onboardSelectedSchool.displayName,
         server: serverHost,
-        name: onboardSelectedSchool.displayName + ' (Anonym)',
-        username: '',
+        name: onboardSelectedSchool.displayName + ' (Gast)',
+        username: '#anonymous#',
         password: '',
         setActive: true,
       }),
@@ -2083,6 +2132,25 @@
 
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
+    {
+      version: 'v1.5.1',
+      title: 'Hotfix Release v1.5.1',
+      type: 'hotfix',
+      date: '05.09.2026',
+      badge: 'Hotfix',
+      description: 'Wichtiger Hotfix für den anonymen Gast-Login und die Benutzeroberfläche: Echtes WebUntis-Gast-Protokoll, Datenabruf öffentlicher Stundenpläne, Menüfilterung für Gast-Sitzungen und Behebung des Ansichts-Scroll-Bugs.',
+      sections: [
+        {
+          title: '🛠️ Hotfixes & Fehlerbehebungen',
+          items: [
+            { type: 'fix', text: '<strong>WebUntis Gast-Login Protokoll:</strong> Reverse-Engineering und Implementierung des korrekten WebUntis-Gast-Authentifizierungs-Workflows (<code>#anonymous#</code> Secret & Session-Cookie Handling). Schulen ohne öffentlichen Zugang zeigen nun eine verständliche Fehlermeldung.' },
+            { type: 'fix', text: '<strong>Öffentlicher Stundenplan-Abruf:</strong> Vollständige Unterstützung des <code>/WebUntis/api/public/timetable/weekly/data</code> Endpunkts inklusive Period- und Element-Mapping für anonyme Klassenpläne.' },
+            { type: 'fix', text: '<strong>Gast-Menübereinigung:</strong> Ausblenden von persönlichen Menüpunkten und Dashboard-Karten ("Mein Stundenplan", "Hausaufgaben", "Abwesenheiten") im anonymen Modus. Der Schnellzugriff führt direkt zur Klassen- & Raumübersicht.' },
+            { type: 'fix', text: '<strong>Dashboard-Scroll-Bug behoben:</strong> Beim Wechsel zwischen Seiten (z.B. von "Über & Info" zurück zur Übersicht) wird die Scrollposition des Viewports nun zuverlässig an den Anfang zurückgesetzt.' },
+          ]
+        }
+      ]
+    },
     {
       version: 'v1.5',
       title: 'Offizieller Release v1.5',

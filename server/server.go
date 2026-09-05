@@ -22,7 +22,7 @@ import (
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.5"
+const AppVersion = "1.5.1"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -240,6 +240,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		displayName = activeProf.Name
 	}
 
+	isAnonymous := activeProf.Username == "" || activeProf.Username == "#anonymous#" || strings.Contains(strings.ToLower(activeProf.Name), "gast") || strings.Contains(strings.ToLower(activeProf.Name), "anonym")
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"needsOnboarding":   false,
 		"activeProfileId":   activeProf.ID,
@@ -255,6 +257,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"theme":             s.database.GetSetting("theme", "dark"),
 		"defaultView":       s.database.GetSetting("default_view", "day"),
 		"authenticated":     authenticated,
+		"isAnonymous":       isAnonymous,
 	})
 }
 
@@ -615,8 +618,24 @@ func (s *Server) handleTimetable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if classID == 0 {
-		// Attempt to pick first class from database
+		// Attempt to pick first class from database, or fetch classes if empty
 		classes, _ := s.database.GetClasses(client.School)
+		if len(classes) == 0 {
+			if apiClasses, errK := client.GetKlassen(); errK == nil && len(apiClasses) > 0 {
+				var dbClasses []db.Class
+				for _, ac := range apiClasses {
+					dbClasses = append(dbClasses, db.Class{
+						ID:       ac.ID,
+						School:   client.School,
+						Name:     ac.Name,
+						LongName: ac.LongName,
+						Active:   ac.Active,
+					})
+				}
+				_ = s.database.SaveClasses(client.School, dbClasses)
+				classes = dbClasses
+			}
+		}
 		if len(classes) > 0 {
 			classID = classes[0].ID
 			_ = s.database.SetIntSetting("selected_class_id", classID)
@@ -766,28 +785,55 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var lessons []api.EnrichedLesson
+		classID := s.database.GetIntSetting("selected_class_id", 0)
+		if classID == 0 {
+			classes, _ := s.database.GetClasses(client.School)
+			if len(classes) == 0 {
+				if apiClasses, errK := client.GetKlassen(); errK == nil && len(apiClasses) > 0 {
+					var dbClasses []db.Class
+					for _, ac := range apiClasses {
+						dbClasses = append(dbClasses, db.Class{
+							ID:       ac.ID,
+							School:   client.School,
+							Name:     ac.Name,
+							LongName: ac.LongName,
+							Active:   ac.Active,
+						})
+					}
+					_ = s.database.SaveClasses(client.School, dbClasses)
+					classes = dbClasses
+				}
+			}
+			if len(classes) > 0 {
+				classID = classes[0].ID
+				_ = s.database.SetIntSetting("selected_class_id", classID)
+				_ = s.database.SetSetting("selected_class_name", classes[0].Name)
+			}
+		}
+
 		if l, err := client.GetOwnTimetable(now, now); err == nil && len(l) > 0 {
 			lessons = l
-		} else {
-			classID := s.database.GetIntSetting("selected_class_id", 0)
-			if classID != 0 {
-				if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
-					lessons = clLessons
-				}
+		} else if classID != 0 {
+			if clLessons, errCl := client.GetTimetable(classID, now, now); errCl == nil {
+				lessons = clLessons
 			}
 		}
 
 		nowTimeStr := now.Format("15:04")
 		var nextL *api.EnrichedLesson
-		for _, l := range lessons {
-			if !l.IsCancelled && l.EndTimeStr >= nowTimeStr {
-				nextL = &l
+		var isNextDay bool
+		var nextLabel string
+
+		for i, l := range lessons {
+			if l.IsCancelled {
+				continue
+			}
+			if l.EndTimeStr >= nowTimeStr {
+				nextL = &lessons[i]
 				break
 			}
 		}
 
-		var isNextDay bool
-		var nextLabel string
 		// If today has no lessons or after 17:00 when school is done, determine next school day
 		if len(lessons) == 0 || (now.Hour() >= 17 && nextL == nil) {
 			nextDay := now.AddDate(0, 0, 1)
@@ -800,6 +846,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 				nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
 				if nextL == nil && len(nl) > 0 {
 					nextL = &nl[0]
+				}
+			} else if classID != 0 {
+				if clLessons, errCl := client.GetTimetable(classID, nextDay, nextDay); errCl == nil && len(clLessons) > 0 {
+					lessons = clLessons
+					isNextDay = true
+					nextLabel = fmt.Sprintf("Nächster Schultag (%s, %02d.%02d.)", api.GermanDayName(nextDay.Weekday()), nextDay.Day(), int(nextDay.Month()))
+					if nextL == nil && len(clLessons) > 0 {
+						nextL = &clLessons[0]
+					}
 				}
 			}
 		}
