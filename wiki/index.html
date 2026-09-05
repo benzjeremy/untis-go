@@ -19,7 +19,7 @@
       <a href="../index.html" class="wiki-brand-link">
         <img src="../icon.png" alt="Untis Logo" class="wiki-logo">
         <span class="wiki-brand-title">untis-go</span>
-        <span class="wiki-brand-badge">Wiki v1.5.2</span>
+        <span class="wiki-brand-badge">Wiki v1.6.0</span>
       </a>
 
       <div class="wiki-nav-tools">
@@ -65,9 +65,10 @@
         <li class="wiki-menu-item"><a href="#homework-absences">7. Aufgaben & Fehlzeiten</a></li>
         <li class="wiki-menu-item"><a href="#profiles">8. Multi-Profile Verwaltung</a></li>
         <li class="wiki-menu-item"><a href="#security">9. Zero-Lag & Sicherheit</a></li>
-        <li class="wiki-menu-item"><a href="#shortcuts">10. Tastaturkürzel (Shortcuts)</a></li>
-        <li class="wiki-menu-item"><a href="#updates">11. Software-Updates</a></li>
-        <li class="wiki-menu-item"><a href="#faq">12. FAQ & Problembehebung</a></li>
+        <li class="wiki-menu-item"><a href="#microsoft">10. Microsoft 365 & OneDrive</a></li>
+        <li class="wiki-menu-item"><a href="#shortcuts">11. Tastaturkürzel (Shortcuts)</a></li>
+        <li class="wiki-menu-item"><a href="#updates">12. Software-Updates</a></li>
+        <li class="wiki-menu-item"><a href="#faq">13. FAQ & Problembehebung</a></li>
       </ul>
     </aside>
 
@@ -126,7 +127,7 @@
               <h4>Linux Vorkompiliertes Paket (Empfohlen)</h4>
               <p>Lade das Tarball von der Release-Seite herunter, entpacke es und verschiebe die Datei in deinen Systempfad:</p>
               <div class="code-wrap">
-                <pre class="code-block" id="cmdLinux">tar -xzf untis-go-v1.5.2-linux.tar.gz
+                <pre class="code-block" id="cmdLinux">tar -xzf untis-go-v1.6.0-linux.tar.gz
 chmod +x untis-go
 sudo cp untis-go /usr/local/bin/
 untis-go</pre>
@@ -140,7 +141,7 @@ untis-go</pre>
             <div class="step-badge">B</div>
             <div class="step-body">
               <h4>Windows Standalone ZIP</h4>
-              <p>Lade <code>untis-go-v1.5.2-windows.zip</code> herunter, entpacke das Archiv in einen Ordner deiner Wahl und starte <code>untis-go.exe</code>. Es ist keine Installation von Treibern oder Runtimes erforderlich.</p>
+              <p>Lade <code>untis-go-v1.6.0-windows.zip</code> herunter, entpacke das Archiv in einen Ordner deiner Wahl und starte <code>untis-go.exe</code>. Es ist keine Installation von Treibern oder Runtimes erforderlich.</p>
             </div>
           </div>
 
@@ -420,11 +421,47 @@ untis-go</pre>
         </table>
       </section>
 
-      <!-- Kapitel 10: Tastaturkürzel -->
-      <section class="wiki-section" id="shortcuts">
+      <!-- Kapitel 10: Microsoft 365 & OneDrive Cloud-Synchronisierung -->
+      <section class="wiki-section" id="microsoft">
         <div class="section-anchor-header">
           <h2 class="section-heading">
             <span class="section-num">10</span>
+            Microsoft 365 &amp; OneDrive Cloud-Synchronisierung (Pflicht ab v1.6)
+          </h2>
+        </div>
+        <p class="wiki-p">
+          Ab Version <strong>v1.6.0</strong> verfügt <strong>Untis GO</strong> über eine native, obligatorische Anbindung an <strong>Microsoft 365</strong>. Damit werden deine Stundenplan-Profile, Notizen, benutzerdefinierte Fach-Abkürzungen und Einstellungen sicher in deinem persönlichen Microsoft OneDrive gesichert und geräteübergreifend synchronisiert.
+        </p>
+
+        <div class="feature-detail-grid">
+          <div class="detail-card">
+            <h4>🏫 Schul- &amp; Schüleraccounts (Entra ID / Office 365)</h4>
+            <p>Melde dich direkt mit deiner offiziellen Schul-E-Mail-Adresse an. Funktioniert nahtlos mit allen Microsoft 365 Education Mandanten.</p>
+          </div>
+          <div class="detail-card">
+            <h4>👤 Private Microsoft-Konten (MSA)</h4>
+            <p>Besitzt deine Schule kein Microsoft 365? Du kannst dich genauso unkompliziert mit deinem persönlichen Konto (@outlook.com, @hotmail.com) anmelden.</p>
+          </div>
+          <div class="detail-card">
+            <h4>☁️ Automatisches OneDrive Backup</h4>
+            <p>Deine Daten werden als verschlüsseltes JSON unter <code>/Apps/untis-go/untis_config.json</code> in deinem OneDrive abgelegt. Keine Drittserver.</p>
+          </div>
+          <div class="detail-card">
+            <h4>📱 Schneller Device-Code Login</h4>
+            <p>Auf Geräten ohne lokalen Browser-Callback einfach <strong>microsoft.com/devicelogin</strong> aufrufen, Code eingeben und Untis GO synchronisiert sofort.</p>
+          </div>
+        </div>
+
+        <p class="wiki-p" style="margin-top: 1.25rem;">
+          Über den Microsoft-Chip oben rechts in der Titelleiste kannst du jederzeit den aktuellen Verbindungsstatus einsehen, manuelle Synchronisierungen anstoßen oder dein Konto wechseln.
+        </p>
+      </section>
+
+      <!-- Kapitel 11: Tastaturkürzel -->
+      <section class="wiki-section" id="shortcuts">
+        <div class="section-anchor-header">
+          <h2 class="section-heading">
+            <span class="section-num">11</span>
             Tastaturkürzel (Power-User Shortcuts)
           </h2>
         </div>
@@ -475,27 +512,27 @@ untis-go</pre>
         </table>
       </section>
 
-      <!-- Kapitel 11: Software-Updates -->
+      <!-- Kapitel 12: Software-Updates -->
       <section class="wiki-section" id="updates">
         <div class="section-anchor-header">
           <h2 class="section-heading">
-            <span class="section-num">11</span>
-            Software-Updates & Releasemanagement
+            <span class="section-num">12</span>
+            Software-Updates &amp; Releasemanagement
           </h2>
         </div>
         <p class="wiki-p">
           Untis GO besitzt einen <strong>integrierten Release-Manager</strong>:
         </p>
         <p class="wiki-p">
-          Unter <em>Über & Info</em> kannst du mit einem Klick auf <em>„Nach Updates suchen“</em> prüfen, ob eine neuere Version auf GitHub bereitsteht. Ist ein Update vorhanden, lädt Untis GO das offizielle, signierte Binärpaket atomar herunter und tauscht die Programmdatei im laufenden Betrieb sicher aus – kein mühsames manuelles Entpacken mehr nötig!
+          Unter <em>Über &amp; Info</em> kannst du mit einem Klick auf <em>„Nach Updates suchen“</em> prüfen, ob eine neuere Version auf GitHub bereitsteht. Ist ein Update vorhanden, lädt Untis GO das offizielle, signierte Binärpaket atomar herunter und tauscht die Programmdatei im laufenden Betrieb sicher aus – kein mühsames manuelles Entpacken mehr nötig!
         </p>
       </section>
 
-      <!-- Kapitel 12: FAQ -->
+      <!-- Kapitel 13: FAQ -->
       <section class="wiki-section" id="faq">
         <div class="section-anchor-header">
           <h2 class="section-heading">
-            <span class="section-num">12</span>
+            <span class="section-num">13</span>
             Häufig gestellte Fragen (FAQ)
           </h2>
         </div>
