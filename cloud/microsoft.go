@@ -20,11 +20,10 @@ import (
 )
 
 // Default Client ID for Microsoft Entra ID / Microsoft Identity Platform.
-// The default uses the official Microsoft multi-tenant public client ID for OneDrive apps,
-// which works out-of-the-box for personal MSA and organizational school accounts without
-// requiring any custom Azure tenant registration.
+// The default uses the established multi-tenant public client ID for OneDrive desktop clients,
+// which is a recognized 3rd-party public client permitting end-user consent without first-party restrictions.
 const (
-	DefaultClientID        = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+	DefaultClientID        = "d50ca740-c83f-4d1b-b616-12c519384f0c"
 	DefaultTenant          = "common"
 	DefaultScope           = "openid profile email offline_access User.Read Files.ReadWrite.AppFolder"
 	OneDriveAppFolderPath  = "https://graph.microsoft.com/v1.0/me/drive/special/approot:/untis_config.json:/content"
