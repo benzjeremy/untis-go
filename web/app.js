@@ -2597,6 +2597,30 @@
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
     {
+      version: 'v2.1.0',
+      title: 'Release v2.1.0 – Native Bestätigungs-GUIs & Wayland Icon-Integration',
+      type: 'feature',
+      date: '05.09.2026',
+      badge: 'Release v2.1.0',
+      description: 'Feature- und Polish-Release v2.1: Vollständiger Ersatz aller verbliebenen Browser-Dialoge durch eigene, native Bestätigungs-GUIs im eleganten App-Design sowie automatische Wayland- und Linux-Desktop-Icon-Integration.',
+      sections: [
+        {
+          title: '🎨 Eigene native Bestätigungs-GUIs',
+          items: [
+            { type: 'feat', text: '<strong>Keine Browser-Popups mehr:</strong> Alle Lösch- und Abmeldeaktionen (Profile, Hausaufgaben, Abwesenheiten, Microsoft-Logout) nutzen nun einen eigens gestalteten, voll integrierten Bestätigungsdialog.' },
+            { type: 'security', text: '<strong>Beseitigung aller Web-Spuren:</strong> Keine störenden WebKit-Titelzeilen („JavaScript - http://127.0.0.1...“) mehr. Globale Unterdrückung von <code>window.confirm</code> und <code>script-dialog</code> im WebKitGTK-Backend.' },
+          ]
+        },
+        {
+          title: '🐧 Native Linux & Wayland Icon-Integration',
+          items: [
+            { type: 'feat', text: '<strong>Automatisches Desktop- & Icon-Setup:</strong> Die App registriert sich beim Start selbstständig in den XDG-Icon-Verzeichnissen (<code>~/.local/share/icons</code> und <code>~/.local/share/applications/untis-go.desktop</code>).' },
+            { type: 'fix', text: '<strong>Wayland W-Icon behoben:</strong> In Wayland-Umgebungen (KDE Plasma, GNOME) wird das Untis-Logo nun sauber und gestochen scharf in der Fenster-Titelleiste, im Task-Manager und bei Alt+Tab dargestellt.' },
+          ]
+        }
+      ]
+    },
+    {
       version: 'v2.0.0',
       title: 'Major Release v2.0.0 – Native Go Desktop-Anwendung & Dashboard-Upgrade',
       type: 'major',
