@@ -1717,6 +1717,13 @@ func (c *Client) fetchPublicTimetable(resourceType string, resourceID int, start
 			continue
 		}
 
+		// Strictly filter by requested startDate and endDate (start of day to end of day)
+		startDay := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, dateParsed.Location())
+		endDay := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 999999999, dateParsed.Location())
+		if dateParsed.Before(startDay) || dateParsed.After(endDay) {
+			continue
+		}
+
 		dayOfWeek := GermanDayName(dateParsed.Weekday())
 		sHour := p.StartTime / 100
 		sMin := p.StartTime % 100

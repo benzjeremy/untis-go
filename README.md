@@ -5,7 +5,7 @@
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
 [![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v1.5.2](https://img.shields.io/badge/Release-v1.5.2-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
+[![Release: v1.6.0](https://img.shields.io/badge/Release-v1.6.0-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
 [![Status: Release](https://img.shields.io/badge/Status-RELEASE-green.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
@@ -71,6 +71,10 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - Manage any number of schools and user profiles in parallel.
   - **Delete schools**: Each profile can be deleted with a click on the red trash‑can icon.
   - **Live school search**: Find your school worldwide via the official WebUntis school search – no pre‑configured default school!
+- ☁️ **Microsoft 365 & OneDrive Sync (Mandatory v1.6)**:
+  - Sign in with school/student accounts (Office 365 Education / Entra ID) or personal Microsoft accounts.
+  - Automatic encrypted cloud backup of all configurations, profiles, and homework directly into your personal OneDrive (`/Apps/untis-go/untis_config.json`).
+  - Seamless restore across all your devices.
 
 ### 🇩🇪 Deutsch
 
@@ -96,6 +100,10 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - Beliebig viele Schulen und Benutzerprofile parallel verwalten.
   - **Schulen löschen**: Jedes Profil kann mit einem Klick auf das rote Papierkorb‑Icon gelöscht werden.
   - **Live‑Schulsuche**: Finde deine Schule weltweit über die offizielle WebUntis‑Schulsuche – keine feste Standardschule vorkonfiguriert!
+- ☁️ **Microsoft 365 & OneDrive Synchronisierung (Pflicht ab v1.6)**:
+  - Anmeldung mit Schüler-/Schulkonten (Office 365 / Entra ID) oder persönlichen Microsoft-Accounts.
+  - Automatische verschlüsselte Sicherung aller Konfigurationen, Schulen, Profile und Hausaufgaben direkt in deinem persönlichen OneDrive (`/Apps/untis-go/untis_config.json`).
+  - Wiederherstellung mit einem Klick auf jedem beliebigen PC oder Laptop.
 
 ---
 
@@ -125,12 +133,12 @@ Download the matching file for your operating system from the [**Releases**](htt
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-v1.5.2-linux.tar.gz
+  tar -xzf untis-go-v1.6.0-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Unzip `untis-go-v1.5.2-windows.zip` and start `untis-go.exe`.
+  - Unzip `untis-go-v1.6.0-windows.zip` and start `untis-go.exe`.
 
 #### 2. Installation via Go (`go install`)
 
@@ -172,12 +180,12 @@ Lade die passende Datei für dein Betriebssystem unter [**Releases**](https://gi
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-v1.5.2-linux.tar.gz
+  tar -xzf untis-go-v1.6.0-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Entpacke `untis-go-v1.5.2-windows.zip` und starte `untis-go.exe`.
+  - Entpacke `untis-go-v1.6.0-windows.zip` und starte `untis-go.exe`.
 
 #### 2. Installation über Go (`go install`)
 

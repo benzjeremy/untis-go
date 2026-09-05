@@ -141,6 +141,18 @@
             <button class="seg-btn" id="segViewWeek" title="Wochenansicht (W)">Woche</button>
           </div>
         </div>
+
+        <!-- Microsoft Account & OneDrive Cloud Sync Status -->
+        <div class="topbar-right-user">
+          <button type="button" class="topbar-ms-chip" id="topbarMsChip" onclick="openMsCloudModal()" title="Microsoft & OneDrive Synchronisierung (v1.6)">
+            <span class="ms-quad-icon">
+              <span class="ms-sq r"></span><span class="ms-sq g"></span>
+              <span class="ms-sq b"></span><span class="ms-sq y"></span>
+            </span>
+            <span class="ms-chip-label" id="topbarMsLabel">OneDrive</span>
+            <span class="ms-sync-dot online" id="topbarMsSyncDot" title="OneDrive Synchronisiert"></span>
+          </button>
+        </div>
       </header>
 
       <!-- VIEW CONTAINER -->
@@ -433,7 +445,7 @@
                   <img src="/icon.png" alt="Untis Logo" width="64" height="64" style="border-radius:16px; display:block; box-shadow:0 4px 14px rgba(0, 0, 0, 0.25);">
                 </div>
                 <div class="about-hero-text">
-                  <h2>untis-go <span class="about-version-chip">v1.5.2</span></h2>
+                  <h2>untis-go <span class="about-version-chip">v1.6.0</span></h2>
                   <p class="about-hero-sub">Schneller, nativer WebUntis PC-Desktop Client für Schüler und Lehrkräfte</p>
                   <div class="about-badges-row">
                     <a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener" class="about-badge awesome-go-badge" title="Öffne Awesome-Go auf GitHub">
@@ -454,7 +466,7 @@
                   <svg viewBox="0 0 24 24" fill="currentColor" class="btn-svg"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-9.11 4-6.6 5.64-5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                   <span>Update installieren</span>
                 </button>
-                <div id="aboutUpdateStatusMsg" class="about-update-status">Aktuell installierte Version: <strong>v1.5.2</strong></div>
+                <div id="aboutUpdateStatusMsg" class="about-update-status">Aktuell installierte Version: <strong>v1.6.0</strong></div>
               </div>
             </div>
 
@@ -792,9 +804,9 @@
       </div>
       <div class="update-modal-body">
         <div class="update-version-row">
-          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v1.5.2</span></div>
+          <div class="ver-badge curr">Aktuell: <span id="updateCurrentVer">v1.6.0</span></div>
           <div class="ver-arrow">&rarr;</div>
-          <div class="ver-badge next">Neu: <span id="updateNewVer">v1.5.2</span></div>
+          <div class="ver-badge next">Neu: <span id="updateNewVer">v1.6.0</span></div>
         </div>
         <h4 id="updateReleaseTitle" style="margin: 12px 0 6px;">Untis Desktop</h4>
         <div class="update-release-notes" id="updateReleaseNotes">Lade Versionshinweise...</div>
@@ -986,6 +998,135 @@
 
           <button type="button" class="btn-filled onboard-finish-btn" onclick="finishOnboarding()">
             Untis GO starten 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Mandatory Microsoft Gatekeeper (Pflicht-Anmeldung v1.6) -->
+  <div class="desktop-modal-backdrop ms-gatekeeper-backdrop" id="msGatekeeperBackdrop" style="display:none;" data-mandatory="true">
+    <div class="desktop-modal-dialog ms-gatekeeper-dialog">
+      <div class="ms-modal-header">
+        <div class="ms-logos-combo">
+          <span class="ms-quad-logo">
+            <span class="ms-sq r"></span><span class="ms-sq g"></span>
+            <span class="ms-sq b"></span><span class="ms-sq y"></span>
+          </span>
+          <span class="ms-logo-divider">+</span>
+          <svg class="onedrive-svg-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
+        </div>
+        <span class="ms-badge-pill">Release v1.6 Pflicht</span>
+        <h2>Microsoft-Konto erforderlich</h2>
+        <p class="ms-modal-desc">
+          Für die Nutzung von <strong>untis-go</strong> ist die Anmeldung mit einem Microsoft-Konto erforderlich.
+          Melde dich mit deinem <strong>Schüler-/Schulaccount</strong> (z.B. Office 365 deiner Schule / Berufskolleg) oder einem <strong>persönlichen Microsoft-Konto</strong> an, um deine Konfigurationen automatisch in deinem persönlichen <strong>OneDrive</strong> zu sichern.
+        </p>
+      </div>
+
+      <div class="ms-login-actions-group">
+        <!-- Action 1: Standard OAuth Browser Login -->
+        <button type="button" class="btn-ms-login" id="btnMsWebLogin" onclick="loginWithMicrosoft()">
+          <span class="ms-quad-logo-btn">
+            <span class="ms-sq r"></span><span class="ms-sq g"></span>
+            <span class="ms-sq b"></span><span class="ms-sq y"></span>
+          </span>
+          <span>Mit Microsoft anmelden</span>
+        </button>
+
+        <div class="ms-or-divider"><span>oder</span></div>
+
+        <!-- Action 2: Device Code Login (Devicelogin) -->
+        <button type="button" class="btn-ms-secondary" id="btnMsDeviceLogin" onclick="startMicrosoftDeviceLogin()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 10h-4v-7h4v7z"/></svg>
+          <span>Über Geräte-Code anmelden (Devicelogin)</span>
+        </button>
+
+        <!-- Device Code Display Box (hidden by default) -->
+        <div class="ms-device-box" id="msDeviceBox" style="display:none;">
+          <p class="ms-device-instruction">1. Öffne auf deinem Gerät <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" class="ms-dev-link">microsoft.com/devicelogin</a></p>
+          <p class="ms-device-instruction">2. Gib folgenden Code ein:</p>
+          <div class="ms-code-chip" id="msUserCodeDisplay" onclick="copyMsDeviceCode()" title="Code kopieren">----</div>
+          <div class="ms-device-polling-status">
+            <div class="desktop-spinner-sm"></div>
+            <span id="msPollingStatusText">Warte auf Bestätigung im Browser...</span>
+          </div>
+        </div>
+
+        <!-- Advanced Azure App settings toggle -->
+        <div class="ms-azure-toggle-wrap">
+          <button type="button" class="btn-text-sm" onclick="toggleMsAzureSettings()">
+            ⚙️ Eigene Azure App-ID verwenden (optional)
+          </button>
+          <div class="ms-azure-settings-panel" id="msAzureSettingsPanel" style="display:none;">
+            <div class="form-group">
+              <label for="msCustomClientId">Azure Client ID (App-Registrierung):</label>
+              <input type="text" id="msCustomClientId" class="onboard-input" placeholder="z.B. de8bc8b5-d9f9-48b1-a8ad-b8c8da743074">
+            </div>
+            <div class="form-group">
+              <label for="msCustomTenantId">Tenant ID / Organisation:</label>
+              <input type="text" id="msCustomTenantId" class="onboard-input" placeholder="common (oder spezifische Tenant-GUID)">
+            </div>
+            <button type="button" class="btn-outlined" onclick="saveMsCustomAzureConfig()">ID speichern</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: OneDrive Cloud Synchronisierung & Account Status -->
+  <div class="desktop-modal-backdrop" id="msCloudModalBackdrop" style="display:none;">
+    <div class="desktop-modal-dialog ms-cloud-dialog">
+      <div class="modal-title-bar">
+        <div class="ms-title-left">
+          <span class="ms-quad-logo">
+            <span class="ms-sq r"></span><span class="ms-sq g"></span>
+            <span class="ms-sq b"></span><span class="ms-sq y"></span>
+          </span>
+          <h3>Microsoft & OneDrive Sync</h3>
+        </div>
+        <button class="modal-close-icon" onclick="closeMsCloudModal()">&times;</button>
+      </div>
+
+      <div class="ms-cloud-content">
+        <!-- Account Card -->
+        <div class="ms-account-card">
+          <div class="ms-acc-avatar" id="msAccAvatar">MS</div>
+          <div class="ms-acc-meta">
+            <h4 id="msAccName">Lade Account...</h4>
+            <span class="ms-acc-email" id="msAccEmail">account@microsoft.com</span>
+            <span class="ms-acc-type-pill" id="msAccType">Schüler-/Schulkonto</span>
+          </div>
+        </div>
+
+        <!-- OneDrive Status Box -->
+        <div class="ms-sync-status-box">
+          <div class="ms-sync-icon-wrap">
+            <svg class="onedrive-box-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+          </div>
+          <div class="ms-sync-info">
+            <div class="ms-sync-label">OneDrive Cloud-Speicher</div>
+            <div class="ms-sync-path">OneDrive: <code>/Apps/untis-go/untis_config.json</code></div>
+            <div class="ms-sync-last" id="msSyncLast">Letzter Stand: Noch nicht synchronisiert</div>
+          </div>
+        </div>
+
+        <!-- Sync Action Buttons -->
+        <div class="ms-sync-actions-row">
+          <button type="button" class="btn-filled" id="btnMsSyncUpload" onclick="syncOneDrive('upload')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            <span>Jetzt sichern (Upload)</span>
+          </button>
+          <button type="button" class="btn-outlined" id="btnMsSyncDownload" onclick="syncOneDrive('download')">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            <span>Aus OneDrive wiederherstellen</span>
+          </button>
+        </div>
+
+        <!-- Logout & Disconnect -->
+        <div class="ms-logout-wrap">
+          <button type="button" class="btn-danger-outline" onclick="logoutMicrosoft()">
+            Microsoft-Konto abmelden
           </button>
         </div>
       </div>

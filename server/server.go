@@ -16,19 +16,21 @@ import (
 	"time"
 
 	"github.com/benzjeremy/untis-go/api"
+	"github.com/benzjeremy/untis-go/cloud"
 	"github.com/benzjeremy/untis-go/db"
 	"github.com/benzjeremy/untis-go/updater"
 	"github.com/benzjeremy/untis-go/web"
 )
 
 // AppVersion defines the current application version
-const AppVersion = "1.5.2"
+const AppVersion = "1.6.0"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
 	database     *db.Database
 	sessionToken string
 	activeClient *api.Client
+	msClient     *cloud.MicrosoftClient
 	mu           sync.RWMutex
 	httpServer   *http.Server
 	listener     net.Listener
@@ -42,6 +44,7 @@ func NewServer(database *db.Database) *Server {
 	s := &Server{
 		database:     database,
 		sessionToken: token,
+		msClient:     cloud.NewMicrosoftClient(database, ""),
 	}
 
 	// Initialize active client if an active profile exists
@@ -111,8 +114,24 @@ func (s *Server) Start(port int) (string, error) {
 	apiMux.HandleFunc("/api/updates/check", s.handleUpdateCheck)
 	apiMux.HandleFunc("/api/updates/apply", s.handleUpdateApply)
 
+	// Microsoft Authentication & OneDrive Cloud-Sync (v1.6)
+	apiMux.HandleFunc("/api/auth/microsoft/status", s.handleMicrosoftStatus)
+	apiMux.HandleFunc("/api/auth/microsoft/login-url", s.handleMicrosoftLoginURL)
+	apiMux.HandleFunc("/api/auth/microsoft/callback", s.handleMicrosoftCallback)
+	apiMux.HandleFunc("/api/auth/microsoft/devicecode", s.handleMicrosoftDeviceCode)
+	apiMux.HandleFunc("/api/auth/microsoft/devicecode/poll", s.handleMicrosoftDeviceCodePoll)
+	apiMux.HandleFunc("/api/auth/microsoft/sync", s.handleMicrosoftSync)
+	apiMux.HandleFunc("/api/auth/microsoft/logout", s.handleMicrosoftLogout)
+	apiMux.HandleFunc("/api/auth/microsoft/config", s.handleMicrosoftConfig)
+
 	// Route dispatch with token verification for /api/
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		// Exempt OAuth2 callback from session token requirement because it is redirected from Microsoft login page
+		if r.URL.Path == "/api/auth/microsoft/callback" {
+			apiMux.ServeHTTP(w, r)
+			return
+		}
+
 		token := r.Header.Get("X-Session-Token")
 		if token == "" {
 			token = r.URL.Query().Get("token")
@@ -188,6 +207,7 @@ func (s *Server) Start(port int) (string, error) {
 
 	s.listener = ln
 	s.port = ln.Addr().(*net.TCPAddr).Port
+	s.msClient.SetRedirectURI(fmt.Sprintf("http://127.0.0.1:%d/api/auth/microsoft/callback", s.port))
 	s.httpServer = &http.Server{
 		Handler:      mux,
 		ReadTimeout:  25 * time.Second,
@@ -217,11 +237,26 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	client := s.activeClient
 	s.mu.RUnlock()
 
+	msAuth := s.msClient != nil && s.msClient.IsAuthenticated()
+	var msUser map[string]interface{}
+	if msAuth {
+		msUser = map[string]interface{}{
+			"id":          s.database.GetSetting("ms_user_id", ""),
+			"name":        s.database.GetSetting("ms_user_name", ""),
+			"email":       s.database.GetSetting("ms_user_email", ""),
+			"accountType": s.database.GetSetting("ms_account_type", ""),
+		}
+	}
+
 	activeProf, err := s.database.GetActiveProfile()
 	if err != nil || activeProf == nil {
 		// Needs Onboarding!
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"needsOnboarding": true,
+			"msRequired":      true,
+			"msLoggedIn":      msAuth,
+			"msUser":          msUser,
+			"msLastSync":      s.database.GetSetting("ms_last_sync", ""),
 			"theme":           s.database.GetSetting("theme", "dark"),
 			"defaultView":     s.database.GetSetting("default_view", "day"),
 		})
@@ -249,6 +284,10 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"needsOnboarding":   false,
+		"msRequired":        true,
+		"msLoggedIn":        msAuth,
+		"msUser":            msUser,
+		"msLastSync":        s.database.GetSetting("ms_last_sync", ""),
 		"activeProfileId":   activeProf.ID,
 		"profileName":       activeProf.Name,
 		"school":            activeProf.School,
@@ -2068,4 +2107,189 @@ func isValidGitHubReleaseURL(rawURL string) bool {
 
 	return true
 }
+
+// ==================== MICROSOFT AUTH & ONEDRIVE SYNC (v1.6) ====================
+
+// Handler: /api/auth/microsoft/status
+func (s *Server) handleMicrosoftStatus(w http.ResponseWriter, r *http.Request) {
+	isAuth := s.msClient != nil && s.msClient.IsAuthenticated()
+	res := map[string]interface{}{
+		"required": true,
+		"loggedIn": isAuth,
+		"lastSync": s.database.GetSetting("ms_last_sync", ""),
+		"clientId": s.msClient.GetClientID(),
+		"tenantId": s.msClient.GetTenant(),
+	}
+	if isAuth {
+		res["user"] = map[string]interface{}{
+			"id":          s.database.GetSetting("ms_user_id", ""),
+			"name":        s.database.GetSetting("ms_user_name", ""),
+			"email":       s.database.GetSetting("ms_user_email", ""),
+			"accountType": s.database.GetSetting("ms_account_type", ""),
+		}
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// Handler: /api/auth/microsoft/login-url
+func (s *Server) handleMicrosoftLoginURL(w http.ResponseWriter, r *http.Request) {
+	authURL, err := s.msClient.GetAuthURL()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"authUrl": authURL})
+}
+
+// Handler: /api/auth/microsoft/callback
+func (s *Server) handleMicrosoftCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	errParam := r.URL.Query().Get("error")
+	errDesc := r.URL.Query().Get("error_description")
+
+	if errParam != "" {
+		http.Redirect(w, r, fmt.Sprintf("/?token=%s&ms_error=%s", s.sessionToken, url.QueryEscape(errDesc)), http.StatusTemporaryRedirect)
+		return
+	}
+
+	userInfo, err := s.msClient.HandleCallback(code, state)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/?token=%s&ms_error=%s", s.sessionToken, url.QueryEscape(err.Error())), http.StatusTemporaryRedirect)
+		return
+	}
+
+	// Auto-sync configuration on successful login
+	go func() {
+		if cloudData, dlErr := s.msClient.DownloadConfigFromOneDrive(); dlErr == nil && len(cloudData) > 0 {
+			_ = cloud.ImportConfigToLocal(s.database, cloudData)
+		} else {
+			if exportData, exErr := cloud.ExportLocalConfig(s.database); exErr == nil && len(exportData) > 0 {
+				_ = s.msClient.UploadConfigToOneDrive(exportData)
+			}
+		}
+	}()
+
+	http.Redirect(w, r, fmt.Sprintf("/?token=%s&ms_auth=success&ms_name=%s", s.sessionToken, url.QueryEscape(userInfo.DisplayName)), http.StatusTemporaryRedirect)
+}
+
+// Handler: /api/auth/microsoft/devicecode
+func (s *Server) handleMicrosoftDeviceCode(w http.ResponseWriter, r *http.Request) {
+	dResp, err := s.msClient.StartDeviceCode()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, dResp)
+}
+
+// Handler: /api/auth/microsoft/devicecode/poll
+func (s *Server) handleMicrosoftDeviceCodePoll(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		DeviceCode string `json:"device_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.DeviceCode == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "device_code erforderlich"})
+		return
+	}
+
+	userInfo, err := s.msClient.PollDeviceCode(body.DeviceCode)
+	if err != nil {
+		if err.Error() == "authorization_pending" {
+			writeJSON(w, http.StatusOK, map[string]interface{}{"status": "pending"})
+			return
+		} else if err.Error() == "slow_down" {
+			writeJSON(w, http.StatusOK, map[string]interface{}{"status": "slow_down"})
+			return
+		}
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "error": err.Error()})
+		return
+	}
+
+	// Auto-sync after device login
+	go func() {
+		if cloudData, dlErr := s.msClient.DownloadConfigFromOneDrive(); dlErr == nil && len(cloudData) > 0 {
+			_ = cloud.ImportConfigToLocal(s.database, cloudData)
+		} else {
+			if exportData, exErr := cloud.ExportLocalConfig(s.database); exErr == nil && len(exportData) > 0 {
+				_ = s.msClient.UploadConfigToOneDrive(exportData)
+			}
+		}
+	}()
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "success",
+		"user":   userInfo,
+	})
+}
+
+// Handler: /api/auth/microsoft/sync
+func (s *Server) handleMicrosoftSync(w http.ResponseWriter, r *http.Request) {
+	if !s.msClient.IsAuthenticated() {
+		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{"error": "Nicht mit Microsoft angemeldet"})
+		return
+	}
+
+	var req struct {
+		Action string `json:"action"` // "upload" or "download"
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	if req.Action == "download" {
+		data, err := s.msClient.DownloadConfigFromOneDrive()
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": err.Error()})
+			return
+		}
+		if err := cloud.ImportConfigToLocal(s.database, data); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success":  true,
+			"message":  "Konfiguration erfolgreich aus OneDrive wiederhergestellt",
+			"lastSync": s.database.GetSetting("ms_last_sync", ""),
+		})
+		return
+	}
+
+	// Default: Upload
+	data, err := cloud.ExportLocalConfig(s.database)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+		return
+	}
+	if err := s.msClient.UploadConfigToOneDrive(data); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"message":  "Konfiguration erfolgreich in OneDrive gesichert",
+		"lastSync": s.database.GetSetting("ms_last_sync", ""),
+	})
+}
+
+// Handler: /api/auth/microsoft/logout
+func (s *Server) handleMicrosoftLogout(w http.ResponseWriter, r *http.Request) {
+	_ = s.msClient.Logout()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// Handler: /api/auth/microsoft/config
+func (s *Server) handleMicrosoftConfig(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ClientID string `json:"clientId"`
+		TenantID string `json:"tenantId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"error": "Ungültiger Request-Body"})
+		return
+	}
+	_ = s.database.SetSetting("ms_client_id", strings.TrimSpace(body.ClientID))
+	_ = s.database.SetSetting("ms_tenant_id", strings.TrimSpace(body.TenantID))
+	writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
 
