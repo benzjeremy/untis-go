@@ -169,7 +169,7 @@ func ExportLocalConfig(database *db.Database) ([]byte, error) {
 	}
 
 	payload := ConfigPayload{
-		Version:      "1.6.0",
+		Version:      "2.1",
 		ExportedAt:   time.Now().UTC().Format(time.RFC3339),
 		AccountEmail: cleanSettings["ms_user_email"],
 		Settings:     cleanSettings,

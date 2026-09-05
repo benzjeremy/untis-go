@@ -2597,11 +2597,11 @@
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
     {
-      version: 'v2.1.0',
-      title: 'Release v2.1.0 – Native Bestätigungs-GUIs & Wayland Icon-Integration',
+      version: 'v2.1',
+      title: 'Release v2.1 – Native Bestätigungs-GUIs & Wayland Icon-Integration',
       type: 'feature',
       date: '05.09.2026',
-      badge: 'Release v2.1.0',
+      badge: 'Release v2.1',
       description: 'Feature- und Polish-Release v2.1: Vollständiger Ersatz aller verbliebenen Browser-Dialoge durch eigene, native Bestätigungs-GUIs im eleganten App-Design sowie automatische Wayland- und Linux-Desktop-Icon-Integration.',
       sections: [
         {
@@ -2621,11 +2621,11 @@
       ]
     },
     {
-      version: 'v2.0.0',
-      title: 'Major Release v2.0.0 – Native Go Desktop-Anwendung & Dashboard-Upgrade',
+      version: 'v2.0',
+      title: 'Major Release v2.0 – Native Go Desktop-Anwendung & Dashboard-Upgrade',
       type: 'major',
       date: '05.09.2026',
-      badge: 'Release v2.0.0',
+      badge: 'Release v2.0',
       description: 'Großer Meilenstein v2.0: Vollständiger Umstieg von einer einfachen Web-Schnittstelle auf eine gehärtete native Go-Desktop-Anwendung. Universelle Stundenplan-Auswahl im Dashboard für alle Nutzer (persönlicher Plan oder beliebige Klasse), AES-256-GCM verschlüsselte OneDrive-Backups und umfassendes Sicherheits-Hardening.',
       sections: [
         {
@@ -2653,11 +2653,11 @@
       ]
     },
     {
-      version: 'v1.6.0',
-      title: 'Major Release v1.6.0 – Microsoft 365 & OneDrive Cloud-Sync',
+      version: 'v1.6',
+      title: 'Major Release v1.6 – Microsoft 365 & OneDrive Cloud-Sync',
       type: 'major',
       date: '05.09.2026',
-      badge: 'Release v1.6.0',
+      badge: 'Release v1.6',
       description: 'Großes Feature-Release: Pflicht-Integration von Microsoft 365 (persönliche Konten sowie Schüler-/Schulaccounts via Entra ID) mit automatischer OneDrive-Cloud-Synchronisierung für Konfigurationen und Stundenpläne, plus serverseitiger Datumsfilter-Hotfix für Wochenend- und Samstagspläne.',
       sections: [
         {
