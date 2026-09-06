@@ -1,32 +1,32 @@
 /* ==================== UNTIS GO WIKI STYLES ==================== */
 :root {
-  --bg-page: #0a0c10;
-  --bg-surface: #12161f;
-  --bg-card: #181d28;
-  --bg-card-hover: #1f2533;
+  --bg-page: #080a0f;
+  --bg-surface: #0e121b;
+  --bg-card: #141a26;
+  --bg-card-hover: #1a2232;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
 
-  --accent-orange: #ff6033;
-  --accent-orange-hover: #ff764d;
-  --accent-glow: rgba(255, 96, 51, 0.35);
+  --accent-orange: #f97316;
+  --accent-orange-hover: #fb923c;
+  --accent-glow: rgba(249, 115, 22, 0.35);
 
-  --accent-blue: #388bfd;
-  --accent-green: #2ea043;
-  --accent-red: #f85149;
-  --accent-yellow: #d29922;
+  --accent-blue: #38bdf8;
+  --accent-green: #10b981;
+  --accent-red: #f87171;
+  --accent-yellow: #f59e0b;
 
-  --text-primary: #f0f6fc;
-  --text-secondary: #9aa4b2;
-  --text-muted: #626d7d;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
   --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
 
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 }
 
 * {

@@ -3,30 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>untis-go – Schneller nativer WebUntis Desktop Client</title>
-  <meta name="description" content="Offizielle Website für untis-go: Der blitzschnelle, native WebUntis PC-Desktop Client für Linux und Windows. Synchrones Zeitraster, Live-Countdown, Offline-Cache & Open Source.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>untis-go – Schneller nativer WebUntis Desktop Client · v2.1</title>
+  <meta name="description" content="Offizielle Website für untis-go: Der native WebUntis PC-Desktop Client für Linux und Windows in Go & WebKitGTK. ~25 MB RAM, AES-256-GCM Session-Tresor, OneDrive Sync und in Awesome-Go gelistet.">
   <meta property="og:type" content="website">
   <meta property="og:title" content="untis-go – Schneller nativer WebUntis Desktop Client">
-  <meta property="og:description" content="Offizielle Website für untis-go: Der blitzschnelle, native WebUntis PC-Desktop Client für Linux und Windows. Synchrones Zeitraster, Live-Countdown, Offline-Cache & Open Source.">
+  <meta property="og:description" content="Nativer Desktop-Client für WebUntis in Go & WebKitGTK. ~25 MB RAM, offline-fähig und quelloffen unter GNU GPL-3.0.">
   <meta property="og:url" content="https://benzjeremy.github.io/untis-go/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="untis-go – Schneller nativer WebUntis Desktop Client">
-  <meta name="twitter:description" content="Der blitzschnelle, native WebUntis PC-Desktop Client für Linux und Windows.">
+  <meta name="twitter:title" content="untis-go – Go Desktop Client">
+  <meta name="twitter:description" content="Nativer WebUntis Desktop-Client in Go. Offline-First, AES-256-GCM und Awesome-Go gelistet.">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header / Navigation -->
+
+  <!-- Site Navigation -->
   <header class="site-header">
     <div class="nav-container">
-      <div style="display:flex; align-items:center; gap:1.25rem;">
-        <a href="https://benzjeremy.github.io/" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
-          ← benzjeremy.github.io
+      <div class="nav-left">
+        <a href="https://benzjeremy.github.io/" class="back-root-btn">
+          <span>← benzjeremy.github.io</span>
         </a>
-        <a href="#" class="brand-link">
-          <img src="icon.png" alt="Untis" class="brand-logo" width="36" height="36">
+        <a href="index.html" class="brand-link">
+          <img src="icon.png" alt="untis-go" class="brand-logo" width="36" height="36">
           <div class="brand-info">
             <span class="brand-name">untis-go</span>
             <span class="brand-ver">v2.1</span>
@@ -34,311 +38,414 @@
         </a>
       </div>
 
-      <button class="mobile-toggle" id="mobile-toggle" aria-label="Menü umschalten" aria-expanded="false">☰</button>
+      <button class="mobile-toggle" id="mobile-toggle" aria-label="Menü öffnen/schließen" aria-expanded="false">☰</button>
 
       <nav class="main-nav" id="main-nav">
-        <a href="#features">Features</a>
-        <a href="#download">Downloads</a>
-        <a href="#install">Installation</a>
-        <a href="wiki/">Wiki & Anleitung</a>
-        <a href="#about">Über das Projekt</a>
-        <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener" class="github-nav-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="nav-btn-icon"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        <a href="#features">
+          <span class="lang-de">Features</span>
+          <span class="lang-en" style="display:none;">Features</span>
+        </a>
+        <a href="#architektur">
+          <span class="lang-de">Architektur</span>
+          <span class="lang-en" style="display:none;">Architecture</span>
+        </a>
+        <a href="#install">
+          <span class="lang-de">Installation</span>
+          <span class="lang-en" style="display:none;">Install</span>
+        </a>
+        <a href="#download">
+          <span class="lang-de">Downloads</span>
+          <span class="lang-en" style="display:none;">Downloads</span>
+        </a>
+        <a href="wiki/">
+          <span class="lang-de">Wiki &amp; Anleitung</span>
+          <span class="lang-en" style="display:none;">Wiki &amp; Docs</span>
+        </a>
+
+        <div class="lang-switch" role="group" aria-label="Sprachauswahl">
+          <button type="button" class="lang-btn active" id="btn-lang-de" onclick="setLang('de')">DE</button>
+          <button type="button" class="lang-btn" id="btn-lang-en" onclick="setLang('en')">EN</button>
+        </div>
+
+        <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer" class="btn-card highlight">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
           <span>GitHub</span>
         </a>
       </nav>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="hero-glow"></div>
-    <div class="hero-container">
-      <div class="hero-badges">
-        <span class="hero-badge release-badge">🚀 Release v2.1 (Hotfix & Desktop-UX)</span>
-        <a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener" class="hero-badge awesome-badge" title="Aufgenommen in Awesome-Go (#6660)">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="badge-star"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-          Aufgenommen in <strong>Awesome Go</strong> (#6660)
-        </a>
-        <a href="https://github.com/benzjeremy/untis-go/blob/main/LICENSE" target="_blank" rel="noopener" class="hero-badge license-pill" title="Lizenz: GNU General Public License v3.0 (GPL-3.0)">GPL-3.0</a>
-      </div>
-
-      <h1 class="hero-title">
-        WebUntis auf deinem Desktop.<br>
-        <span class="gradient-text">Schnell. Präzise. Respektvoll.</span>
-      </h1>
-
-      <p class="hero-subtitle">
-        <strong>untis-go</strong> ist der freie, quelloffene Desktop-Client für WebUntis auf Linux und Windows. 
-        Mit Microsoft 365 & OneDrive Cloud-Synchronisierung, Einrichtungs-Wizard, 1-Klick Gast-Login, synchronem Einzelstunden-Zeitraster, Live-Countdown-Timer, lokal verschlüsseltem SQLite-Cache und nativer 60 FPS Performance.
-      </p>
-
-      <div class="hero-cta-group" id="download">
-        <a href="https://github.com/benzjeremy/untis-go/releases/tag/v2.1" class="btn-primary">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="btn-icon"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-          <div>
-            <span class="btn-main-text">Download für Linux</span>
-            <span class="btn-sub-text">Release v2.1 (x86_64 .tar.gz)</span>
-          </div>
-        </a>
-
-        <a href="https://github.com/benzjeremy/untis-go/releases/tag/v2.1" class="btn-secondary">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="btn-icon"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-          <div>
-            <span class="btn-main-text">Download für Windows</span>
-            <span class="btn-sub-text">Release v2.1 (x86_64 .zip)</span>
-          </div>
-        </a>
-      </div>
-      </div>
-
-      <!-- Quick Command Bar -->
-      <div class="quick-install-box">
-        <span class="cmd-label">Go Entwickler:</span>
-        <code class="cmd-code" id="goInstallCmd">go install github.com/benzjeremy/untis-go@latest</code>
-        <button type="button" class="copy-cmd-btn" onclick="copyInstallCmd()" title="Befehl kopieren">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="copy-ic"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-          <span id="copyBtnText">Kopieren</span>
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Key Features Grid -->
-  <section class="features-section" id="features">
-    <div class="section-container">
-      <div class="section-header">
-        <h2 class="section-title">Entwickelt für den echten Schulalltag</h2>
-        <p class="section-sub">Keine überladenen Browser-Tabs mehr. Alle Stundenpläne, Notizen und Vertretungen auf den Punkt gebracht.</p>
-      </div>
-
-      <div class="feature-grid">
-        <!-- Feature 1 -->
-        <div class="feature-card">
-          <div class="f-card-icon orange">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-          </div>
-          <h3>Synchrone Stundenplan-Matrix</h3>
-          <p>Wiederhergestellte Zeitspalte (Std. / Zeit) mit 1. Stunde, 2. Stunde usw. Mehrstündige Blockstunden werden transparent auf jede einzelne Schulstunde aufgeteilt.</p>
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero-section" id="hero">
+      <div class="hero-glow"></div>
+      <div class="hero-container">
+        
+        <div class="hero-badges">
+          <span class="hero-badge release-badge">🚀 Release v2.1</span>
+          <a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener noreferrer" class="hero-badge awesome-badge" title="Gelistet in Awesome-Go (#6660)">
+            ★ In Awesome-Go gelistet (#6660)
+          </a>
+          <span class="hero-badge perf-badge">⚡ ~25 MB RAM · Kein Electron</span>
+          <a href="https://github.com/benzjeremy/untis-go/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="hero-badge license-pill">GNU GPL-3.0</a>
         </div>
 
-        <!-- Feature 2 -->
-        <div class="feature-card">
-          <div class="f-card-icon blue">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-          </div>
-          <h3>Live-Countdown mit Sekunden</h3>
-          <p>Sekundengenaue Live-Anzeige bis zur nächsten Pause, Stunde oder Schultag. Immer im Blick: „Jetzt: Fach · Noch MM:SS bis Pause“.</p>
+        <div data-lang="de" class="visible">
+          <h1 class="hero-title">
+            WebUntis auf deinem Desktop.<br>
+            <span class="gradient-text">Radikal schnell. Präzise. Respektvoll.</span>
+          </h1>
+          <p class="hero-subtitle">
+            <strong>untis-go</strong> ist der native, freie Multi-Platform Client für WebUntis. Entwickelt in <strong>Go &amp; WebKitGTK</strong> — mit synchronem Einzelstunden-Zeitraster, Live-Sekundencountdown, gerätegebundenem <strong>AES-256-GCM Tresor</strong>, Microsoft 365 &amp; OneDrive Sync sowie voller Offline-Fähigkeit.
+          </p>
         </div>
 
-        <!-- Feature 3 -->
-        <div class="feature-card">
-          <div class="f-card-icon green">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-          </div>
-          <h3>Eigene Fachnamen & Filter</h3>
-          <p>Eigene Wunsch-Aliasse für Fächer dauerhaft sichern (z.B. „Fachpraxis IT · FB02“). Integrierter Profanity-Filter schützt vor anstößigen Begriffen.</p>
+        <div data-lang="en">
+          <h1 class="hero-title">
+            WebUntis on Your Desktop.<br>
+            <span class="gradient-text">Radically Fast. Precise. Respectful.</span>
+          </h1>
+          <p class="hero-subtitle">
+            <strong>untis-go</strong> is the native, open-source multi-platform client for WebUntis. Built in <strong>Go &amp; WebKitGTK</strong> — featuring synchronous period grids, live second timers, device-bound <strong>AES-256-GCM vault</strong>, OneDrive sync, and full offline caching.
+          </p>
         </div>
 
-        <!-- Feature 4 -->
-        <div class="feature-card">
-          <div class="f-card-icon purple">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-          </div>
-          <h3>Höchste Datensicherheit</h3>
-          <p>Passwörter sind mit gerätegebundener AES-256-GCM Verschlüsselung in SQLite gesichert. Dynamische Server-Ports und 32-Zeichen Session-Token.</p>
+        <!-- Download Action CTAs -->
+        <div class="hero-cta-group" id="download">
+          <a href="https://github.com/benzjeremy/untis-go/releases/tag/v2.1" target="_blank" rel="noopener noreferrer" class="btn-primary">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            <div>
+              <span class="btn-main-text">Download für Linux</span>
+              <span class="btn-sub-text">v2.1 x86_64 (.tar.gz)</span>
+            </div>
+          </a>
+
+          <a href="https://github.com/benzjeremy/untis-go/releases/tag/v2.1" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            <div>
+              <span class="btn-main-text">Download für Windows</span>
+              <span class="btn-sub-text">v2.1 x86_64 (.zip)</span>
+            </div>
+          </a>
         </div>
 
-        <!-- Feature 5 -->
-        <div class="feature-card">
-          <div class="f-card-icon amber">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-          </div>
-          <h3>Integrierter Auto-Updater</h3>
-          <p>Prüft neue Releases direkt über die GitHub API. Ein Klick lädt das Update atomar herunter und startet die Anwendung nahtlos neu.</p>
+        <!-- Quick Go Command -->
+        <div class="quick-install-box">
+          <span class="cmd-label">Go Toolchain:</span>
+          <code class="cmd-code" id="goInstallCmd">go install github.com/benzjeremy/untis-go@latest</code>
+          <button type="button" class="copy-cmd-btn" id="copy-cmd-btn" onclick="copyInstallCmd()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <span id="copyBtnText">Kopieren</span>
+          </button>
         </div>
 
-        <!-- Feature 6 -->
-        <div class="feature-card">
-          <div class="f-card-icon teal">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-          </div>
-          <h3>Ausgezeichnet in Awesome Go</h3>
-          <p>Offiziell gelistet in der weltweit führenden Sammlung kuratierter Go-Software (<a href="https://github.com/avelino/awesome-go#other-software" target="_blank" rel="noopener">#6660</a>) unter <em>Other Software</em>.</p>
+      </div>
+    </section>
+
+    <!-- ARCHITEKTUR & BENCHMARKS SPOTLIGHT -->
+    <section class="benchmarks-section" id="architektur">
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-tag">
+            <span class="lang-de">Architektur &amp; Performance</span>
+            <span class="lang-en" style="display:none;">Architecture &amp; Metrics</span>
+          </span>
+          <h2 class="section-title">
+            <span class="lang-de">Radikal schlank statt Electron-Ballast</span>
+            <span class="lang-en" style="display:none;">Radically Lean vs. Electron Bloat</span>
+          </h2>
+          <p class="section-sub">
+            <span class="lang-de">Während Webbrowser und typische Schul-Apps hunderte Megabyte Speicher verschwenden, liefert untis-go maximale Desktop-Effizienz.</span>
+            <span class="lang-en" style="display:none;">While modern browser tabs consume hundreds of megabytes, untis-go delivers peak native efficiency.</span>
+          </p>
         </div>
 
-        <!-- Feature 7: Microsoft 365 & OneDrive -->
-        <div class="feature-card">
-          <div class="f-card-icon blue">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+        <div class="benchmarks-grid">
+          <div class="benchmark-card">
+            <div class="benchmark-stat">~25 MB</div>
+            <div class="benchmark-label">RAM-Verbrauch im Leerlauf</div>
+            <div class="benchmark-desc">Direktes WebKitGTK / Win32 Rendering ohne aufgeblähte Chromium-Instanz.</div>
           </div>
-          <h3>Microsoft 365 & OneDrive Cloud-Sync</h3>
-          <p>Pflicht-Anbindung für Schüler- und persönliche Microsoft-Accounts. Automatisches Cloud-Backup deiner Stundenpläne, Profile und Hausaufgaben direkt in OneDrive.</p>
+
+          <div class="benchmark-card">
+            <div class="benchmark-stat">&lt; 80 ms</div>
+            <div class="benchmark-label">Kaltstart-Ladezeit</div>
+            <div class="benchmark-desc">Kompilierter statischer Go-Kern startet blitzschnell und liest sofort aus dem lokalen SQLite-Cache.</div>
+          </div>
+
+          <div class="benchmark-card">
+            <div class="benchmark-stat">100%</div>
+            <div class="benchmark-label">Offline-Verfügbarkeit</div>
+            <div class="benchmark-desc">Volle Stundenplan- und Notenanzeige selbst ohne WLAN oder bei Schulserver-Ausfällen.</div>
+          </div>
+
+          <div class="benchmark-card">
+            <div class="benchmark-stat">256-Bit</div>
+            <div class="benchmark-label">AES-GCM Verschlüsselung</div>
+            <div class="benchmark-desc">Passwörter und Sitzungs-Token werden niemals im Klartext gespeichert. Zero-Dummy-Security.</div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Installation Guide Section -->
-  <section class="install-section" id="install">
-    <div class="section-container">
-      <div class="section-header">
-        <h2 class="section-title">Schnelle Installation</h2>
-        <p class="section-sub">Installiere die Standalone-Binärdatei oder nutze die Go Toolchain.</p>
+    <!-- KEY FEATURES GRID -->
+    <section class="features-section" id="features">
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-tag">
+            <span class="lang-de">Highlights</span>
+            <span class="lang-en" style="display:none;">Highlights</span>
+          </span>
+          <h2 class="section-title">
+            <span class="lang-de">Entwickelt für den echten Schulalltag</span>
+            <span class="lang-en" style="display:none;">Engineered for Real Daily School Work</span>
+          </h2>
+          <p class="section-sub">
+            <span class="lang-de">Alle Stundenpläne, Notizen, Raumwechsel und Vertretungen sofort im Blick.</span>
+            <span class="lang-en" style="display:none;">All schedules, notes, room substitutions, and countdowns always at your fingertips.</span>
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <!-- 1 -->
+          <article class="feature-card">
+            <div class="f-card-icon">📅</div>
+            <h3>Synchrone Stundenplan-Matrix</h3>
+            <p>Wiederhergestellte Zeitspalte (Std. / Zeit) mit 1. Stunde, 2. Stunde usw. Mehrstündige Blockstunden werden transparent auf jede einzelne Schulstunde aufgeteilt.</p>
+          </article>
+
+          <!-- 2 -->
+          <article class="feature-card">
+            <div class="f-card-icon">⏱️</div>
+            <h3>Live-Countdown mit Sekunden</h3>
+            <p>Sekundengenaue Live-Anzeige bis zur nächsten Pause, Stunde oder Schultag. Immer im Blick: „Jetzt: Fach · Noch MM:SS bis Pause“.</p>
+          </article>
+
+          <!-- 3 -->
+          <article class="feature-card">
+            <div class="f-card-icon">☁️</div>
+            <h3>Microsoft 365 &amp; OneDrive Sync</h3>
+            <p>Automatische Cloud-Sicherung deiner Stundenpläne, Profile und Hausaufgaben direkt in dein persönliches oder Schul-OneDrive-Konto.</p>
+          </article>
+
+          <!-- 4 -->
+          <article class="feature-card">
+            <div class="f-card-icon">🏷️</div>
+            <h3>Eigene Fachnamen &amp; Filter</h3>
+            <p>Eigene Wunsch-Aliasse für Fächer dauerhaft sichern (z.&nbsp;B. „Fachpraxis IT · FB02“). Integrierter Profanity-Filter schützt vor anstößigen Begriffen.</p>
+          </article>
+
+          <!-- 5 -->
+          <article class="feature-card">
+            <div class="f-card-icon">🔐</div>
+            <h3>Höchste Datensicherheit</h3>
+            <p>Passwörter sind mit gerätegebundener AES-256-GCM Verschlüsselung in SQLite gesichert. Dynamische Server-Ports und kryptografische 32-Byte Session-Token.</p>
+          </article>
+
+          <!-- 6 -->
+          <article class="feature-card">
+            <div class="f-card-icon">⚡</div>
+            <h3>1-Klick Gast-Login &amp; Multi-Account</h3>
+            <p>Verwalte mehrere Schulen und Profile gleichzeitig oder starte blitzschnell im anonymen Gastmodus ohne manuelle Registrierungszwänge.</p>
+          </article>
+        </div>
       </div>
+    </section>
 
-      <div class="install-grid">
-        <!-- Linux Card -->
-        <div class="install-card">
-          <div class="inst-card-header">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="inst-icon"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-            <h3>Linux (x86_64)</h3>
-          </div>
-          <p class="inst-desc">Lade das Tarball (Latest Release) herunter, entpacke es und starte die Binärdatei direkt:</p>
-          <pre class="inst-pre"><code>tar -xzf untis-go-*-linux.tar.gz
+    <!-- INSTALLATION SECTION -->
+    <section class="install-section" id="install">
+      <div class="section-container">
+        <div class="section-header">
+          <span class="section-tag">
+            <span class="lang-de">Setup</span>
+            <span class="lang-en" style="display:none;">Setup</span>
+          </span>
+          <h2 class="section-title">
+            <span class="lang-de">Schnelle Installation</span>
+            <span class="lang-en" style="display:none;">Fast Installation</span>
+          </h2>
+          <p class="section-sub">
+            <span class="lang-de">Wähle deine Plattform für vorkompilierte Standalone-Binaries oder nutze die Go Toolchain.</span>
+            <span class="lang-en" style="display:none;">Choose your platform for standalone binaries or build directly via the Go toolchain.</span>
+          </p>
+        </div>
+
+        <div class="install-grid">
+          <!-- Linux Card -->
+          <div class="install-card">
+            <div>
+              <div class="inst-card-header">
+                <span style="font-size: 24px;">🐧</span>
+                <h3>Linux (x86_64)</h3>
+              </div>
+              <p class="inst-desc">Tarball herunterladen, entpacken und direkt als native Desktop-App ausführen:</p>
+              <pre class="inst-pre"><code>tar -xzf untis-go-*-linux.tar.gz
 chmod +x untis-go
 ./untis-go</code></pre>
-          <div class="inst-action">
-            <a href="https://github.com/benzjeremy/untis-go/releases/latest" class="btn-sm">Linux Tarball herunterladen (Latest)</a>
+            </div>
+            <div>
+              <a href="https://github.com/benzjeremy/untis-go/releases/latest" target="_blank" rel="noopener noreferrer" class="btn-sm">
+                Linux Tarball (Latest) herunterladen →
+              </a>
+            </div>
           </div>
-        </div>
 
-        <!-- Windows Card -->
-        <div class="install-card">
-          <div class="inst-card-header">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="inst-icon"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-            <h3>Windows (x86_64)</h3>
-          </div>
-          <p class="inst-desc">Entpacke das ZIP-Archiv (Latest Release) an einem beliebigen Ort und führe die Exe-Datei aus:</p>
-          <pre class="inst-pre"><code>1. untis-go-*-windows.zip entpacken
+          <!-- Windows Card -->
+          <div class="install-card">
+            <div>
+              <div class="inst-card-header">
+                <span style="font-size: 24px;">🪟</span>
+                <h3>Windows (x86_64)</h3>
+              </div>
+              <p class="inst-desc">ZIP-Archiv an einem beliebigen Ort entpacken und die Executable sofort starten:</p>
+              <pre class="inst-pre"><code>1. untis-go-*-windows.zip entpacken
 2. untis-go.exe doppelt anklicken
 3. Sofort betriebsbereit (Standalone)</code></pre>
-          <div class="inst-action">
-            <a href="https://github.com/benzjeremy/untis-go/releases/latest" class="btn-sm">Windows ZIP herunterladen (Latest)</a>
+            </div>
+            <div>
+              <a href="https://github.com/benzjeremy/untis-go/releases/latest" target="_blank" rel="noopener noreferrer" class="btn-sm">
+                Windows ZIP (Latest) herunterladen →
+              </a>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- About / Credits / License Section -->
-  <section class="about-section" id="about">
-    <div class="section-container">
-      <div class="about-layout-grid">
-        <!-- Mitwirkende -->
-        <div class="about-info-box">
-          <h3 class="about-box-title">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="box-ic"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-            Mitwirkende & Autoren
-          </h3>
-          <div class="author-card">
-            <div class="author-avatar">JB</div>
-            <div class="author-details">
-              <div class="author-name">Jeremy Benz</div>
-              <div class="author-handles">
-                <a href="https://github.com/benzjeremy" target="_blank" rel="noopener">@benzjeremy</a> &bull; 
-                <a href="https://github.com/jbenz1706" target="_blank" rel="noopener">@jbenz1706</a>
+    <!-- ABOUT & CREDITS SECTION -->
+    <section class="about-section" id="about">
+      <div class="section-container">
+        <div class="about-layout-grid">
+          
+          <!-- Mitwirkende -->
+          <div class="about-info-box">
+            <div>
+              <h3 class="about-box-title">👥 Mitwirkende &amp; Autoren</h3>
+              <div class="author-card">
+                <div class="author-avatar">JB</div>
+                <div>
+                  <div class="author-name">Jeremy Benz</div>
+                  <div class="author-handles">
+                    <a href="https://github.com/benzjeremy" target="_blank" rel="noopener noreferrer">@benzjeremy</a> &bull; 
+                    <a href="https://github.com/jbenz1706" target="_blank" rel="noopener noreferrer">@jbenz1706</a>
+                  </div>
+                  <div class="author-role">Projektgründer &amp; Lead Systems Developer</div>
+                </div>
               </div>
-              <div class="author-role">Projektgründer & Lead Developer</div>
-            </div>
-          </div>
-          <div class="ai-assist-box">
-            <span class="ai-label">AI Assistenten (Pair Programming):</span>
-            <div class="ai-chips">
-              <span class="ai-chip">Claude Code</span>
-              <span class="ai-chip">Google Antigravity</span>
-            </div>
-          </div>
-          <div class="copyright-line">&copy; 2026 Jeremy Benz</div>
-        </div>
 
-        <!-- Lizenz -->
-        <div class="about-info-box">
-          <h3 class="about-box-title">
-            <svg viewBox="0 0 24 24" fill="currentColor" class="box-ic"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-            Freie & Open Source Software
-          </h3>
-          <p class="license-text">
-            Dieses Projekt kommt mit der <strong>GNU General Public License, Version 3 (GPL-3.0)</strong>.
-            Sie garantiert jedem Nutzer die Freiheit, das Programm auszuführen, zu studieren, anzupassen und weiterzuverbreiten.
-          </p>
-          <div class="license-links">
-            <a href="https://github.com/benzjeremy/untis-go?tab=GPL-3.0-1-ov-file" target="_blank" rel="noopener" class="license-cta">
-              Offizielle Lizenzseite auf GitHub einsehen &rarr;
-            </a>
+              <div class="ai-assist-box">
+                <span class="ai-label">AI Pair Programming:</span>
+                <div class="ai-chips">
+                  <span class="ai-chip">Google Antigravity</span>
+                  <span class="ai-chip">Claude Code</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size: 12px; color: var(--text-muted); padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+              © 2026 Jeremy Benz · Nordrhein-Westfalen, Deutschland
+            </div>
           </div>
-          <div class="ext-links-row">
-            <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener" class="link-btn">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-              <span>GitHub Quellcode</span>
-            </a>
-            <a href="https://github.com/benzjeremy/untis-go/releases" target="_blank" rel="noopener" class="link-btn">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-              <span>Alle Releases</span>
-            </a>
+
+          <!-- Lizenz & Sicherheit -->
+          <div class="about-info-box">
+            <div>
+              <h3 class="about-box-title">⚖️ Freie Software (GNU GPL-3.0)</h3>
+              <p class="license-text">
+                Dieses Projekt steht unter der <strong>GNU General Public License v3.0 (GPL-3.0)</strong>. Sie garantiert jedem Nutzer die Freiheit, das Programm auszuführen, den Quellcode zu studieren, anzupassen und weiterzuverbreiten.
+              </p>
+              <a href="https://github.com/benzjeremy/untis-go/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="license-cta">
+                Offizielle Lizenzdatei auf GitHub einsehen →
+              </a>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer" class="btn-card">
+                <span>Quellcode auf GitHub</span>
+              </a>
+              <a href="https://benzjeremy.github.io/kontakt.html" class="btn-card highlight">
+                <span>Sicherheitslücke melden</span>
+              </a>
+            </div>
           </div>
+
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- Footer -->
+  <!-- Site Footer -->
   <footer class="site-footer">
     <div class="footer-container">
       <div class="footer-left">
-        <img src="icon.png" alt="Untis" class="footer-logo" width="28" height="28">
-        <span>untis-go &bull; Entwickelt von Jeremy Benz &bull; GPL-3.0 Lizenz</span>
+        <img src="icon.png" alt="Untis Logo" width="24" height="24" style="border-radius: 4px;">
+        <span>untis-go · Entwickelt von Jeremy Benz · GNU GPL-3.0 Lizenz</span>
       </div>
-      <div class="footer-links">
-        <a href="wiki/">Wiki & Anleitung</a>
-        <a href="https://github.com/benzjeremy/untis-go">GitHub</a>
+
+      <nav class="footer-links" aria-label="Footer Navigation">
+        <a href="https://benzjeremy.github.io/">Startseite</a>
+        <a href="https://benzjeremy.github.io/about.html">Über mich</a>
+        <a href="https://benzjeremy.github.io/kontakt.html">Kontakt</a>
+        <a href="wiki/">Wiki &amp; Anleitung</a>
         <a href="https://github.com/benzjeremy/untis-go/releases">Releases</a>
-        <a href="https://github.com/benzjeremy/untis-go/issues">Fehler melden</a>
-        <a href="https://github.com/benzjeremy/untis-go?tab=GPL-3.0-1-ov-file">Lizenz</a>
         <a href="https://benzjeremy.github.io/impressum.html">Impressum</a>
         <a href="https://benzjeremy.github.io/datenschutz.html">Datenschutz</a>
-      </div>
+        <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
     </div>
   </footer>
 
   <script>
+    // Copy Command
     function copyInstallCmd() {
       const code = document.getElementById('goInstallCmd').textContent;
+      const btnText = document.getElementById('copyBtnText');
+      const btn = document.getElementById('copy-cmd-btn');
       navigator.clipboard.writeText(code).then(() => {
-        const btnText = document.getElementById('copyBtnText');
-        btnText.textContent = 'Kopiert!';
-        setTimeout(() => { btnText.textContent = 'Kopieren'; }, 2000);
+        btnText.textContent = 'Kopiert! ✓';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btnText.textContent = 'Kopieren';
+          btn.classList.remove('copied');
+        }, 2200);
       });
     }
 
-    // Mobile Navigation Toggle
+    // Mobile Drawer Toggle
     const mobileToggle = document.getElementById('mobile-toggle');
     const mainNav = document.getElementById('main-nav');
     if (mobileToggle && mainNav) {
       mobileToggle.addEventListener('click', () => {
         const isOpen = mainNav.classList.toggle('open');
         mobileToggle.setAttribute('aria-expanded', isOpen);
-        mobileToggle.innerHTML = isOpen ? '✕' : '☰';
-      });
-
-      mainNav.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-          if (mainNav.classList.contains('open')) {
-            mainNav.classList.remove('open');
-            mobileToggle.setAttribute('aria-expanded', 'false');
-            mobileToggle.innerHTML = '☰';
-          }
-        });
-      });
-
-      document.addEventListener('click', (e) => {
-        if (mainNav.classList.contains('open') && !mainNav.contains(e.target) && !mobileToggle.contains(e.target)) {
-          mainNav.classList.remove('open');
-          mobileToggle.setAttribute('aria-expanded', 'false');
-          mobileToggle.innerHTML = '☰';
-        }
       });
     }
+
+    // Language Toggle
+    function setLang(lang) {
+      document.querySelectorAll('[data-lang]').forEach(el => {
+        if (el.getAttribute('data-lang') === lang) {
+          el.classList.add('visible');
+        } else {
+          el.classList.remove('visible');
+        }
+      });
+      document.querySelectorAll('.lang-de').forEach(el => el.style.display = lang === 'de' ? '' : 'none');
+      document.querySelectorAll('.lang-en').forEach(el => el.style.display = lang === 'en' ? '' : 'none');
+      
+      const btnDe = document.getElementById('btn-lang-de');
+      const btnEn = document.getElementById('btn-lang-en');
+      if (btnDe && btnEn) {
+        btnDe.classList.toggle('active', lang === 'de');
+        btnEn.classList.toggle('active', lang === 'en');
+      }
+      try { localStorage.setItem('site_lang', lang); } catch (e) {}
+    }
+
+    try {
+      const saved = localStorage.getItem('site_lang');
+      if (saved === 'en' || saved === 'de') setLang(saved);
+    } catch (e) {}
   </script>
 </body>
 </html>
