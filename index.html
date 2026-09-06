@@ -34,7 +34,9 @@
         </a>
       </div>
 
-      <nav class="main-nav">
+      <button class="mobile-toggle" id="mobile-toggle" aria-label="Menü umschalten" aria-expanded="false">☰</button>
+
+      <nav class="main-nav" id="main-nav">
         <a href="#features">Features</a>
         <a href="#download">Downloads</a>
         <a href="#install">Installation</a>
@@ -306,6 +308,35 @@ chmod +x untis-go
         const btnText = document.getElementById('copyBtnText');
         btnText.textContent = 'Kopiert!';
         setTimeout(() => { btnText.textContent = 'Kopieren'; }, 2000);
+      });
+    }
+
+    // Mobile Navigation Toggle
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const mainNav = document.getElementById('main-nav');
+    if (mobileToggle && mainNav) {
+      mobileToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('open');
+        mobileToggle.setAttribute('aria-expanded', isOpen);
+        mobileToggle.innerHTML = isOpen ? '✕' : '☰';
+      });
+
+      mainNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          if (mainNav.classList.contains('open')) {
+            mainNav.classList.remove('open');
+            mobileToggle.setAttribute('aria-expanded', 'false');
+            mobileToggle.innerHTML = '☰';
+          }
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        if (mainNav.classList.contains('open') && !mainNav.contains(e.target) && !mobileToggle.contains(e.target)) {
+          mainNav.classList.remove('open');
+          mobileToggle.setAttribute('aria-expanded', 'false');
+          mobileToggle.innerHTML = '☰';
+        }
       });
     }
   </script>
