@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>404 – Seite nicht gefunden · untis-go</title>
+  <meta name="description" content="Diese Seite existiert nicht oder befindet sich im Wartungsmodus. Prüfe den Live-Status aller Dienste.">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .not-found-wrapper {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      position: relative;
+    }
+    .not-found-card {
+      max-width: 680px;
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 3.5rem 2.5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    .not-found-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+    }
+    .glitch-code {
+      font-family: var(--font-mono);
+      font-size: clamp(4.5rem, 12vw, 7rem);
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #f8fafc 30%, var(--accent-primary) 70%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(56, 189, 248, 0.3);
+    }
+    .project-notice-box {
+      display: none;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin: 1.75rem 0;
+      text-align: left;
+    }
+    .project-notice-box.visible {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .project-notice-icon {
+      font-size: 2.2rem;
+      flex-shrink: 0;
+    }
+    .project-notice-title {
+      font-weight: 700;
+      color: var(--accent-primary);
+      margin-bottom: 0.25rem;
+    }
+    .project-notice-desc {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .btn-action-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .quick-directory {
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .quick-directory-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .quick-tag {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      text-decoration: none;
+      transition: all 0.2s var(--spring-bounce);
+    }
+    .quick-tag:hover {
+      color: var(--text-primary);
+      border-color: var(--border-accent);
+      background: var(--bg-card-hover);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Site Navigation -->
+  <header class="site-header">
+    <div class="nav-container">
+      <a href="/" class="brand-link" aria-label="untis-go Startseite">
+        <div class="brand-avatar">UG</div>
+        <div class="brand-info">
+          <span class="brand-name">untis-go</span>
+          <span class="brand-ver">Desktop Client</span>
+        </div>
+      </a>
+
+      <button class="mobile-toggle" id="mobile-toggle" aria-label="Menü öffnen/schließen" aria-expanded="false">☰</button>
+
+      <nav class="main-nav" id="main-nav">
+        <a href="/">
+          <span class="lang-de">Startseite</span>
+          <span class="lang-en" style="display:none;">Home</span>
+        </a>
+        <a href="/about.html">
+          <span class="lang-de">Über mich</span>
+          <span class="lang-en" style="display:none;">About</span>
+        </a>
+        <a href="/kontakt.html">
+          <span class="lang-de">Kontakt</span>
+          <span class="lang-en" style="display:none;">Contact</span>
+        </a>
+        <a href="/status/">
+          <span class="lang-de">Status</span>
+          <span class="lang-en" style="display:none;">Status</span>
+        </a>
+
+        <div class="lang-switch" role="group" aria-label="Sprachauswahl">
+          <button type="button" class="lang-btn active" id="btn-lang-de" onclick="setLang('de')">DE</button>
+          <button type="button" class="lang-btn" id="btn-lang-en" onclick="setLang('en')">EN</button>
+        </div>
+
+        <a href="https://github.com/benzjeremy" target="_blank" rel="noopener noreferrer" class="btn-card highlight" style="padding:6px 12px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="not-found-wrapper">
+    <div class="not-found-card">
+      <div class="glitch-code">404</div>
+
+      <h1 class="hero-title" style="font-size: clamp(1.6rem, 3.5vw, 2.2rem); margin-bottom: 0.75rem;">
+        <span class="lang-de" id="titleDe">Seite nicht gefunden</span>
+        <span class="lang-en" style="display:none;" id="titleEn">Page Not Found</span>
+      </h1>
+
+      <p class="hero-subtitle" style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 1.5rem;" id="mainSubtitle">
+        <span class="lang-de" id="subDe">Die aufgerufene URL existiert nicht auf diesem Server oder wurde im Zuge von Updates verschoben.</span>
+        <span class="lang-en" style="display:none;" id="subEn">The requested URL does not exist on this server or was moved during recent updates.</span>
+      </p>
+
+      <!-- Contextual Project Detection Notice -->
+      <div class="project-notice-box" id="projectNoticeBox">
+        <div class="project-notice-icon" id="projectNoticeIcon">📦</div>
+        <div>
+          <div class="project-notice-title" id="projectNoticeTitle">Projekt erkannt</div>
+          <div class="project-notice-desc" id="projectNoticeDesc">Möglicherweise suchst du nach diesem Projekt.</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="btn-action-group">
+        <a href="/status/" class="btn-primary" style="display:inline-flex; align-items:center; gap:0.5rem;">
+          <span style="width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+          <span class="lang-de">Live-Systemstatus</span>
+          <span class="lang-en" style="display:none;">Live System Status</span>
+        </a>
+
+        <a href="index.html" class="btn-secondary">
+          <span class="lang-de">← Zur untis-go Startseite</span>
+          <span class="lang-en" style="display:none;">← Return to untis-go</span>
+        </a>
+        <a href="https://benzjeremy.github.io/" class="btn-secondary">
+          <span class="lang-de">← Zur Startseite</span>
+          <span class="lang-en" style="display:none;">← Return Home</span>
+        </a>
+
+        <a href="#" id="projectDirectLink" class="btn-secondary" style="display: none;">
+          <span id="projectDirectLinkText">Projekt-Startseite →</span>
+        </a>
+      </div>
+
+      <!-- Quick Directory Tag Cloud -->
+      <div class="quick-directory">
+        <div class="quick-directory-title">
+          <span class="lang-de">Wichtige Schnellzugriffe</span>
+          <span class="lang-en" style="display:none;">Quick Navigation</span>
+        </div>
+        <div class="quick-tags">
+          <a href="/untis-go/" class="quick-tag">📅 untis-go</a>
+          <a href="/docklite/" class="quick-tag">🐳 docklite</a>
+          <a href="/spotify-screensaver/" class="quick-tag">🎵 spotify-screensaver</a>
+          <a href="/wetter-site/" class="quick-tag">🌤️ wetter-site</a>
+          <a href="/agi-research/" class="quick-tag">🧠 agi-research</a>
+          <a href="/search/" class="quick-tag">🔍 search</a>
+          <a href="/status/" class="quick-tag">🟢 status</a>
+          <a href="/about.html" class="quick-tag">👤 über mich</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-left">
+        <span>© 2026 untis-go (@benzjeremy) · Nordrhein-Westfalen, Deutschland</span>
+      </div>
+
+      <nav class="footer-links" aria-label="Footer Navigation">
+        <a href="/">Startseite</a>
+        <a href="/about.html">Über mich</a>
+        <a href="/kontakt.html">Kontakt</a>
+        <a href="/status/">Status</a>
+        <a href="/impressum.html">Impressum (§ 5 DDG)</a>
+        <a href="/datenschutz.html">Datenschutz (DSGVO)</a>
+        <a href="https://github.com/benzjeremy" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Smart URL & Project Resolver
+    const knownProjects = {
+      'untis-go': { name: 'untis-go', icon: '📅', url: '/untis-go/', descDe: 'WebUntis Desktop Client in Go & WebKitGTK (100% Local-First).', descEn: 'WebUntis Desktop Client in Go & WebKitGTK (100% Local-First).' },
+      'docklite': { name: 'docklite', icon: '🐳', url: '/docklite/', descDe: 'Schlanke Portainer-Alternative in Go & Astro.', descEn: 'Lightweight Portainer alternative in Go & Astro.' },
+      'spotify-screensaver': { name: 'spotify-screensaver', icon: '🎵', url: '/spotify-screensaver/', descDe: 'Vollbild-Screensaver für Spotify mit MPRIS-Anbindung.', descEn: 'Fullscreen Spotify screensaver with MPRIS integration.' },
+      'wetter-site': { name: 'wetter-site', icon: '🌤️', url: '/wetter-site/', descDe: 'Live-Wetterstation & Telemetrie via Open-Meteo.', descEn: 'Live Weather Station & Telemetry via Open-Meteo.' },
+      'agi-research': { name: 'agi-research', icon: '🧠', url: '/agi-research/', descDe: 'Forschungs-Paper & 13 Benchmarks für F-AGI.', descEn: 'Research paper & 13 benchmarks for F-AGI.' },
+      'search': { name: 'search', icon: '🔍', url: '/search/', descDe: 'Datenschutzfreundliche Startpage-Suchmaschine.', descEn: 'Privacy-first search engine without trackers.' },
+      'binchrii': { name: 'binchrii', icon: '📺', url: '/binchrii/', descDe: 'Offizielle Web-Präsenz von Binchrii.', descEn: 'Official web presence for Binchrii.' },
+      'itsbenzo-tv': { name: 'itsbenzo-tv', icon: '🎮', url: '/itsbenzo-tv/', descDe: 'Gaming-Hub für ItsBenzo_TV.', descEn: 'Gaming hub for ItsBenzo_TV.' },
+      'status': { name: 'status', icon: '🟢', url: '/status/', descDe: 'Live Systemstatus-Dashboard.', descEn: 'Live system status dashboard.' }
+    };
+
+    function analyzePath() {
+      const path = window.location.pathname.toLowerCase();
+      const segments = path.split('/').filter(Boolean);
+
+      // Check each segment against known projects
+      for (const seg of segments) {
+        if (knownProjects[seg]) {
+          const p = knownProjects[seg];
+          const box = document.getElementById('projectNoticeBox');
+          const icon = document.getElementById('projectNoticeIcon');
+          const title = document.getElementById('projectNoticeTitle');
+          const desc = document.getElementById('projectNoticeDesc');
+          const directBtn = document.getElementById('projectDirectLink');
+          const directBtnText = document.getElementById('projectDirectLinkText');
+
+          if (box) box.classList.add('visible');
+          if (icon) icon.textContent = p.icon;
+          if (title) title.textContent = p.name + ' erkannt';
+          if (desc) desc.textContent = currentLang === 'de' ? p.descDe : p.descEn;
+
+          if (directBtn) {
+            directBtn.href = p.url;
+            directBtn.style.display = 'inline-flex';
+            if (directBtnText) directBtnText.textContent = 'Zu ' + p.name + ' →';
+          }
+          break;
+        }
+      }
+    }
+
+    // Language
+    let currentLang = 'de';
+    function setLang(lang) {
+      currentLang = lang;
+      document.querySelectorAll('.lang-de').forEach(el => el.style.display = lang === 'de' ? '' : 'none');
+      document.querySelectorAll('.lang-en').forEach(el => el.style.display = lang === 'en' ? '' : 'none');
+      
+      const btnDe = document.getElementById('btn-lang-de');
+      const btnEn = document.getElementById('btn-lang-en');
+      if (btnDe && btnEn) {
+        btnDe.classList.toggle('active', lang === 'de');
+        btnEn.classList.toggle('active', lang === 'en');
+      }
+      try { localStorage.setItem('site_lang', lang); } catch (e) {}
+    }
+
+    try {
+      const savedLang = localStorage.getItem('site_lang');
+      if (savedLang === 'en' || savedLang === 'de') setLang(savedLang);
+    } catch (e) {}
+
+    // Mobile Drawer Toggle
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const mainNav = document.getElementById('main-nav');
+    if (mobileToggle && mainNav) {
+      mobileToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('open');
+        mobileToggle.setAttribute('aria-expanded', isOpen);
+      });
+    }
+
+    analyzePath();
+  </script>
+</body>
+</html>
