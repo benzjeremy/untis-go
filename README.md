@@ -5,7 +5,7 @@
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
 [![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v2.1](https://img.shields.io/badge/Release-v2.1-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
+[![Release: v2.2](https://img.shields.io/badge/Release-v2.2-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
 [![Status: Release](https://img.shields.io/badge/Status-RELEASE-green.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
@@ -25,7 +25,7 @@
 
 ### What is Untis GO?
 
-A fast, native, and modern **WebUntis PC-Desktop client for students and teachers** – written in Go with a modern desktop shell (inspired by the sidebars of Microsoft Teams, Discord, and Spotify Desktop).
+A fast, native, and modern **WebUntis PC-Desktop client for students and teachers** – written in Go with a modern desktop shell (inspired by clean sidebars of apps like Discord and Spotify Desktop).
 
 Forget slow web interfaces, cluttered layouts, or resource-heavy apps. **untis-go** brings your timetable, substitution schedules, homework, announcements, and absences lightning‑fast and cross‑platform to your desktop – **without Electron bloat!**
 
@@ -39,7 +39,7 @@ Forget slow web interfaces, cluttered layouts, or resource-heavy apps. **untis-g
 
 ### Was ist Untis GO?
 
-Ein schneller, nativer und moderner **WebUntis PC‑Desktop‑Client für Schüler und Lehrkräfte** – geschrieben in Go mit moderner Desktop‑Shell (angelehnt an die Sidebar von Microsoft Teams, Discord und Spotify Desktop).
+Ein schneller, nativer und moderner **WebUntis PC‑Desktop‑Client für Schüler und Lehrkräfte** – geschrieben in Go mit moderner Desktop‑Shell (angelehnt an cleane Sidebars moderner Desktop-Apps wie Discord und Spotify Desktop).
 
 Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressourcenfressende Apps. **untis-go** bringt deinen Stundenplan, Vertretungspläne, Hausaufgaben, Mitteilungen und Abwesenheiten blitzschnell und plattformübergreifend auf deinen Desktop – **ohne Electron‑Bloat!**
 
@@ -71,10 +71,10 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - Manage any number of schools and user profiles in parallel.
   - **Delete schools**: Each profile can be deleted with a click on the red trash‑can icon.
   - **Live school search**: Find your school worldwide via the official WebUntis school search – no pre‑configured default school!
-- ☁️ **Microsoft 365 & OneDrive Sync (Mandatory v1.6)**:
-  - Sign in with school/student accounts (Office 365 Education / Entra ID) or personal Microsoft accounts.
-  - Automatic encrypted cloud backup of all configurations, profiles, and homework directly into your personal OneDrive (`/Apps/untis-go/untis_config.json`).
-  - Seamless restore across all your devices.
+- 🛡️ **100% Local-First & Privacy Compliant (GDPR / DSGVO)**:
+  - All data stays strictly local on your machine in an encrypted SQLite database (`~/.local/share/untis-go/untis.db`).
+  - Zero telemetry, zero tracking, zero external third-party cloud dependencies.
+  - Full compliance with European GDPR (DSGVO) and State Data Protection Authority (LDI NRW) standards.
 
 ### 🇩🇪 Deutsch
 
@@ -100,26 +100,28 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - Beliebig viele Schulen und Benutzerprofile parallel verwalten.
   - **Schulen löschen**: Jedes Profil kann mit einem Klick auf das rote Papierkorb‑Icon gelöscht werden.
   - **Live‑Schulsuche**: Finde deine Schule weltweit über die offizielle WebUntis‑Schulsuche – keine feste Standardschule vorkonfiguriert!
-- ☁️ **Microsoft 365 & OneDrive Synchronisierung (Pflicht ab v1.6)**:
-  - Anmeldung mit Schüler-/Schulkonten (Office 365 / Entra ID) oder persönlichen Microsoft-Accounts.
-  - Automatische verschlüsselte Sicherung aller Konfigurationen, Schulen, Profile und Hausaufgaben direkt in deinem persönlichen OneDrive (`/Apps/untis-go/untis_config.json`).
-  - Wiederherstellung mit einem Klick auf jedem beliebigen PC oder Laptop.
+- 🛡️ **100% Local-First & Datenschutz-konform (DSGVO / LDI NRW)**:
+  - Alle Daten bleiben strikt lokal auf deinem Rechner in einer verschlüsselten SQLite-Datenbank (`~/.local/share/untis-go/untis.db`).
+  - Keine Telemetrie, kein Tracking, keinerlei externe Drittanbieter-Cloud-Abhängigkeiten.
+  - Volle Einhaltung der Datenschutz-Grundverordnung (DSGVO) und Richtlinien der LDI NRW.
 
 ---
 
-## 🔒 Security & Zero‑Lag
+## 🔒 Security & Privacy (Zero‑Telemetry)
 
 ### 🇬🇧 English
 
-- **AES‑256‑GCM Encryption**: Passwords are never stored in plain text.
+- **100% Local-First & Privacy (GDPR / LDI NRW)**: Zero telemetry, zero tracking. All communication occurs directly with your school's WebUntis instance.
+- **AES‑256‑GCM Encryption**: Credentials and cached secrets are never stored in plain text.
 - **SQLite Cache**: Timetables load in under 1 ms directly from local storage.
-- **Random Port & Session Token**: Protection against unauthorized local access.
+- **Random Port & Crypto Session Token**: Protection against unauthorized local access (Strict Anti-DNS-Rebinding & Anti-CSRF).
 
 ### 🇩🇪 Deutsch
 
-- **AES‑256‑GCM Verschlüsselung**: Passwörter werden niemals im Klartext gespeichert.
+- **100% Local-First & Datenschutz (DSGVO / LDI NRW)**: Keine Telemetrie, kein Tracking. Direkte Kommunikation ausschließlich mit dem WebUntis-Server deiner Schule.
+- **AES‑256‑GCM Verschlüsselung**: Zugangsdaten und Cache-Secrets werden niemals im Klartext gespeichert.
 - **SQLite Cache**: Stundenpläne laden in unter 1 Millisekunde direkt aus dem lokalen Speicher.
-- **Zufallsport & Session‑Token**: Schutz vor unbefugtem lokalen Zugriff.
+- **Zufallsport & Krypto-Session-Token**: Schutz vor unbefugtem lokalen Zugriff (Strikter Schutz gegen DNS-Rebinding & CSRF).
 
 ---
 
@@ -133,12 +135,12 @@ Download the matching file for your operating system from the [**Releases**](htt
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-v2.1-linux.tar.gz
+  tar -xzf untis-go-v2.2-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Unzip `untis-go-v2.1-windows.zip` and start `untis-go.exe`.
+  - Unzip `untis-go-v2.2-windows.zip` and start `untis-go.exe`.
 
 #### 2. Installation via Go (`go install`)
 
@@ -180,12 +182,12 @@ Lade die passende Datei für dein Betriebssystem unter [**Releases**](https://gi
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-v2.1-linux.tar.gz
+  tar -xzf untis-go-v2.2-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Entpacke `untis-go-v2.1-windows.zip` und starte `untis-go.exe`.
+  - Entpacke `untis-go-v2.2-windows.zip` und starte `untis-go.exe`.
 
 #### 2. Installation über Go (`go install`)
 
