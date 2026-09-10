@@ -17,12 +17,15 @@ import (
 
 	"github.com/benzjeremy/untis-go/api"
 	"github.com/benzjeremy/untis-go/db"
+	"github.com/benzjeremy/untis-go/diff"
+	"github.com/benzjeremy/untis-go/ical"
+	"github.com/benzjeremy/untis-go/notify"
 	"github.com/benzjeremy/untis-go/updater"
 	"github.com/benzjeremy/untis-go/web"
 )
 
 // AppVersion defines the current application version
-const AppVersion = "2.2"
+const AppVersion = "2.3"
 
 // Server coordinates the local HTTP API and SQLite database
 type Server struct {
@@ -33,6 +36,7 @@ type Server struct {
 	httpServer   *http.Server
 	listener     net.Listener
 	port         int
+	stopSyncChan chan struct{}
 }
 
 // NewServer initializes the server with SQLite database and a 32-character crypto session token
@@ -102,6 +106,7 @@ func (s *Server) Start(port int) (string, error) {
 	apiMux.HandleFunc("/api/schools/search", s.handleSchoolSearch)
 	apiMux.HandleFunc("/api/classes", s.handleClasses)
 	apiMux.HandleFunc("/api/timetable", s.handleTimetable)
+	apiMux.HandleFunc("/api/timetable/export/ical", s.handleTimetableExportICal)
 	apiMux.HandleFunc("/api/timetable/own", s.handleOwnTimetable)
 	apiMux.HandleFunc("/api/timetable/resource", s.handleResourceTimetable)
 	apiMux.HandleFunc("/api/teachers", s.handleTeachers)
@@ -113,6 +118,7 @@ func (s *Server) Start(port int) (string, error) {
 	apiMux.HandleFunc("/api/settings", s.handleSettings)
 	apiMux.HandleFunc("/api/settings/aliases", s.handleSubjectAliases)
 	apiMux.HandleFunc("/api/refresh", s.handleRefresh)
+	apiMux.HandleFunc("/api/sync/check", s.handleSyncCheck)
 	apiMux.HandleFunc("/api/updates/check", s.handleUpdateCheck)
 	apiMux.HandleFunc("/api/updates/apply", s.handleUpdateApply)
 
@@ -235,11 +241,18 @@ func (s *Server) Start(port int) (string, error) {
 		}
 	}()
 
+	// Start background sync daemon
+	s.startBackgroundSyncLoop()
+
 	return fmt.Sprintf("http://127.0.0.1:%d/?token=%s", s.port, s.sessionToken), nil
 }
 
 // Stop terminates the server
 func (s *Server) Stop() error {
+	if s.stopSyncChan != nil {
+		close(s.stopSyncChan)
+		s.stopSyncChan = nil
+	}
 	if s.httpServer != nil {
 		return s.httpServer.Close()
 	}
@@ -813,6 +826,173 @@ func (s *Server) fetchAndCacheTimetable(client *api.Client, classID int, startDa
 		}
 	}
 	return lessons, nil
+}
+
+// Handler: /api/timetable/export/ical
+func (s *Server) handleTimetableExportICal(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error": "Kein aktives Profil vorhanden",
+		})
+		return
+	}
+
+	q := r.URL.Query()
+	classID := s.database.GetIntSetting("selected_class_id", 0)
+	if cIDStr := q.Get("classId"); cIDStr != "" {
+		if id, err := strconv.Atoi(cIDStr); err == nil && id > 0 {
+			classID = id
+		}
+	}
+	className := s.database.GetSetting("selected_class_name", "")
+
+	targetDate := time.Now()
+	if dateStr := q.Get("date"); dateStr != "" {
+		if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+			targetDate = t
+		}
+	}
+
+	weekday := targetDate.Weekday()
+	diffToMonday := int(time.Monday - weekday)
+	if weekday == time.Sunday {
+		diffToMonday = -6
+	}
+	monday := targetDate.AddDate(0, 0, diffToMonday)
+	startDate := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, targetDate.Location())
+	friday := monday.AddDate(0, 0, 4)
+	endDate := time.Date(friday.Year(), friday.Month(), friday.Day(), 23, 59, 59, 0, targetDate.Location())
+
+	// Try fetching from API or cache
+	lessons, err := client.GetTimetable(classID, startDate, endDate)
+	if err != nil || len(lessons) == 0 {
+		dateKey := startDate.Format("2006-01-02")
+		cachedJSON, _, found, _ := s.database.GetTimetableCache(classID, dateKey)
+		if found && cachedJSON != "" {
+			_ = json.Unmarshal([]byte(cachedJSON), &lessons)
+		}
+	}
+
+	title := "Untis Stundenplan"
+	if className != "" {
+		title = fmt.Sprintf("Untis Stundenplan - %s", className)
+	}
+
+	icsContent := ical.ExportTimetable(lessons, title)
+
+	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"untis_stundenplan.ics\"")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(icsContent))
+}
+
+// Handler: /api/sync/check
+func (s *Server) handleSyncCheck(w http.ResponseWriter, r *http.Request) {
+	changes, err := s.checkTimetableSync()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":      true,
+		"changesCount": len(changes),
+		"changes":      changes,
+	})
+}
+
+// checkTimetableSync checks for changes between cached timetable and fresh API data
+func (s *Server) checkTimetableSync() ([]diff.LessonChange, error) {
+	s.mu.RLock()
+	client := s.activeClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		return nil, fmt.Errorf("kein aktives Profil")
+	}
+
+	classID := s.database.GetIntSetting("selected_class_id", 0)
+	if classID == 0 {
+		return nil, nil
+	}
+
+	now := time.Now()
+	weekday := now.Weekday()
+	diffToMonday := int(time.Monday - weekday)
+	if weekday == time.Sunday {
+		diffToMonday = -6
+	}
+	monday := now.AddDate(0, 0, diffToMonday)
+	startDate := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, now.Location())
+	friday := monday.AddDate(0, 0, 4)
+	endDate := time.Date(friday.Year(), friday.Month(), friday.Day(), 23, 59, 59, 0, now.Location())
+	dateKey := startDate.Format("2006-01-02")
+
+	// Read existing cached lessons
+	var oldLessons []api.EnrichedLesson
+	cachedJSON, _, found, _ := s.database.GetTimetableCache(classID, dateKey)
+	if found && cachedJSON != "" {
+		_ = json.Unmarshal([]byte(cachedJSON), &oldLessons)
+	}
+
+	// Fetch fresh lessons from WebUntis
+	newLessons, err := client.GetTimetable(classID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compare if we had old lessons
+	var changes []diff.LessonChange
+	if len(oldLessons) > 0 {
+		changes = diff.CompareLessons(oldLessons, newLessons)
+		if len(changes) > 0 {
+			log.Printf("[Sync Daemon] %d Stundenplan-Änderungen festgestellt!", len(changes))
+			for _, c := range changes {
+				_ = notify.NotifyLessonChange(c)
+			}
+		}
+	}
+
+	// Update cache
+	if len(newLessons) > 0 {
+		if dataBytes, err := json.Marshal(newLessons); err == nil {
+			_ = s.database.SaveTimetableCache(classID, dateKey, string(dataBytes))
+		}
+	}
+
+	return changes, nil
+}
+
+// startBackgroundSyncLoop runs a periodic background daemon checking for timetable changes
+func (s *Server) startBackgroundSyncLoop() {
+	s.stopSyncChan = make(chan struct{})
+	intervalMinutes := s.database.GetIntSetting("sync_interval_minutes", 15)
+	if intervalMinutes < 1 {
+		intervalMinutes = 15
+	}
+
+	ticker := time.NewTicker(time.Duration(intervalMinutes) * time.Minute)
+
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-s.stopSyncChan:
+				return
+			case <-ticker.C:
+				_, _ = s.checkTimetableSync()
+			}
+		}
+	}()
 }
 
 // Handler: /api/dashboard

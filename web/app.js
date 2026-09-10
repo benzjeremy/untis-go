@@ -3529,6 +3529,45 @@
   window.toggleMsAzureSettings = toggleMsAzureSettings;
   window.saveMsCustomAzureConfig = saveMsCustomAzureConfig;
   window.openMsCloudModal = openMsCloudModal;
+  async function exportTimetableICal() {
+    try {
+      showLoading(true, 'Generiere iCalendar (.ics)...');
+      let url = '/api/timetable/export/ical';
+      const params = new URLSearchParams();
+      if (state.token) params.set('token', state.token);
+      if (state.selectedDate) params.set('date', state.selectedDate);
+      if (state.selectedClassId) params.set('classId', state.selectedClassId);
+      url += '?' + params.toString();
+
+      const resp = await fetch(url, {
+        headers: {
+          'X-Session-Token': state.token || ''
+        }
+      });
+      if (!resp.ok) {
+        showLoading(false);
+        showToast('Fehler beim Exportieren des Kalenders', 'error');
+        return;
+      }
+      const blob = await resp.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = 'untis_stundenplan.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      showLoading(false);
+      showToast('Stundenplan erfolgreich als .ics Kalender exportiert!', 'success');
+    } catch (err) {
+      showLoading(false);
+      console.error('iCal Export Error:', err);
+      showToast('Netzwerkfehler beim Kalender-Export', 'error');
+    }
+  }
+
+  window.exportTimetableICal = exportTimetableICal;
   window.closeMsCloudModal = closeMsCloudModal;
   window.syncOneDrive = syncOneDrive;
   window.logoutMicrosoft = logoutMicrosoft;

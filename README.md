@@ -5,7 +5,7 @@
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
 [![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v2.2](https://img.shields.io/badge/Release-v2.2-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
+[![Release: v2.3](https://img.shields.io/badge/Release-v2.3-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
 [![Status: Release](https://img.shields.io/badge/Status-RELEASE-green.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
@@ -75,6 +75,15 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - All data stays strictly local on your machine in an encrypted SQLite database (`~/.local/share/untis-go/untis.db`).
   - Zero telemetry, zero tracking, zero external third-party cloud dependencies.
   - Full compliance with European GDPR (DSGVO) and State Data Protection Authority (LDI NRW) standards.
+- 📅 **RFC-5545 iCalendar (.ics) Export**:
+  - 1-click timetable export for Google Calendar, Apple Calendar & Mozilla Thunderbird.
+  - Generates standard-compliant VEVENT blocks with room, teachers, notes, and cancellation status.
+- 🔔 **Background Sync & Desktop Notifications**:
+  - Automatic background monitoring daemon detecting timetable mutations (room changes, cancellations, substitutions).
+  - Native OS desktop notifications (via Linux notify-send and Windows toast).
+- 🖥️ **Native System Tray Integration**:
+  - Minimize window to system tray / taskbar instead of quitting.
+  - Quick menu for one-click schedule access, force refresh, status check, and graceful exit.
 
 ### 🇩🇪 Deutsch
 
@@ -104,6 +113,15 @@ Vergiss langsame Web‑Interfaces, unübersichtliche Oberflächen oder ressource
   - Alle Daten bleiben strikt lokal auf deinem Rechner in einer verschlüsselten SQLite-Datenbank (`~/.local/share/untis-go/untis.db`).
   - Keine Telemetrie, kein Tracking, keinerlei externe Drittanbieter-Cloud-Abhängigkeiten.
   - Volle Einhaltung der Datenschutz-Grundverordnung (DSGVO) und Richtlinien der LDI NRW.
+- 📅 **RFC-5545 iCalendar (.ics) Export**:
+  - 1-Klick-Export des Stundenplans für Google Calendar, Apple Calendar & Mozilla Thunderbird.
+  - Standardkonforme VEVENT-Blöcke inklusive Räume, Lehrkräfte, Notizen und Entfall-Status.
+- 🔔 **Hintergrund-Synchronisation & Desktop-Benachrichtigungen**:
+  - Automatischer Hintergrund-Daemon zur Erkennung von Stundenplan-Änderungen (Raumänderungen, Entfällen, Vertretungen).
+  - Native Desktop-Benachrichtigungen des Betriebssystems (Linux notify-send & Windows Toast).
+- 🖥️ **Native System-Tray Integration**:
+  - Minimieren in die Taskleiste statt Schließen der Anwendung.
+  - Tray-Menü für Schnellzugriff auf Stundenplan, manuelles Neuladen, Statusanzeige und Beenden.
 
 ---
 

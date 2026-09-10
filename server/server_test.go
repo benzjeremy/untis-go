@@ -246,6 +246,30 @@ func TestServerSecurityAndEndpoints(t *testing.T) {
 	if mode, _ := statusMode["dashboardTimetableMode"].(string); mode != "own" {
 		t.Fatalf("expected dashboardTimetableMode='own' after setting, got %s", mode)
 	}
+
+	// 10. Test /api/timetable/export/ical (without active profile, returns 400 Bad Request)
+	reqICal, _ := http.NewRequest("GET", baseURL+"/api/timetable/export/ical", nil)
+	reqICal.Header.Set("X-Session-Token", token)
+	respICal, err := http.DefaultClient.Do(reqICal)
+	if err != nil {
+		t.Fatalf("failed to call /api/timetable/export/ical: %v", err)
+	}
+	respICal.Body.Close()
+	if respICal.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for ical export without profile, got %d", respICal.StatusCode)
+	}
+
+	// 11. Test /api/sync/check (without active profile, returns error)
+	reqSync, _ := http.NewRequest("GET", baseURL+"/api/sync/check", nil)
+	reqSync.Header.Set("X-Session-Token", token)
+	respSync, err := http.DefaultClient.Do(reqSync)
+	if err != nil {
+		t.Fatalf("failed to call /api/sync/check: %v", err)
+	}
+	respSync.Body.Close()
+	if respSync.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("expected 500 without active profile for sync check, got %d", respSync.StatusCode)
+	}
 }
 
 func fmtBaseURL(port int) string {
