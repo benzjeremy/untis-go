@@ -20,7 +20,7 @@
         <a href="../index.html" class="wiki-brand-link">
           <img src="../icon.png" alt="Untis Logo" class="wiki-logo">
           <span class="wiki-brand-title">untis-go</span>
-          <span class="wiki-brand-badge">Wiki (v2.1)</span>
+          <span class="wiki-brand-badge">Wiki (v2.2)</span>
         </a>
       </div>
 
@@ -67,7 +67,7 @@
         <li class="wiki-menu-item"><a href="#homework-absences">7. Aufgaben & Fehlzeiten</a></li>
         <li class="wiki-menu-item"><a href="#profiles">8. Multi-Profile Verwaltung</a></li>
         <li class="wiki-menu-item"><a href="#security">9. Zero-Lag & Sicherheit</a></li>
-        <li class="wiki-menu-item"><a href="#microsoft">10. Microsoft 365 & OneDrive</a></li>
+        <li class="wiki-menu-item"><a href="#privacy">10. Datenschutz & Local-First</a></li>
         <li class="wiki-menu-item"><a href="#shortcuts">11. Tastaturkürzel (Shortcuts)</a></li>
         <li class="wiki-menu-item"><a href="#updates">12. Software-Updates</a></li>
         <li class="wiki-menu-item"><a href="#faq">13. FAQ & Problembehebung</a></li>
@@ -423,39 +423,39 @@ untis-go</pre>
         </table>
       </section>
 
-      <!-- Kapitel 10: Microsoft 365 & OneDrive Cloud-Synchronisierung -->
-      <section class="wiki-section" id="microsoft">
+      <!-- Kapitel 10: Datenschutz & 100% Local-First Architektur -->
+      <section class="wiki-section" id="privacy">
         <div class="section-anchor-header">
           <h2 class="section-heading">
             <span class="section-num">10</span>
-            Microsoft 365 &amp; OneDrive Cloud-Synchronisierung (Pflicht ab v1.6)
+            Datenschutz &amp; 100% Local-First Architektur (DSGVO / LDI NRW)
           </h2>
         </div>
         <p class="wiki-p">
-          Ab Version <strong>v2.1</strong> verfügt <strong>Untis GO</strong> über eine native, obligatorische Anbindung an <strong>Microsoft 365</strong>. Damit werden deine Stundenplan-Profile, Notizen, benutzerdefinierte Fach-Abkürzungen und Einstellungen sicher in deinem persönlichen Microsoft OneDrive gesichert und geräteübergreifend synchronisiert.
+          Mit Version <strong>v2.2</strong> ist <strong>untis-go</strong> zu 100% Local-First zurückgekehrt. Frühere Microsoft-OAuth2- und OneDrive-Integrationen wurden vollständig entfernt, um höchste Datenschutzstandards (DSGVO Art. 25 Privacy by Design, LDI NRW) kompromisslos einzuhalten.
         </p>
 
         <div class="feature-detail-grid">
           <div class="detail-card">
-            <h4>🏫 Schul- &amp; Schüleraccounts (Entra ID / Office 365)</h4>
-            <p>Melde dich direkt mit deiner offiziellen Schul-E-Mail-Adresse an. Funktioniert nahtlos mit allen Microsoft 365 Education Mandanten.</p>
+            <h4>🛡️ Keine externen Drittanbieter</h4>
+            <p>Keine Verbindungen zu Microsoft, Cloud-Providern oder Tracking-Diensten. Deine Daten verlassen deinen Rechner niemals ungefragt.</p>
           </div>
           <div class="detail-card">
-            <h4>👤 Private Microsoft-Konten (MSA)</h4>
-            <p>Besitzt deine Schule kein Microsoft 365? Du kannst dich genauso unkompliziert mit deinem persönlichen Konto (@outlook.com, @hotmail.com) anmelden.</p>
+            <h4>🔐 Gerätegebundene AES-256-GCM Verschlüsselung</h4>
+            <p>Alle Passwörter, Schul-Credentials und Notizen werden lokal in einer geschützten SQLite-Datenbank verschlüsselt gespeichert.</p>
           </div>
           <div class="detail-card">
-            <h4>☁️ Automatisches OneDrive Backup</h4>
-            <p>Deine Daten werden als verschlüsseltes JSON unter <code>/Apps/OneDrive Client for Linux/untis_config.json</code> in deinem OneDrive abgelegt. Keine Drittserver.</p>
+            <h4>⚡ Direkte Schul-Kommunikation</h4>
+            <p>untis-go kommuniziert ausschließlich auf direktem Weg per HTTPS mit dem offiziellen WebUntis-Server deiner Schule.</p>
           </div>
           <div class="detail-card">
-            <h4>📱 Schneller Device-Code Login</h4>
-            <p>Auf Geräten ohne lokalen Browser-Callback einfach <strong>microsoft.com/devicelogin</strong> aufrufen, Code eingeben und Untis GO synchronisiert sofort.</p>
+            <h4>🚫 Zero Telemetrie</h4>
+            <p>Keine Nutzungsstatistiken, keine Crash-Reporter, keine Werbe-IDs. Volle Datenkontrolle bleibt zu 100% bei dir.</p>
           </div>
         </div>
 
         <p class="wiki-p" style="margin-top: 1.25rem;">
-          Über den Microsoft-Chip oben rechts in der Titelleiste kannst du jederzeit den aktuellen Verbindungsstatus einsehen, manuelle Synchronisierungen anstoßen oder dein Konto wechseln.
+          Transparenz und Datensparsamkeit sind die Kernprinzipien von untis-go. Weitere Details findest du im <a href="https://github.com/benzjeremy/untis-go/releases/tag/v2.2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-primary);">v2.2 Release Changelog</a>.
         </p>
       </section>
 
