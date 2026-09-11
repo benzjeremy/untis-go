@@ -35,5 +35,6 @@ config.json
 
 # Build and distribution archives
 dist/
+bin/
 *.tar.gz
 *.zip
