@@ -5,15 +5,17 @@
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
 [![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
 [![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v2.3](https://img.shields.io/badge/Release-v2.3-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
-[![Status: Release](https://img.shields.io/badge/Status-RELEASE-green.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
+[![Release: v2.3](https://img.shields.io/badge/Release-v2.3%20[Pre--Release]-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
+[![Status: Pre-Release](https://img.shields.io/badge/Status-Pre--Release%20%2F%20WIP-orange.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-success.svg?style=for-the-badge&logo=lock)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 
-> ⚠️ **IMPORTANT NOTICE: RELEASE VERSION**  
-> **This is an active release version.**  
-> If you encounter **errors, display bugs, or unexpected behavior**, please open a ticket directly under [**GitHub Issues**](https://github.com/benzjeremy/untis-go/issues)! Feedback, bug reports, and pull requests are warmly welcome.
+> [!IMPORTANT]
+> ### 🚧 Pre-Release / Active Development Notice
+> **This software is not yet finished and is actively being worked on.**  
+> All versions (including `v2.3`) are **Pre-Releases** (Work in Progress), even if not originally announced as such. Active development, architectural refinements, and feature updates are ongoing.  
+> If you encounter **errors, display bugs, or unexpected behavior**, please open an issue directly under [**GitHub Issues**](https://github.com/benzjeremy/untis-go/issues)! Feedback and pull requests are warmly welcome.
 
 ---
 
