@@ -31,7 +31,8 @@
     dashboardData: null,
 
     // Microsoft Auth & OneDrive (v1.6)
-    msRequired: true,
+    // Microsoft integration removed – disabled requirement
+    msRequired: false,
     msLoggedIn: false,
     msUser: null,
     msLastSync: '',
