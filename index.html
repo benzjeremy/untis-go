@@ -149,7 +149,7 @@
         <!-- Quick Go Command -->
         <div class="quick-install-box">
           <span class="cmd-label">Go Toolchain:</span>
-          <code class="cmd-code" id="goInstallCmd">go install github.com/benzjeremy/untis-go@latest</code>
+          <code class="cmd-code" id="goInstallCmd">go install github.com/benzjeremy/untis-go@latest
           <button type="button" class="copy-cmd-btn" id="copy-cmd-btn" onclick="copyInstallCmd()">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <span id="copyBtnText">Kopieren</span>
@@ -410,6 +410,7 @@ chmod +x untis-go
         <a href="https://github.com/benzjeremy/untis-go" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </div>
+  <div class="routing-notice" style="text-align: center; padding: 1rem; font-size: 0.75rem; opacity: 0.5; font-family: monospace;">2-Tier Routing: /untis_go/ (Landing) | /untis_go/app/ (Web-App)</div>
   </footer>
 
   <script>
@@ -464,5 +465,6 @@ chmod +x untis-go
       if (saved === 'en' || saved === 'de') setLang(saved);
     } catch (e) {}
   </script>
+  <section class="cta-section" style="margin: 3rem 0; text-align: center; font-family: sans-serif;"><div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 2rem; display: inline-block; max-width: 90%;"><h3 style="margin-top: 0; color: #f59e0b;">Zentrale App-Zentrale</h3><p style="margin-bottom: 1.5rem; opacity: 0.8;">Alle meine Apps und Projekte an einem Ort.</p><a class="btn-benzstore" href="https://benzjeremy.github.io/benzstore/" target="_blank" rel="noopener noreferrer" style="background: #f59e0b; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">🚀 BenzStore entdecken</a></div></section>
 </body>
 </html>
