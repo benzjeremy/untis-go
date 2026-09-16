@@ -1,44 +1,37 @@
 name: CI
-
 on:
   push:
-    branches: [main]
-  pull_request:
-
+    paths:
+      - "**/*.go"
+      - "**/*.js"
+      - "**/*.py"
+      - ".github/workflows/ci.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Update pacman and install base tools
+      - name: Install dependencies
         run: |
-          pacman -Sy --noconfirm archlinux-keyring
-          pacman -S --noconfirm base-devel git go nodejs npm python-pip || true
-
+          pacman -Sy --noconfirm git base-devel go nodejs npm python-pip
       - name: Build Go
-        run: go build ./... || true
-
+        run: |
+          go build ./...
+      - name: Lint Go
+        run: |
+          go vet ./...
       - name: Test Go
-        run: go test -race ./... || true
-
-      - name: Install Node dependencies
-        run: npm ci || true
-
-      - name: Lint Node
-        run: npm run lint || true
-
-      - name: Test Node
-        run: npm test || true
-
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt || true
-
+        run: |
+          go test -race ./...
+      - name: Lint JS
+        run: |
+          npm ci && npx eslint .
       - name: Lint Python
-        run: flake8 . || true
-
-      - name: Test Python
-        run: pytest || true
+        run: |
+          pip install flake8 && flake8 .
+      - name: Run tests (Node)
+        run: |
+          npm test
