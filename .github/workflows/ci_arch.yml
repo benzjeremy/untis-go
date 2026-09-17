@@ -11,12 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
+    env:
+      CGO_ENABLED: "0"
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
-          pacman -Sy --noconfirm git base-devel go nodejs npm python-pip \
-            gtk3 webkit2gtk ayatana-appindicator3
+          pacman -Sy --noconfirm git base-devel go
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
