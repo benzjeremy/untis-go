@@ -1,0 +1,33 @@
+name: CI (Arch Linux)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          pacman -Sy --noconfirm git base-devel go nodejs npm python-pip \
+            gtk3 webkit2gtk ayatana-appindicator3
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Verify go.mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./... -v
+      - name: Lint
+        run: go vet ./...
