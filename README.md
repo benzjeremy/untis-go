@@ -12,6 +12,16 @@
 [![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-success.svg?style=for-the-badge&logo=lock)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 
 > [!IMPORTANT]
+> ### 🔒 Primary Codebase & Active Development Moved to Self-Hosted Gitea
+> **For privacy optimization and sovereign self-hosted infrastructure, the primary development, source code, and releases of this project have permanently migrated to our self-hosted Gitea platform:**  
+> 👉 **[Gitea Repository: https://pi5.darter-basking.ts.net/gitea/untis-go/untis-go](https://pi5.darter-basking.ts.net/gitea/untis-go/untis-go)**  
+> 👉 **[Official Web Showcase: https://pi5.darter-basking.ts.net/untis-go/](https://pi5.darter-basking.ts.net/untis-go/)**
+> 
+> *This GitHub repository serves solely as a read-only mirror for Go toolchain compatibility (`go install`, `pkg.go.dev`, `awesome-go`). All active development, issues, and releases take place on Gitea.*
+
+---
+
+> [!IMPORTANT]
 > ### 🚧 Pre-Release / Active Development Notice
 > **This software is not yet finished and is actively being worked on.**  
 > All versions (including `v2.3`) are **Pre-Releases** (Work in Progress), even if not originally announced as such. Active development, architectural refinements, and feature updates are ongoing.  
