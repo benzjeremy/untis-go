@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) | Versionierung
 
 ---
 
+## [v2.4] – 2026-09-25
+
+### 🧹 Radikales Frontend-Cleanup (Zero Microsoft / Zero Telemetrie)
+- **[CLEANUP] Vollständige Entfernung des Microsoft Gatekeepers & OneDrive-Modals:** Alle verbliebenen Dialoge, Device-Login-UI-Elemente und Styles wurden restlos aus `index.html` und `style.css` gelöscht.
+- **[CLEANUP] Bereinigung des JavaScript-Clients:** Löschung aller Microsoft- und OneDrive-Funktionen, State-Felder und Window-Exports in `app.js` (~300 Zeilen toter Code eliminiert).
+- **[PERF] Beschleunigter Start:** Der Web-Client startet direkt ohne überflüssige Gatekeeper-Prüfungen.
+- **[SECURITY] 100% Local-First:** Absolut null Drittanbieter-Reste mehr im gesamten Quellcode.
+
+## [v2.3] – 2026-09-10
+
+### ✨ Neue Features
+- **[FEAT] iCalendar Export (.ics):** Stundenplan direkt als Standard-.ics exportieren.
+- **[FEAT] Hintergrund-Synchronisation & System-Tray:** Automatische Hintergrund-Aktualisierungen und native Tray-Icon-Unterstützung.
+
+---
+
 ## [v2.2] – 2026-09-10
 
 ### 🔐 Sicherheit & Datenschutz

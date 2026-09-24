@@ -29,14 +29,6 @@
     hwFilter: 'all', // 'all', 'open', 'completed'
     subjectAliases: {},
     dashboardData: null,
-
-    // Microsoft Auth & OneDrive (v1.6)
-    // Microsoft integration removed – disabled requirement
-    msRequired: false,
-    msLoggedIn: false,
-    msUser: null,
-    msLastSync: '',
-    msPollingInterval: null,
   };
 
   // Extract Session Token from URL or storage
@@ -352,26 +344,6 @@
     initToken();
     setupEventListeners();
     setupTheme();
-
-    // Handle Microsoft OAuth callback notification params
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('ms_auth') === 'success') {
-      const msName = urlParams.get('ms_name');
-      showToast(msName ? `Willkommen, ${decodeURIComponent(msName)}! Mit Microsoft angemeldet.` : 'Erfolgreich mit Microsoft angemeldet! OneDrive-Sync aktiv.', 'success');
-      window.history.replaceState({}, document.title, window.location.pathname + (state.token ? `?token=${encodeURIComponent(state.token)}` : ''));
-    } else if (urlParams.get('ms_error')) {
-      showToast('Microsoft-Anmeldung: ' + decodeURIComponent(urlParams.get('ms_error')), 'error');
-      window.history.replaceState({}, document.title, window.location.pathname + (state.token ? `?token=${encodeURIComponent(state.token)}` : ''));
-    }
-
-    // Check Microsoft Auth status (Mandatory Gatekeeper v1.6)
-    await updateMicrosoftStatus();
-    if (!state.msLoggedIn) {
-      showMicrosoftGatekeeper(true);
-      return;
-    } else {
-      showMicrosoftGatekeeper(false);
-    }
 
     // Check system status
     const status = await apiFetch('/api/status');
@@ -2598,6 +2570,58 @@
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
     {
+      version: 'v2.4',
+      title: 'Release v2.4 – Radikales Frontend-Cleanup (Zero Microsoft / Zero Telemetrie)',
+      type: 'major',
+      date: '25.09.2026',
+      badge: 'Release v2.4',
+      description: 'Vollständige und radikale Bereinigung aller verbliebenen Frontend-Modale, Gatekeeper-Skripte und Microsoft/OneDrive-Reste. untis-go ist 100% autark, frei von Drittanbieter-Code und strikt datenschutzkonform.',
+      sections: [
+        {
+          title: '🧹 Radikale Frontend-Bereinigung',
+          items: [
+            { type: 'security', text: '<strong>Entfernung des Gatekeepers & OneDrive-Modals:</strong> Alle ungenutzten Modale, Device-Code-Elemente und Microsoft-Buttons wurden restlos aus dem HTML gelöscht.' },
+            { type: 'security', text: '<strong>JavaScript- und CSS-Bereinigung:</strong> Über 400 Zeilen ungenutzter Microsoft- und OneDrive-Code in app.js und style.css wurden restlos eliminiert.' },
+            { type: 'feat', text: '<strong>Schnellerer App-Start:</strong> Keine unnötigen Status-Prüfungen oder Gatekeeper-Routinen beim Starten der Anwendung.' }
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v2.3',
+      title: 'Release v2.3 – iCalendar Export & Background Sync',
+      type: 'feature',
+      date: '10.09.2026',
+      badge: 'Release v2.3',
+      description: 'Automatischer iCal-Export (.ics), Hintergrund-Synchronisation und System-Tray-Integration.',
+      sections: [
+        {
+          title: '📅 Kalender & System-Integration',
+          items: [
+            { type: 'feat', text: '<strong>iCalendar Export (.ics):</strong> Exportiere deinen Stundenplan direkt in Thunderbird, Outlook oder Apple Kalender.' },
+            { type: 'feat', text: '<strong>Hintergrund-Synchronisation:</strong> Regelmäßige Aktualisierung der Stundenpläne im Hintergrund.' }
+          ]
+        }
+      ]
+    },
+    {
+      version: 'v2.2',
+      title: 'Release v2.2 – Datenschutz-Compliance & Microsoft-Login-Entfernung',
+      type: 'security',
+      date: '10.09.2026',
+      badge: 'Release v2.2',
+      description: 'Datenschutz-Compliance (DSGVO / LDI NRW): Vollständige Entfernung des Microsoft-OAuth2-Logins und OneDrive-Syncs aus dem Backend und Core-System.',
+      sections: [
+        {
+          title: '🔒 Datenschutz & Privatsphäre',
+          items: [
+            { type: 'security', text: '<strong>Vollständige Backend-Entfernung:</strong> Löschung aller cloud/* Pakete und Microsoft-API-Routen.' },
+            { type: 'security', text: '<strong>Offizielle Entschuldigung & Transparenz:</strong> Rückkehr zum Kernprinzip 100% Local-First & Zero Telemetrie.' }
+          ]
+        }
+      ]
+    },
+    {
       version: 'v2.1',
       title: 'Release v2.1 – Native Bestätigungs-GUIs & Wayland Icon-Integration',
       type: 'feature',
@@ -2608,7 +2632,7 @@
         {
           title: '🎨 Eigene native Bestätigungs-GUIs',
           items: [
-            { type: 'feat', text: '<strong>Keine Browser-Popups mehr:</strong> Alle Lösch- und Abmeldeaktionen (Profile, Hausaufgaben, Abwesenheiten, Microsoft-Logout) nutzen nun einen eigens gestalteten, voll integrierten Bestätigungsdialog.' },
+            { type: 'feat', text: '<strong>Keine Browser-Popups mehr:</strong> Alle Lösch- und Abmeldeaktionen (Profile, Hausaufgaben, Abwesenheiten) nutzen nun einen eigens gestalteten, voll integrierten Bestätigungsdialog.' },
             { type: 'security', text: '<strong>Beseitigung aller Web-Spuren:</strong> Keine störenden WebKit-Titelzeilen („JavaScript - http://127.0.0.1...“) mehr. Globale Unterdrückung von <code>window.confirm</code> und <code>script-dialog</code> im WebKitGTK-Backend.' },
           ]
         },
@@ -3250,211 +3274,6 @@
     setInterval(updateLiveTimeMarker, 30000);
   }
 
-  // ==================== MICROSOFT AUTH & ONEDRIVE CLOUD-SYNC (v1.6) ====================
-  async function updateMicrosoftStatus() {
-    const data = await apiFetch('/api/auth/microsoft/status');
-    if (!data) return;
-
-    state.msRequired = !!data.required;
-    state.msLoggedIn = !!data.loggedIn;
-    state.msUser = data.user || null;
-    state.msLastSync = data.lastSync || '';
-
-    // Update Topbar chip
-    const chipLabel = document.getElementById('topbarMsLabel');
-    const syncDot = document.getElementById('topbarMsSyncDot');
-
-    if (state.msLoggedIn && state.msUser) {
-      if (chipLabel) chipLabel.textContent = state.msUser.name ? state.msUser.name.split(' ')[0] : 'OneDrive';
-      if (syncDot) {
-        syncDot.className = 'ms-sync-dot online';
-        syncDot.title = 'OneDrive Synchronisiert (' + (state.msLastSync ? formatDateTime(state.msLastSync) : 'Aktiv') + ')';
-      }
-    } else {
-      if (chipLabel) chipLabel.textContent = 'Anmelden';
-      if (syncDot) {
-        syncDot.className = 'ms-sync-dot';
-        syncDot.title = 'Nicht verbunden';
-      }
-    }
-
-    // Update Modal data if open
-    const nameEl = document.getElementById('msAccName');
-    const emailEl = document.getElementById('msAccEmail');
-    const typeEl = document.getElementById('msAccType');
-    const avatarEl = document.getElementById('msAccAvatar');
-    const syncLastEl = document.getElementById('msSyncLast');
-
-    if (state.msUser) {
-      if (nameEl) nameEl.textContent = state.msUser.name || 'Microsoft Konto';
-      if (emailEl) emailEl.textContent = state.msUser.email || '';
-      if (typeEl) {
-        typeEl.textContent = state.msUser.accountType === 'personal' ? 'Persönliches Microsoft-Konto' : 'Schul- / Schüler-Account';
-      }
-      if (avatarEl) {
-        const parts = (state.msUser.name || 'MS').split(' ');
-        avatarEl.textContent = parts.map(p => p[0]).join('').slice(0, 2).toUpperCase();
-      }
-    }
-    if (syncLastEl) {
-      syncLastEl.textContent = state.msLastSync ? `Letzter Stand: ${formatDateTime(state.msLastSync)}` : 'Letzter Stand: Noch nicht synchronisiert';
-    }
-
-    const customClientInput = document.getElementById('msCustomClientId');
-    const customTenantInput = document.getElementById('msCustomTenantId');
-    if (customClientInput && data.clientId) customClientInput.value = data.clientId;
-    if (customTenantInput && data.tenantId) customTenantInput.value = data.tenantId;
-  }
-
-  function showMicrosoftGatekeeper(show) {
-    const modal = document.getElementById('msGatekeeperBackdrop');
-    if (!modal) return;
-    modal.style.display = show ? 'flex' : 'none';
-  }
-
-  async function loginWithMicrosoft() {
-    showLoading(true, 'Öffne Microsoft-Anmeldung...');
-    const res = await apiFetch('/api/auth/microsoft/login-url');
-    showLoading(false);
-    if (res && res.authUrl) {
-      window.location.href = res.authUrl;
-    } else {
-      showToast('Konnte Microsoft Anmelde-URL nicht erstellen', 'error');
-    }
-  }
-
-  async function startMicrosoftDeviceLogin() {
-    const box = document.getElementById('msDeviceBox');
-    const codeEl = document.getElementById('msUserCodeDisplay');
-    const statusText = document.getElementById('msPollingStatusText');
-    if (!box || !codeEl) return;
-
-    box.style.display = 'block';
-    codeEl.textContent = '...';
-    if (statusText) statusText.textContent = 'Fordere Code an...';
-
-    const res = await apiFetch('/api/auth/microsoft/devicecode', { method: 'POST' });
-    if (!res || !res.device_code) {
-      if (statusText) statusText.textContent = 'Fehler beim Anfordern des Codes';
-      showToast('Fehler bei Geräte-Code-Anforderung', 'error');
-      return;
-    }
-
-    codeEl.textContent = res.user_code;
-    if (statusText) statusText.textContent = 'Warte auf Bestätigung im Browser...';
-
-    // Clear any previous polling interval
-    if (state.msPollingInterval) {
-      clearInterval(state.msPollingInterval);
-    }
-
-    // Poll every 3 seconds
-    state.msPollingInterval = setInterval(async () => {
-      const pollRes = await apiFetch('/api/auth/microsoft/devicecode/poll', {
-        method: 'POST',
-        body: JSON.stringify({ device_code: res.device_code }),
-      });
-
-      if (pollRes && pollRes.status === 'success') {
-        clearInterval(state.msPollingInterval);
-        state.msPollingInterval = null;
-        showToast('Erfolgreich mit Microsoft angemeldet!', 'success');
-        box.style.display = 'none';
-        showMicrosoftGatekeeper(false);
-        await initApp();
-      } else if (pollRes && pollRes.status === 'error') {
-        clearInterval(state.msPollingInterval);
-        state.msPollingInterval = null;
-        if (statusText) statusText.textContent = 'Abgelaufen oder Fehler: ' + (pollRes.error || '');
-      }
-    }, 3000);
-  }
-
-  function copyMsDeviceCode() {
-    const code = document.getElementById('msUserCodeDisplay')?.textContent;
-    if (code && code !== '----' && code !== '...') {
-      navigator.clipboard.writeText(code).then(() => {
-        showToast('Code in Zwischenablage kopiert: ' + code, 'success');
-      });
-    }
-  }
-
-  function toggleMsAzureSettings() {
-    const panel = document.getElementById('msAzureSettingsPanel');
-    if (panel) {
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    }
-  }
-
-  async function saveMsCustomAzureConfig() {
-    const clientId = document.getElementById('msCustomClientId')?.value?.trim();
-    const tenantId = document.getElementById('msCustomTenantId')?.value?.trim();
-    const res = await apiFetch('/api/auth/microsoft/config', {
-      method: 'POST',
-      body: JSON.stringify({ clientId, tenantId })
-    });
-    if (res && res.success) {
-      showToast('Azure App-Konfiguration gespeichert!', 'success');
-    } else {
-      showToast('Fehler beim Speichern der Konfiguration', 'error');
-    }
-  }
-
-  function openMsCloudModal() {
-    updateMicrosoftStatus();
-    const modal = document.getElementById('msCloudModalBackdrop');
-    if (modal) modal.style.display = 'flex';
-  }
-
-  function closeMsCloudModal() {
-    const modal = document.getElementById('msCloudModalBackdrop');
-    if (modal) modal.style.display = 'none';
-  }
-
-  async function syncOneDrive(action = 'upload') {
-    const syncDot = document.getElementById('topbarMsSyncDot');
-    if (syncDot) syncDot.className = 'ms-sync-dot syncing';
-    showLoading(true, action === 'upload' ? 'Sichere Konfiguration in OneDrive...' : 'Lade Konfiguration aus OneDrive...');
-
-    const res = await apiFetch('/api/auth/microsoft/sync', {
-      method: 'POST',
-      body: JSON.stringify({ action })
-    });
-
-    showLoading(false);
-    if (syncDot) syncDot.className = 'ms-sync-dot online';
-
-    if (res && res.success) {
-      showToast(res.message || 'OneDrive Synchronisierung erfolgreich!', 'success');
-      await updateMicrosoftStatus();
-      if (action === 'download') {
-        window.location.reload();
-      }
-    } else {
-      showToast('OneDrive-Sync fehlgeschlagen: ' + (res?.error || 'Unbekannter Fehler'), 'error');
-    }
-  }
-
-  async function logoutMicrosoft() {
-    const ok = await showConfirmDialog({
-      title: 'Microsoft-Konto abmelden',
-      message: 'Möchtest du dich wirklich von Microsoft abmelden?\n\nOhne Microsoft-Konto kann untis-go nicht genutzt werden.',
-      confirmText: 'Abmelden',
-      cancelText: 'Abbrechen',
-      isDanger: true,
-    });
-    if (!ok) return;
-
-    showLoading(true, 'Melde Microsoft-Konto ab...');
-    await apiFetch('/api/auth/microsoft/logout', { method: 'POST' });
-    showLoading(false);
-    closeMsCloudModal();
-    state.msLoggedIn = false;
-    state.msUser = null;
-    showToast('Microsoft-Konto abgemeldet', 'info');
-    showMicrosoftGatekeeper(true);
-  }
-
   // Utilities
   function escapeHTML(str) {
     if (!str) return '';
@@ -3524,12 +3343,6 @@
   window.filterOnboardClasses = filterOnboardClasses;
   window.selectOnboardClass = selectOnboardClass;
   window.confirmOnboardClassSelection = confirmOnboardClassSelection;
-  window.loginWithMicrosoft = loginWithMicrosoft;
-  window.startMicrosoftDeviceLogin = startMicrosoftDeviceLogin;
-  window.copyMsDeviceCode = copyMsDeviceCode;
-  window.toggleMsAzureSettings = toggleMsAzureSettings;
-  window.saveMsCustomAzureConfig = saveMsCustomAzureConfig;
-  window.openMsCloudModal = openMsCloudModal;
   async function exportTimetableICal() {
     try {
       showLoading(true, 'Generiere iCalendar (.ics)...');
@@ -3569,9 +3382,6 @@
   }
 
   window.exportTimetableICal = exportTimetableICal;
-  window.closeMsCloudModal = closeMsCloudModal;
-  window.syncOneDrive = syncOneDrive;
-  window.logoutMicrosoft = logoutMicrosoft;
 
   // Run app on DOMContentLoaded
   if (document.readyState === 'loading') {
