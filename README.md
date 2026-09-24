@@ -1,25 +1,14 @@
-# 🚀 untis-go
+# 🗓️ untis-go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/benzjeremy/untis-go.svg)](https://pkg.go.dev/github.com/benzjeremy/untis-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/benzjeremy/untis-go.svg)](https://goreportcard.com/report/github.com/benzjeremy/untis-go)
 [![CI](https://github.com/benzjeremy/untis-go/actions/workflows/ci.yml/badge.svg)](https://github.com/benzjeremy/untis-go/actions)
-[![Coverage](https://codecov.io/gh/benzjeremy/untis-go/branch/main/graph/badge.svg)](https://app.codecov.io/gh/benzjeremy/untis-go)
-[![Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#other-software)
-[![Release: v2.3](https://img.shields.io/badge/Release-v2.3%20[Pre--Release]-orange.svg?style=for-the-badge&logo=github)](https://github.com/benzjeremy/untis-go/releases)
-[![Status: Pre-Release](https://img.shields.io/badge/Status-Pre--Release%20%2F%20WIP-orange.svg?style=for-the-badge)](https://github.com/benzjeremy/untis-go/issues)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org)
-[![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-success.svg?style=for-the-badge&logo=lock)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
+[![Release](https://img.shields.io/github/v/release/benzjeremy/untis-go)](https://github.com/benzjeremy/untis-go/releases/latest)
+[![Status: Pre-Release](https://img.shields.io/badge/Status-Pre--Release%20%2F%20WIP-orange.svg)](https://github.com/benzjeremy/untis-go)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey)](#installation)
 
-> [!IMPORTANT]
-> ### 🔒 Primary Codebase & Active Development Moved to Self-Hosted Gitea
-> **For privacy optimization and sovereign self-hosted infrastructure, the primary development, source code, and releases of this project have permanently migrated to our self-hosted Gitea platform:**  
-> 👉 **[Gitea Repository: https://pi5.darter-basking.ts.net/gitea/untis-go/untis-go](https://pi5.darter-basking.ts.net/gitea/untis-go/untis-go)**  
-> 👉 **[Official Web Showcase: https://pi5.darter-basking.ts.net/untis-go/](https://pi5.darter-basking.ts.net/untis-go/)**
-> 
-> *This GitHub repository serves solely as a read-only mirror for Go toolchain compatibility (`go install`, `pkg.go.dev`, `awesome-go`). All active development, issues, and releases take place on Gitea.*
-
----
+> 🌐 **Official Website:** [https://pi5.darter-basking.ts.net/untis-go/](https://pi5.darter-basking.ts.net/untis-go/)
 
 > [!IMPORTANT]
 > ### 🚧 Pre-Release / Active Development Notice
@@ -159,20 +148,7 @@ Bug reports and contributions are welcome:
 
 ---
 
-## 📚 Wiki & Documentation
-
-Detailed documentation and step-by-step guides:
-- 🌐 **Interactive Web Wiki**: [https://benzjeremy.github.io/untis-go/wiki/](https://benzjeremy.github.io/untis-go/wiki/)
-- **GitHub Wiki Home**: [https://github.com/benzjeremy/untis-go.wiki/wiki/Home](https://github.com/benzjeremy/untis-go.wiki/wiki/Home)
-- **Getting Started**: [https://github.com/benzjeremy/untis-go.wiki/wiki/Getting-Started](https://github.com/benzjeremy/untis-go.wiki/wiki/Getting-Started)
-- **Features**: [https://github.com/benzjeremy/untis-go.wiki/wiki/Features](https://github.com/benzjeremy/untis-go.wiki/wiki/Features)
-- **Installation**: [https://github.com/benzjeremy/untis-go.wiki/wiki/Installation](https://github.com/benzjeremy/untis-go.wiki/wiki/Installation)
-- **Security**: [https://github.com/benzjeremy/untis-go.wiki/wiki/Security](https://github.com/benzjeremy/untis-go.wiki/wiki/Security)
-- **FAQ**: [https://github.com/benzjeremy/untis-go.wiki/wiki/FAQ](https://github.com/benzjeremy/untis-go.wiki/wiki/FAQ)
-
----
-
 ## 📄 License & Author
 
-- **Developer:** Jeremy Benz ([@benzjeremy](https://github.com/benzjeremy)) · [benzjeremy.github.io](https://benzjeremy.github.io/)
+- **Developer:** Jeremy Benz ([@benzjeremy](https://github.com/benzjeremy))
 - **License:** [GNU General Public License v3.0 (GPL-3.0)](LICENSE)
