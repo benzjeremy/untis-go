@@ -9,6 +9,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-lightgrey)](#installation)
 
 > 🌐 **Official Website:** [https://pi5.darter-basking.ts.net/untis-go/](https://pi5.darter-basking.ts.net/untis-go/)
+> 📖 **Official Wiki & Documentation:** [https://pi5.darter-basking.ts.net/untis-go/wiki/](https://pi5.darter-basking.ts.net/untis-go/wiki/)
 
 > [!IMPORTANT]
 > ### 🚧 Pre-Release / Active Development Notice
@@ -145,6 +146,19 @@ Bug reports and contributions are welcome:
    - Operating system and desktop environment.
    - Steps to reproduce.
    - Expected vs actual behavior (including console log output).
+
+---
+
+## 📚 Wiki & Documentation
+
+Detailed documentation and step-by-step guides are available in our official web wiki:  
+👉 **[untis-go Wiki: https://pi5.darter-basking.ts.net/untis-go/wiki/](https://pi5.darter-basking.ts.net/untis-go/wiki/)**
+
+- **Getting Started & Onboarding**: [Getting Started Guide](https://pi5.darter-basking.ts.net/untis-go/wiki/#quickstart)
+- **Feature Deep Dive**: [Timetables, Homework & Absences](https://pi5.darter-basking.ts.net/untis-go/wiki/#features)
+- **Installation**: [Linux & Windows Setup](https://pi5.darter-basking.ts.net/untis-go/wiki/#installation)
+- **Security Architecture**: [AES-256-GCM & PBKDF2](https://pi5.darter-basking.ts.net/untis-go/wiki/#security)
+- **FAQ & Troubleshooting**: [Frequently Asked Questions](https://pi5.darter-basking.ts.net/untis-go/wiki/#faq)
 
 ---
 
