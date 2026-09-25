@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) | Versionierung
 
 ---
 
+## [v2.4.1] – 2026-09-25
+
+### 🔐 SQLite Persistenz-Purge & Datenschutz-Härtung
+- **[SECURITY] Automatischer SQLite-Purge:** Beim Starten (`InitDB`) werden verbliebene historische Microsoft-Tokens (Access/Refresh-Tokens, E-Mail-Adressen, Kontodaten) automatisch und unwiderruflich aus der Tabelle `settings` gelöscht.
+- **[SECURITY] API-Härtung:** Das Speichern oder Auslesen von `ms_*`-Schlüsseln in `db/settings.go` und `/api/settings` ist strikt blockiert und gefiltert.
+- **[CLEANUP] Release-History Bereinigung:** Historische Release-Texte in der internen Release-Zentrale korrigiert.
+
 ## [v2.4] – 2026-09-25
 
 ### 🧹 Radikales Frontend-Cleanup (Zero Microsoft / Zero Telemetrie)

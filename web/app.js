@@ -2570,6 +2570,24 @@
   // ==================== ÜBER & INFO MODULE ====================
   const APP_RELEASES = [
     {
+      version: 'v2.4.1',
+      title: 'Release v2.4.1 – SQLite Persistenz-Purge & Datenschutz-Härtung',
+      type: 'hotfix',
+      date: '25.09.2026',
+      badge: 'Hotfix v2.4.1',
+      description: 'Patch-Release: Automatische restlose Löschung aller historischen Microsoft-Tokens und Alt-Einstellungen aus der lokalen SQLite-Datenbank beim App-Start sowie Blockierung aller ms_-Schlüssel im Settings-Handler.',
+      sections: [
+        {
+          title: '🔐 Datenschutz & Persistenz-Bereinigung',
+          items: [
+            { type: 'security', text: '<strong>Automatischer SQLite-Purge:</strong> Beim Starten von untis-go werden verbliebene historische Microsoft-Tokens (Access/Refresh-Token, E-Mail-Adressen, Kontodaten) automatisch und unwiderruflich aus der lokalen Datenbank gelöscht.' },
+            { type: 'security', text: '<strong>API-Härtung:</strong> Sperre gegen das Setzen oder Auslesen von <code>ms_*</code>-Schlüsseln in <code>/api/settings</code>.' },
+            { type: 'security', text: '<strong>Release-History Bereinigung:</strong> Vollständige Korrektur aller historischen Release-Texte in der internen Info- & Release-Zentrale.' }
+          ]
+        }
+      ]
+    },
+    {
       version: 'v2.4',
       title: 'Release v2.4 – Radikales Frontend-Cleanup (Zero Microsoft / Zero Telemetrie)',
       type: 'major',
