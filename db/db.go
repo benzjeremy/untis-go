@@ -66,6 +66,11 @@ func InitDB(customPath ...string) (*Database, error) {
 		return nil, fmt.Errorf("failed to create database schema: %w", err)
 	}
 
+	// Purge any deprecated legacy Microsoft OAuth & OneDrive sync settings from SQLite
+	if _, err := db.db.Exec("DELETE FROM settings WHERE key LIKE 'ms_%'"); err != nil {
+		log.Printf("[DB] Warnung beim Bereinigen von Legacy-Einstellungen: %v", err)
+	}
+
 	// Automatically run legacy migration only for default standard database (never in tests with customPath)
 	if len(customPath) == 0 {
 		if err := db.checkAndMigrate(); err != nil {

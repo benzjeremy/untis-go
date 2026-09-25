@@ -155,3 +155,59 @@ func TestDatabaseOperations(t *testing.T) {
 		t.Fatalf("expected theme 'light', got '%s'", val)
 	}
 }
+
+func TestMicrosoftSettingsPurgedAndBlocked(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "untis-db-ms-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dbPath := filepath.Join(tmpDir, "test_ms.db")
+	database, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	// Setting ms_ keys must be rejected/ignored
+	if err := database.SetSetting("ms_access_token", "secret123"); err != nil {
+		t.Fatalf("SetSetting returned unexpected error: %v", err)
+	}
+	if val := database.GetSetting("ms_access_token", ""); val != "" {
+		t.Fatalf("expected empty string for ms_access_token, got '%s'", val)
+	}
+
+	// Directly insert ms_ key into table to simulate legacy DB
+	rawDB := database.GetUnderlyingDB()
+	_, err = rawDB.Exec("INSERT INTO settings (key, value) VALUES ('ms_user_email', 'leak@example.com')")
+	if err != nil {
+		t.Fatalf("failed to insert raw legacy setting: %v", err)
+	}
+
+	// GetAllSettings must filter it out
+	all, err := database.GetAllSettings()
+	if err != nil {
+		t.Fatalf("GetAllSettings failed: %v", err)
+	}
+	if _, exists := all["ms_user_email"]; exists {
+		t.Fatalf("GetAllSettings leaked legacy ms_ key: %v", all)
+	}
+
+	// Re-initializing DB must purge any ms_ keys
+	database.Close()
+	dbReopened, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("reopening InitDB failed: %v", err)
+	}
+	defer dbReopened.Close()
+
+	var count int
+	err = dbReopened.GetUnderlyingDB().QueryRow("SELECT COUNT(*) FROM settings WHERE key LIKE 'ms_%'").Scan(&count)
+	if err != nil {
+		t.Fatalf("failed to count ms_ keys: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 ms_ keys in settings table after InitDB, found %d", count)
+	}
+}

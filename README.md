@@ -84,12 +84,12 @@ Download the matching file for your operating system from the [**Releases**](htt
 
 - **Linux (x86_64)**:
   ```bash
-  tar -xzf untis-go-v2.3-linux.tar.gz
+  tar -xzf untis-go-v2.4-linux.tar.gz
   sudo cp untis-go /usr/local/bin/
   untis-go
   ```
 - **Windows (x86_64)**:
-  - Unzip `untis-go-v2.3-windows.zip` and run `untis-go.exe`.
+  - Unzip `untis-go-v2.4-windows.zip` and run `untis-go.exe`.
 
 ### 2. Installation via Go (`go install`)
 

@@ -3,10 +3,15 @@ package db
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // GetSetting retrieves a string setting from SQLite, or returns defaultValue if not found
 func (d *Database) GetSetting(key, defaultValue string) string {
+	if strings.HasPrefix(key, "ms_") {
+		return defaultValue
+	}
+
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -20,6 +25,10 @@ func (d *Database) GetSetting(key, defaultValue string) string {
 
 // SetSetting saves or updates a key-value setting in SQLite
 func (d *Database) SetSetting(key, value string) error {
+	if strings.HasPrefix(key, "ms_") {
+		return nil // Reject deprecated Microsoft/OneDrive settings
+	}
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -54,7 +63,7 @@ func (d *Database) GetAllSettings() (map[string]string, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	rows, err := d.db.Query(`SELECT key, value FROM settings`)
+	rows, err := d.db.Query(`SELECT key, value FROM settings WHERE key NOT LIKE 'ms_%'`)
 	if err != nil {
 		return nil, fmt.Errorf("error querying settings: %w", err)
 	}

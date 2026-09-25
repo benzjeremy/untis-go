@@ -2651,7 +2651,7 @@
       type: 'major',
       date: '05.09.2026',
       badge: 'Release v2.0',
-      description: 'Großer Meilenstein v2.0: Vollständiger Umstieg von einer einfachen Web-Schnittstelle auf eine gehärtete native Go-Desktop-Anwendung. Universelle Stundenplan-Auswahl im Dashboard für alle Nutzer (persönlicher Plan oder beliebige Klasse), AES-256-GCM verschlüsselte OneDrive-Backups und umfassendes Sicherheits-Hardening.',
+      description: 'Großer Meilenstein v2.0: Vollständiger Umstieg von einer einfachen Web-Schnittstelle auf eine gehärtete native Go-Desktop-Anwendung. Universelle Stundenplan-Auswahl im Dashboard für alle Nutzer (persönlicher Plan oder beliebige Klasse), AES-256-GCM verschlüsselte lokale Speicherung und umfassendes Sicherheits-Hardening.',
       sections: [
         {
           title: '🖥️ Native Go Desktop-Anwendung & Security-Hardening',
@@ -2669,30 +2669,21 @@
           ]
         },
         {
-          title: '🔐 Cloud-Sicherheit: Verschlüsseltes OneDrive-Backup',
+          title: '🔐 Lokale Datensicherheit',
           items: [
-            { type: 'security', text: '<strong>AES-256-GCM Passwort-Verschlüsselung:</strong> Passwörter und Zugangsdaten werden vor der OneDrive-Sicherung mit 100.000 PBKDF2-Iterationen und hardware-unterstütztem AES-GCM verschlüsselt. Niemals Klartext-Passwörter in der Cloud-Datei (<code>untis_config.json</code>).' },
-            { type: 'security', text: '<strong>Isolierter App-Speicher:</strong> Verwendung des isolierten Microsoft Graph <code>AppFolder</code> (<code>/Apps/OneDrive Client for Linux/untis_config.json</code>) ohne Zugriff auf andere Dateien deines OneDrive-Speichers.' },
+            { type: 'security', text: '<strong>AES-256-GCM Passwort-Verschlüsselung:</strong> Passwörter und Zugangsdaten werden mit 100.000 PBKDF2-Iterationen und hardware-unterstütztem AES-GCM verschlüsselt in lokaler SQLite-Datenbank gespeichert.' },
           ]
         }
       ]
     },
     {
       version: 'v1.6',
-      title: 'Major Release v1.6 – Microsoft 365 & OneDrive Cloud-Sync',
+      title: 'Release v1.6 – WebUntis Optimierungen & Samstagsfilter',
       type: 'major',
       date: '05.09.2026',
       badge: 'Release v1.6',
-      description: 'Großes Feature-Release: Pflicht-Integration von Microsoft 365 (persönliche Konten sowie Schüler-/Schulaccounts via Entra ID) mit automatischer OneDrive-Cloud-Synchronisierung für Konfigurationen und Stundenpläne, plus serverseitiger Datumsfilter-Hotfix für Wochenend- und Samstagspläne.',
+      description: 'Feature-Release mit serverseitigem Datumsfilter-Hotfix für Wochenend- und Samstagspläne sowie Stabilitätsverbesserungen (ehemalige Microsoft-Integration wurde in v2.2 restlos entfernt).',
       sections: [
-        {
-          title: '☁️ Microsoft 365 & OneDrive Synchronisierung',
-          items: [
-            { type: 'feat', text: '<strong>Pflicht-Anmeldung via Microsoft:</strong> Sichere Anmeldung wahlweise mit Schüler-/Schulaccount (Office 365 / Entra ID) oder persönlichem Microsoft-Konto per OAuth2 (PKCE) oder interaktivem Geräte-Code (Devicelogin).' },
-            { type: 'feat', text: '<strong>OneDrive Cloud-Backup:</strong> Stundenplan-Einstellungen, Profile, Hausaufgaben, Notizen und Abwesenheiten werden verschlüsselt direkt im persönlichen OneDrive unter <code>/Apps/OneDrive Client for Linux/untis_config.json</code> synchronisiert.' },
-            { type: 'feat', text: '<strong>Cross-Device Restore:</strong> Beim Wechsel auf einen neuen PC oder Laptop werden alle hinterlegten Schulen und Pläne mit einem Klick automatisch aus OneDrive wiederhergestellt.' },
-          ]
-        },
         {
           title: '🛠️ Fehlerbehebungen & Präzision',
           items: [
